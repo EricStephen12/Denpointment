@@ -1,0 +1,383 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Core Dark ── */
+  --color-ink-950: #080b0a;
+  --color-ink-900: #0e1412;
+  --color-ink-800: #141f1c;
+  --color-ink-700: #1c2e2a;
+  --color-ink-600: #273d38;
+
+  /* ── Turquoise accent — kept vibrant for contrast against black ── */
+  --color-turq-100: #dcf5ef;
+  --color-turq-200: #b3e8dc;
+  --color-turq-300: #8fe0d1;
+  --color-turq-400: #5cccb8;
+  --color-turq-500: #34a894;
+  --color-turq-600: #248473;
+  --color-turq-700: #1a6758;
+
+  /* ── Warm off-white for contrast text on dark ── */
+  --color-sand-50:  #f8f6f1;
+  --color-sand-100: #f1ede4;
+  --color-sand-200: #e4ddcf;
+  --color-sand-400: #a89f8d;
+
+  /* ── Champagne/Bronze — for secondary labels, decorative text ── */
+  --color-champagne-400: #c4a882;
+  --color-champagne-300: #d4bc9e;
+  --color-champagne-200: #e3d2bb;
+
+  --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+
+  /* ── Animations ── */
+  --animate-fade-up:    fade-up    0.6s ease-out both;
+  --animate-fade-in:    fade-in    0.5s ease-out both;
+  --animate-scale-in:   scale-in   0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-check-draw: check-draw 0.6s ease-out 0.2s both;
+  --animate-slide-in:   slide-in   0.5s ease-out both;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes check-draw {
+    from { stroke-dashoffset: 48; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+}
+
+/* ── Base ── */
+body {
+  font-family: var(--font-poppins), sans-serif;
+  background-color: var(--color-ink-950);
+  color: var(--color-sand-50);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background-color: var(--color-turq-500);
+  color: var(--color-ink-950);
+}
+
+/* ── Grigoriak-inspired: full-bleed image helper ── */
+.img-bleed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ── Hairline divider — thin, barely visible ── */
+.hairline {
+  border: 0;
+  border-top: 1px solid rgba(248, 246, 241, 0.08);
+}
+
+/* ── Premium Input — on dark background ── */
+.input-premium {
+  width: 100%;
+  border: 1px solid rgba(248, 246, 241, 0.12);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  background: rgba(248, 246, 241, 0.04);
+  color: var(--color-sand-50);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-premium::placeholder {
+  color: rgba(248, 246, 241, 0.3);
+}
+.input-premium:focus {
+  outline: none;
+  border-color: var(--color-turq-500);
+  box-shadow: 0 0 0 4px rgba(36, 132, 115, 0.12);
+}
+
+/* ── Input on light background (dashboard) ── */
+.input-premium-light {
+  width: 100%;
+  border: 1px solid rgba(6, 11, 10, 0.12);
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  background: white;
+  color: var(--color-ink-950);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-premium-light::placeholder {
+  color: rgba(6, 11, 10, 0.3);
+}
+.input-premium-light:focus {
+  outline: none;
+  border-color: var(--color-turq-500);
+  box-shadow: 0 0 0 4px rgba(36, 132, 115, 0.1);
+}
+
+/* ── Dashboard uses dark bg ── */
+.dashboard-surface {
+  background-color: var(--color-ink-950);
+  color: var(--color-sand-50);
+}
+
+/* ── Premium Card (dashboard, dark) ── */
+.card-premium {
+  background: var(--color-ink-900);
+  border: 1px solid rgba(248, 246, 241, 0.08);
+  border-radius: 1.25rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Dashboard semantic tokens (dark theme) ── */
+
+/* Surfaces */
+.dash-card {
+  background: var(--color-ink-900);
+  border: 1px solid rgba(248, 246, 241, 0.08);
+  border-radius: 1rem;
+}
+.dash-surface {
+  background: rgba(248, 246, 241, 0.04);
+  border: 1px solid rgba(248, 246, 241, 0.08);
+  border-radius: 0.75rem;
+}
+
+/* Tables */
+.dash-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(248, 246, 241, 0.08);
+}
+.dash-table {
+  min-width: 100%;
+  font-size: 0.875rem;
+}
+.dash-table thead {
+  background: rgba(248, 246, 241, 0.04);
+}
+.dash-table thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 500;
+  color: rgba(248, 246, 241, 0.4);
+  border-bottom: 1px solid rgba(248, 246, 241, 0.08);
+}
+.dash-table tbody tr {
+  border-bottom: 1px solid rgba(248, 246, 241, 0.06);
+  transition: background 0.15s;
+}
+.dash-table tbody tr:last-child {
+  border-bottom: none;
+}
+.dash-table tbody tr:hover {
+  background: rgba(248, 246, 241, 0.03);
+}
+.dash-table td {
+  padding: 0.75rem 1rem;
+  color: rgba(248, 246, 241, 0.7);
+}
+.dash-table td.td-primary {
+  font-weight: 500;
+  color: var(--color-sand-50);
+}
+.dash-table td.td-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: rgba(248, 246, 241, 0.3);
+  font-style: italic;
+}
+
+/* Text */
+.dash-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(248, 246, 241, 0.4);
+}
+.dash-title {
+  font-size: 1.25rem;
+  color: var(--color-sand-50);
+}
+.dash-body {
+  font-size: 0.875rem;
+  color: rgba(248, 246, 241, 0.6);
+}
+
+/* Form inputs (dashboard dark) */
+.dash-input {
+  width: 100%;
+  border: 1px solid rgba(248, 246, 241, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: rgba(248, 246, 241, 0.06);
+  color: var(--color-sand-50);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dash-input::placeholder {
+  color: rgba(248, 246, 241, 0.25);
+}
+.dash-input:focus {
+  outline: none;
+  border-color: var(--color-turq-500);
+  box-shadow: 0 0 0 3px rgba(36, 132, 115, 0.15);
+}
+.dash-input option {
+  background: var(--color-ink-900);
+  color: var(--color-sand-50);
+}
+
+/* Stat card */
+.dash-stat-card {
+  border: 1px solid rgba(248, 246, 241, 0.08);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Icon badge */
+.dash-icon-badge {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: rgba(36, 132, 115, 0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Filter pill */
+.dash-pill-active {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--color-turq-600);
+  color: var(--color-ink-950);
+}
+.dash-pill-inactive {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(248, 246, 241, 0.06);
+  color: rgba(248, 246, 241, 0.5);
+}
+.dash-pill-inactive:hover {
+  background: rgba(248, 246, 241, 0.1);
+  color: var(--color-sand-50);
+}
+
+/* ── Accordion row — Grigoriak style ── */
+.accordion-row {
+  border-top: 1px solid rgba(248, 246, 241, 0.1);
+  padding: 2rem 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.accordion-row:hover {
+  color: var(--color-turq-400);
+}
+
+/* ── Text link CTA — underline only ── */
+.link-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-sand-50);
+  border-bottom: 1px solid rgba(248, 246, 241, 0.3);
+  padding-bottom: 2px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: border-color 0.2s, color 0.2s;
+}
+.link-cta:hover {
+  border-color: var(--color-turq-400);
+  color: var(--color-turq-300);
+}
+
+/* ── Clerk Overrides for Minimalist Aesthetic ── */
+.cl-card {
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.cl-cardBox {
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+.cl-header {
+  display: none !important;
+}
+.cl-socialButtonsBlockButton {
+  border-radius: 0 !important;
+  border-color: rgba(248, 246, 241, 0.2) !important;
+  background: transparent !important;
+  color: var(--color-sand-50) !important;
+}
+.cl-socialButtonsBlockButton:hover {
+  background: rgba(248, 246, 241, 0.05) !important;
+}
+.cl-formFieldInput {
+  border-radius: 0 !important;
+  border-color: rgba(248, 246, 241, 0.2) !important;
+  background: transparent !important;
+  color: var(--color-sand-50) !important;
+}
+.cl-formFieldInput:focus {
+  border-color: var(--color-turq-400) !important;
+  box-shadow: none !important;
+}
+.cl-formButtonPrimary {
+  border-radius: 0 !important;
+  background-color: var(--color-sand-50) !important;
+  color: var(--color-ink-950) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  font-weight: 500 !important;
+}
+.cl-formButtonPrimary:hover {
+  background-color: var(--color-turq-400) !important;
+}
+.cl-dividerLine {
+  background: rgba(248, 246, 241, 0.1) !important;
+}
+.cl-dividerText {
+  color: rgba(248, 246, 241, 0.4) !important;
+}
+.cl-footerActionText {
+  color: rgba(248, 246, 241, 0.6) !important;
+}
+.cl-footerActionLink {
+  color: var(--color-turq-400) !important;
+}

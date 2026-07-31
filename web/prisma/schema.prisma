@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Gender {
+  male
+  female
+}
+
+model Person {
+  personId  Int       @id @default(autoincrement()) @map("person_id")
+  ssn       String?   @unique @db.VarChar(15)
+  clerkId   String?   @unique @db.VarChar(255)
+  email     String    @unique @db.VarChar(50)
+  password  String    @db.VarChar(100)
+  firstName String    @map("first_name") @db.VarChar(50)
+  lastName  String    @map("last_name") @db.VarChar(50)
+  gender    Gender
+  birthDate DateTime? @map("birth_date") @db.Date
+
+  patients      Patient[]
+  dentists      Dentist[]
+  admins        Admin[]
+  receptionists Receptionist[]
+  addresses     Address[]
+  contacts      PersonContactNumber[]
+  diseases      ChronicDisease[]
+
+  @@map("persons")
+}
+
+model Patient {
+  patientId Int    @id @default(autoincrement()) @map("patient_id")
+  personId  Int    @unique @map("person_id")
+  person    Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  appointments Appointment[]
+
+  @@map("patients")
+}
+
+model Dentist {
+  dentistId  Int    @id @default(autoincrement()) @map("dentist_id")
+  personId   Int    @unique @map("person_id")
+  roomNumber String @map("room_number") @db.VarChar(5)
+  person     Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  appointments Appointment[]
+  treatments   Treatment[]
+  holidays     HolidayDate[]
+
+  @@map("dentists")
+}
+
+model Admin {
+  adminId  Int    @id @default(autoincrement()) @map("admin_id")
+  personId Int    @unique @map("person_id")
+  person   Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+model Receptionist {
+  receptionistId Int    @id @default(autoincrement()) @map("receptionist_id")
+  personId       Int    @unique @map("person_id")
+  person         Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  @@map("receptionists")
+}
+
+model Appointment {
+  appointmentId Int     @id @default(autoincrement()) @map("appointment_id")
+  dId           Int     @map("d_id")
+  pId           Int     @map("p_id")
+  room          String  @db.VarChar(5)
+  hour          Int
+  month         Int
+  day           Int
+  year          Int
+  checkedIn     Boolean @default(false) @map("checked_in")
+  reminderSent  Boolean @default(false) @map("reminder_sent")
+
+  dentist    Dentist     @relation(fields: [dId], references: [dentistId])
+  patient    Patient     @relation(fields: [pId], references: [patientId])
+  treatments Treatment[]
+
+  @@unique([dId, year, month, day, hour], name: "dentist_slot")
+  @@map("appointments")
+}
+
+model Treatment {
+  treatmentId Int     @id @default(autoincrement()) @map("treatment_id")
+  description String? @db.VarChar(50)
+  charge      Int
+  action      String  @db.VarChar(25)
+  complaint   String  @db.VarChar(25)
+  paid        Boolean @default(false)
+  paystackRef String? @unique @map("paystack_ref") @db.VarChar(100)
+  aId         Int     @map("a_id")
+  treatorId   Int     @map("treator_id")
+  serviceId   Int?    @map("service_id")
+
+  appointment Appointment @relation(fields: [aId], references: [appointmentId])
+  dentist     Dentist     @relation(fields: [treatorId], references: [dentistId])
+  service     Service?    @relation(fields: [serviceId], references: [serviceId])
+  medicines   Medicine[]
+
+  @@map("treatments")
+}
+
+model Service {
+  serviceId Int     @id @default(autoincrement()) @map("service_id")
+  name      String  @db.VarChar(50)
+  price     Int
+  active    Boolean @default(true)
+
+  treatments Treatment[]
+
+  @@map("services")
+}
+
+// Singleton row (id = 1) holding clinic-wide scheduling configuration.
+model ClinicSettings {
+  id           Int    @id @default(1)
+  openHour     Int    @default(8) @map("open_hour")
+  closeHour    Int    @default(18) @map("close_hour")
+  workingDays  Int[]  @default([1, 2, 3, 4, 5]) @map("working_days") // 0 = Sunday ... 6 = Saturday
+
+  @@map("clinic_settings")
+}
+
+model Medicine {
+  medicineId   Int    @id @default(autoincrement()) @map("medicine_id")
+  tId          Int    @map("t_id")
+  medicineName String @map("medicine_name") @db.VarChar(50)
+
+  treatment Treatment @relation(fields: [tId], references: [treatmentId])
+
+  @@map("medicines")
+}
+
+model Address {
+  addressId Int    @id @default(autoincrement()) @map("address_id")
+  personId  Int    @map("person_id")
+  city      String @db.VarChar(20)
+  street    String @db.VarChar(20)
+  zipCode   String @map("zip_code") @db.VarChar(10)
+
+  person Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  @@map("addresses")
+}
+
+model PersonContactNumber {
+  contactNumber String @map("contact_number") @db.VarChar(15)
+  personId      Int    @map("person_id")
+
+  person Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  @@id([contactNumber, personId])
+  @@map("person_contact_numbers")
+}
+
+model ChronicDisease {
+  chronicDisease String @map("chronic_disease") @db.VarChar(50)
+  personId       Int    @map("person_id")
+
+  person Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
+
+  @@id([chronicDisease, personId])
+  @@map("chronic_diseases")
+}
+
+model HolidayDate {
+  holidayId Int      @id @default(autoincrement()) @map("holiday_id")
+  restingId Int      @map("resting_id")
+  reason    String?  @db.VarChar(25)
+  restDate  DateTime @map("rest_date") @db.Date
+
+  dentist Dentist @relation(fields: [restingId], references: [dentistId])
+
+  @@map("holiday_dates")
+}
