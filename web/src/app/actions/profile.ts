@@ -49,14 +49,24 @@ export async function deletePhone(formData: FormData) {
 
 export async function addPhone(formData: FormData) {
   const personId = await getPersonId();
-  await prisma.personContactNumber.create({
-    data: {
-      personId,
-      contactNumber: formData.get("contactNumber") as string,
-    }
+  const contactNumber = ((formData.get("contactNumber") as string) || "").trim();
+  if (!contactNumber) {
+    throw new Error("Please enter a phone number.");
+  }
+
+  const existing = await prisma.personContactNumber.findUnique({
+    where: {
+      contactNumber_personId: { contactNumber, personId },
+    },
   });
-  revalidatePath('/dashboard/profile');
-  redirect('/dashboard/profile');
+  if (!existing) {
+    await prisma.personContactNumber.create({
+      data: { personId, contactNumber },
+    });
+  }
+
+  revalidatePath("/dashboard/profile");
+  redirect("/dashboard/profile");
 }
 
 export async function deleteDisease(formData: FormData) {

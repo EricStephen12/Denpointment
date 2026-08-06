@@ -44,16 +44,22 @@ export async function bookAppointment(formData: FormData) {
     throw new Error("Please fill in all fields.");
   }
 
-  const dateObj = new Date(dateStr);
+  // Parse YYYY-MM-DD as a local calendar date (not UTC) so timezone
+  // shifts don't mark today as "in the past" or land on the wrong weekday.
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!dateParts) {
+    throw new Error("Please pick a valid date.");
+  }
+  const year = parseInt(dateParts[1], 10);
+  const month = parseInt(dateParts[2], 10);
+  const day = parseInt(dateParts[3], 10);
+  const dateObj = new Date(year, month - 1, day);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   if (dateObj < today) {
     throw new Error("You can't book an appointment in the past.");
   }
-
-  const month = dateObj.getMonth() + 1;
-  const day = dateObj.getDate();
-  const year = dateObj.getFullYear();
 
   const settings = await prisma.clinicSettings.findUnique({ where: { id: 1 } });
   const openHour = settings?.openHour ?? 8;

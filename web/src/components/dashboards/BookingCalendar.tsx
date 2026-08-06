@@ -62,6 +62,7 @@ export default function BookingCalendar({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState(patientId || "");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // Calendar grid computation
@@ -149,13 +150,45 @@ export default function BookingCalendar({
       formData.set("patientId", selectedPatientId);
     }
 
-    startTransition(() => {
-      bookAction(formData);
+    setError(null);
+    startTransition(async () => {
+      try {
+        await bookAction(formData);
+      } catch (err) {
+        // Next.js redirect() throws a special error — let it through.
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "digest" in err &&
+          typeof (err as { digest?: unknown }).digest === "string" &&
+          String((err as { digest: string }).digest).startsWith("NEXT_REDIRECT")
+        ) {
+          throw err;
+        }
+        const message =
+          err instanceof Error ? err.message : "Booking failed. Please try another slot.";
+        setError(message);
+      }
     });
   };
 
+  const hasAnySlots = Object.keys(slots).length > 0;
+
   return (
     <div className="space-y-8">
+      {!hasAnySlots && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-900/20 px-4 py-3 text-sm text-amber-200">
+          No bookable slots right now. The clinic needs at least one dentist on staff
+          (Dashboard → Staff), and open hours must include working days.
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
       {/* Staff: patient selector */}
       {isStaffBooking && patients && (
         <div className="space-y-2">

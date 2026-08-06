@@ -198,6 +198,13 @@ export default async function BookAppointmentPage({
             </Link>
           </div>
         </div>
+      ) : dentists.length === 0 ? (
+        <div className="dash-surface p-6 space-y-2">
+          <h2 className="text-lg font-display text-sand-50">No dentists available</h2>
+          <p className="text-sm text-sand-50/50">
+            An admin needs to add at least one dentist under Dashboard → Staff before patients can book.
+          </p>
+        </div>
       ) : (
         <BookingCalendar
           slots={slots}
