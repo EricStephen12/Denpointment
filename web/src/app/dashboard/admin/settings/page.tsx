@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import { updateClinicHours, createService, toggleServiceActive } from "@/app/actions/settings";
 import { Settings, Plus, DollarSign } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
 
 const WEEKDAYS = [
   { value: 0, label: "Sun" },
@@ -88,7 +89,7 @@ export default async function ClinicSettingsPage() {
           <form action={createService} className="dash-surface p-4 flex gap-3 mb-4">
             <input type="text" name="name" required placeholder="Service name (e.g. Cleaning)"
               className="dash-input flex-1" />
-            <input type="number" name="price" required min={0} placeholder="Price"
+            <input type="number" name="price" required min={0} placeholder="Price (₦)"
               className="dash-input w-28" />
             <button type="submit" className="bg-turq-600 text-ink-950 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors flex items-center gap-1 shrink-0">
               <Plus className="h-4 w-4" /> Add
@@ -109,7 +110,7 @@ export default async function ClinicSettingsPage() {
                 {services.length > 0 ? services.map((s) => (
                   <tr key={s.serviceId}>
                     <td className="td-primary">{s.name}</td>
-                    <td>${s.price}</td>
+                    <td>{formatNaira(s.price)}</td>
                     <td>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${s.active ? 'bg-turq-600/20 text-turq-300' : 'bg-sand-50/8 text-sand-50/40'}`}>
                         {s.active ? 'Active' : 'Inactive'}

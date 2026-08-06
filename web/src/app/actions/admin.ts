@@ -50,7 +50,6 @@ export async function createStaffMember(formData: FormData) {
         firstName,
         lastName,
         gender: gender as Gender,
-        password: "clerk-managed-password",
       },
     });
 

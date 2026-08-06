@@ -41,7 +41,6 @@ export async function registerWalkInPatient(formData: FormData) {
         firstName,
         lastName,
         gender: gender as Gender,
-        password: "clerk-managed-password",
         patients: { create: {} },
         ...(phone ? { contacts: { create: { contactNumber: phone } } } : {}),
       },

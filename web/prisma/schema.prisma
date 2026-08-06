@@ -18,7 +18,8 @@ model Person {
   ssn       String?   @unique @db.VarChar(15)
   clerkId   String?   @unique @db.VarChar(255)
   email     String    @unique @db.VarChar(50)
-  password  String    @db.VarChar(100)
+  // Legacy column from the pre-Clerk prototype; auth is fully Clerk-managed now.
+  password  String?   @db.VarChar(100)
   firstName String    @map("first_name") @db.VarChar(50)
   lastName  String    @map("last_name") @db.VarChar(50)
   gender    Gender
@@ -133,6 +134,29 @@ model ClinicSettings {
   workingDays  Int[]  @default([1, 2, 3, 4, 5]) @map("working_days") // 0 = Sunday ... 6 = Saturday
 
   @@map("clinic_settings")
+}
+
+// Singleton row (id = 1) holding admin-editable website content & branding.
+// All fields are nullable: a null falls back to the code defaults in lib/site.ts.
+model SiteSettings {
+  id              Int     @id @default(1)
+  clinicName      String? @map("clinic_name") @db.VarChar(60)
+  tagline         String? @db.VarChar(200)
+  phone           String? @db.VarChar(20)
+  email           String? @db.VarChar(60)
+  address         String? @db.VarChar(120)
+  hoursLabel      String? @map("hours_label") @db.VarChar(60)
+  location        String? @db.VarChar(60)
+  heroLine1       String? @map("hero_line_1") @db.VarChar(40)
+  heroLine2       String? @map("hero_line_2") @db.VarChar(40)
+  philosophyLine1 String? @map("philosophy_line_1") @db.VarChar(200)
+  philosophyLine2 String? @map("philosophy_line_2") @db.VarChar(200)
+  rating          String? @db.VarChar(4)
+  reviewCount     String? @map("review_count") @db.VarChar(10)
+  accentColor     String? @map("accent_color") @db.VarChar(20)
+  packages        Json?
+
+  @@map("site_settings")
 }
 
 model Medicine {

@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPaymentReceiptEmail } from "@/lib/email";
+import { notifyN8n } from "@/lib/n8n";
 
 interface PaystackChargeSuccessEvent {
   event: string;
@@ -53,6 +54,14 @@ export async function POST(request: NextRequest) {
         amount: treatment.charge,
         serviceName: treatment.service?.name || treatment.action,
       }).catch((err) => console.error("[email] receipt failed:", err));
+
+      notifyN8n("payment", {
+        patientName: `${treatment.appointment.patient.person.firstName} ${treatment.appointment.patient.person.lastName}`,
+        patientEmail: treatment.appointment.patient.person.email,
+        amount: treatment.charge,
+        serviceName: treatment.service?.name || treatment.action,
+        reference: event.data.reference,
+      }).catch(() => undefined);
     }
   }
 

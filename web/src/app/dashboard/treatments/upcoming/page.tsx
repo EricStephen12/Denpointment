@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { CalendarClock } from 'lucide-react';
+import Link from "next/link";
 
 export default async function UpcomingAppointmentsPage() {
   const dbUser = await getCurrentPerson();
@@ -47,7 +48,11 @@ export default async function UpcomingAppointmentsPage() {
           <tbody>
             {upcoming.length > 0 ? upcoming.map((app) => (
               <tr key={app.appointmentId}>
-                <td className="td-primary">{app.patient.person.firstName} {app.patient.person.lastName}</td>
+                <td className="td-primary">
+                  <Link href={`/dashboard/patients/${app.patient.patientId}`} className="hover:text-turq-400 transition-colors">
+                    {app.patient.person.firstName} {app.patient.person.lastName}
+                  </Link>
+                </td>
                 <td>{app.room}</td>
                 <td>{app.hour}:00 — {app.day}/{app.month}/{app.year}</td>
               </tr>

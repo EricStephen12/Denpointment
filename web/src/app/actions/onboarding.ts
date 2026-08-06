@@ -30,7 +30,6 @@ export async function createPatientAccount(formData: FormData) {
       data: {
         clerkId: user.id,
         email,
-        password: "clerk-managed-password", // Password is no longer used but required by legacy schema
         firstName,
         lastName,
         gender: gender as Gender,

@@ -1,0 +1,58 @@
+{
+  "name": "Glow - Booking",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-booking",
+      "name": "Webhook Booking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "glow-booking"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "patientName", "value": "={{ $json.patientName }}", "type": "string" },
+            { "id": "2", "name": "patientEmail", "value": "={{ $json.patientEmail }}", "type": "string" },
+            { "id": "3", "name": "dentistName", "value": "={{ $json.dentistName }}", "type": "string" },
+            { "id": "4", "name": "date", "value": "={{ $json.date }}", "type": "string" },
+            { "id": "5", "name": "hour", "value": "={{ $json.hour }}", "type": "number" },
+            { "id": "6", "name": "room", "value": "={{ $json.room }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-booking",
+      "name": "Normalize Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Next step\nAdd an **Email Send** / **Gmail** / **Resend** node here.\n\nTo: `{{ $json.patientEmail }}`\nSubject: Appointment confirmed — {{ $json.date }} at {{ $json.hour }}:00\n\nThen **Activate** this workflow and paste the Webhook Production URL into Vercel as `N8N_WEBHOOK_BOOKING`.",
+        "height": 320,
+        "width": 380
+      },
+      "id": "note-booking",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [520, -80]
+    }
+  ],
+  "connections": {
+    "Webhook Booking": {
+      "main": [[{ "node": "Normalize Fields", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateCredsSetupCompleted": true }
+}

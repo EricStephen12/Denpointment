@@ -1,4 +1,5 @@
 import Reveal from "@/components/marketing/Reveal";
+import { CLINIC_RATING, CLINIC_REVIEW_COUNT } from "@/lib/constants";
 
 const TESTIMONIALS = [
   {
@@ -23,7 +24,13 @@ const TESTIMONIALS = [
   },
 ];
 
-export default function Testimonials() {
+export default function Testimonials({
+  rating = CLINIC_RATING,
+  reviewCount = CLINIC_REVIEW_COUNT,
+}: {
+  rating?: string;
+  reviewCount?: string;
+}) {
   return (
     <section id="testimonials" className="py-28 md:py-48 px-6 md:px-12 border-t hairline bg-ink-950">
       <div className="max-w-[1800px] mx-auto">
@@ -37,11 +44,11 @@ export default function Testimonials() {
                 WHAT PATIENTS <span className="italic text-turq-400">SAY.</span>
               </h2>
             </div>
-            
+
             <div className="text-right">
-              <p className="font-display text-4xl text-sand-50 mb-2">4.6 / 5.0</p>
+              <p className="font-display text-4xl text-sand-50 mb-2">{rating} / 5.0</p>
               <p className="text-[10px] tracking-[0.2em] uppercase text-sand-50/40">
-                BASED ON 130+ REVIEWS
+                BASED ON {reviewCount} REVIEWS
               </p>
             </div>
           </div>
@@ -49,7 +56,7 @@ export default function Testimonials() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-24">
           {TESTIMONIALS.map((t, i) => (
-            <Reveal key={i} delay={i * 0.05}>
+            <Reveal key={t.name} delay={i * 0.05}>
               <div className="flex flex-col border-t hairline pt-12">
                 <p className="font-display italic text-turq-400 text-6xl leading-none mb-6">
                   &ldquo;

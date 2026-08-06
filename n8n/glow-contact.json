@@ -1,0 +1,55 @@
+{
+  "name": "Glow - Contact",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contact",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-contact",
+      "name": "Webhook Contact",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "glow-contact"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "1", "name": "name", "value": "={{ $json.name }}", "type": "string" },
+            { "id": "2", "name": "email", "value": "={{ $json.email }}", "type": "string" },
+            { "id": "3", "name": "message", "value": "={{ $json.message }}", "type": "string" },
+            { "id": "4", "name": "clinicEmail", "value": "={{ $json.clinicEmail }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-contact",
+      "name": "Normalize Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Next step\nEmail the clinic: To `{{ $json.clinicEmail }}`, Reply-To `{{ $json.email }}`.\n\nActivate → set Vercel `N8N_WEBHOOK_CONTACT`.",
+        "height": 240,
+        "width": 360
+      },
+      "id": "note-contact",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [520, -40]
+    }
+  ],
+  "connections": {
+    "Webhook Contact": {
+      "main": [[{ "node": "Normalize Fields", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

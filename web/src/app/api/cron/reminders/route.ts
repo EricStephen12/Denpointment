@@ -12,6 +12,10 @@ import { sendAppointmentReminderEmail } from "@/lib/email";
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
+  if (process.env.NODE_ENV === "production" && !secret) {
+    console.error("[reminders] CRON_SECRET is required in production");
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 503 });
+  }
   if (secret) {
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${secret}`) {

@@ -1,16 +1,19 @@
 import Link from "next/link";
-import { CLINIC_NAME } from "@/lib/constants";
+import { LEGAL_LAST_UPDATED } from "@/lib/constants";
+import { getSiteContent } from "@/lib/site";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
+  const site = await getSiteContent();
+
   return (
     <div className="min-h-screen bg-sand-50 text-ink-950 flex flex-col">
-      <MarketingHeader />
+      <MarketingHeader clinicName={site.clinicName} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-16">
         <h1 className="font-display text-4xl md:text-5xl mb-2">Privacy Policy</h1>
-        <p className="text-sm text-ink-950/40 mb-10">Last updated: [Insert Date]</p>
+        <p className="text-sm text-ink-950/40 mb-10">Last updated: {LEGAL_LAST_UPDATED}</p>
 
         <div className="bg-turq-300/15 border border-turq-500/30 text-ink-950/80 text-sm rounded-sm p-4 mb-10">
           This page is a starting template, not legal advice. Because this site collects health
@@ -23,7 +26,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="font-display text-xl text-ink-950 mb-2">1. Information We Collect</h2>
             <p>
-              When you create an account or book an appointment with {CLINIC_NAME}, we collect
+              When you create an account or book an appointment with {site.clinicName}, we collect
               information such as your name, email address, phone number, mailing address, date
               of birth, gender, and relevant medical history (including chronic conditions) that
               you choose to share with us. We also record appointment and treatment history as
@@ -81,7 +84,12 @@ export default function PrivacyPolicyPage() {
       </main>
 
       {/* ── Footer ── */}
-      <MarketingFooter />
+      <MarketingFooter
+        clinicName={site.clinicName}
+        address={site.address}
+        phone={site.phone}
+        hoursLabel={site.hoursLabel}
+      />
     </div>
   );
 }

@@ -1,14 +1,14 @@
 import React from 'react';
 import Navbar from '@/components/layout/Navbar';
 import { getCurrentPerson } from '@/lib/auth';
-import { CLINIC_NAME } from '@/lib/constants';
+import { getSiteContent } from '@/lib/site';
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const dbUser = await getCurrentPerson();
+  const [dbUser, site] = await Promise.all([getCurrentPerson(), getSiteContent()]);
 
   return (
     <div className="bg-ink-950 text-sand-50 min-h-screen flex flex-col font-sans relative overflow-hidden selection:bg-turq-400 selection:text-ink-950">
@@ -19,7 +19,7 @@ export default async function DashboardLayout({
         <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] rounded-full bg-turq-400/[0.02] blur-3xl" />
       </div>
 
-      <Navbar user={dbUser} />
+      <Navbar user={dbUser} clinicName={site.clinicName} />
 
       <main className="relative z-10 flex-1 w-full pt-12 pb-24">
         <div className="max-w-7xl mx-auto px-6 md:px-10">
@@ -29,7 +29,7 @@ export default async function DashboardLayout({
 
       <footer className="relative z-10 bg-ink-950/80 backdrop-blur-sm border-t border-sand-50/10 py-10">
         <div className="max-w-7xl mx-auto px-6 md:px-10 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <span className="text-xs text-sand-50/40 tracking-[0.2em] uppercase">{CLINIC_NAME} &copy; 2026.</span>
+          <span className="text-xs text-sand-50/40 tracking-[0.2em] uppercase">{site.clinicName} &copy; 2026.</span>
           <span className="text-xs text-sand-50/40 tracking-wide uppercase">Premium Patient Portal</span>
         </div>
       </footer>

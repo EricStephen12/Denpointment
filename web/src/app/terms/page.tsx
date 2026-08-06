@@ -1,16 +1,19 @@
 import Link from "next/link";
-import { CLINIC_NAME } from "@/lib/constants";
+import { LEGAL_LAST_UPDATED } from "@/lib/constants";
+import { getSiteContent } from "@/lib/site";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
-export default function TermsOfServicePage() {
+export default async function TermsOfServicePage() {
+  const site = await getSiteContent();
+
   return (
     <div className="min-h-screen bg-sand-50 text-ink-950 flex flex-col">
-      <MarketingHeader />
+      <MarketingHeader clinicName={site.clinicName} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-16">
         <h1 className="font-display text-4xl md:text-5xl mb-2">Terms of Service</h1>
-        <p className="text-sm text-ink-950/40 mb-10">Last updated: [Insert Date]</p>
+        <p className="text-sm text-ink-950/40 mb-10">Last updated: {LEGAL_LAST_UPDATED}</p>
 
         <div className="bg-turq-300/15 border border-turq-500/30 text-ink-950/80 text-sm rounded-sm p-4 mb-10">
           This page is a starting template, not legal advice. Please have it reviewed by a
@@ -39,10 +42,10 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="font-display text-xl text-ink-950 mb-2">3. Medical Disclaimer</h2>
             <p>
-              This platform is a scheduling and records tool. It does not replace professional
-              medical advice, diagnosis, or treatment. Always consult with your dentist directly
-              regarding your specific dental and health needs. In a dental or medical emergency,
-              contact your local emergency services immediately.
+              This platform is a scheduling and records tool for {site.clinicName}. It does not
+              replace professional medical advice, diagnosis, or treatment. Always consult with
+              your dentist directly regarding your specific dental and health needs. In a dental
+              or medical emergency, contact your local emergency services immediately.
             </p>
           </section>
 
@@ -82,8 +85,12 @@ export default function TermsOfServicePage() {
         </div>
       </main>
 
-      {/* ── Footer ── */}
-      <MarketingFooter />
+      <MarketingFooter
+        clinicName={site.clinicName}
+        address={site.address}
+        phone={site.phone}
+        hoursLabel={site.hoursLabel}
+      />
     </div>
   );
 }

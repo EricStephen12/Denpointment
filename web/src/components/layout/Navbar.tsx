@@ -25,12 +25,19 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   );
 }
 
-export default function Navbar({ user }: { user: PersonWithRoles | null }) {
+export default function Navbar({
+  user,
+  clinicName = CLINIC_NAME,
+}: {
+  user: PersonWithRoles | null;
+  clinicName?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   const isAdmin = (user?.admins?.length ?? 0) > 0;
   const isReceptionist = (user?.receptionists?.length ?? 0) > 0;
   const isDentist = (user?.dentists?.length ?? 0) > 0;
+  const brandWord = clinicName.split(" ")[0];
 
   return (
     <nav className="sticky top-0 z-40 w-full backdrop-blur-xl bg-ink-950/80 border-b border-sand-50/10">
@@ -42,7 +49,7 @@ export default function Navbar({ user }: { user: PersonWithRoles | null }) {
               <div className="p-2 bg-turq-600/20 rounded-xl group-hover:bg-turq-600/30 transition-colors">
                 <Stethoscope className="h-6 w-6 text-turq-400" />
               </div>
-              <span className="font-display text-2xl tracking-tight lowercase text-sand-50">{CLINIC_NAME.split(" ")[0]}</span>
+              <span className="font-display text-2xl tracking-tight lowercase text-sand-50">{brandWord}</span>
             </Link>
           </div>
 
@@ -54,6 +61,7 @@ export default function Navbar({ user }: { user: PersonWithRoles | null }) {
               {isAdmin && <NavLink href="/dashboard/admin/staff">Staff</NavLink>}
               {isAdmin && <NavLink href="/dashboard/admin/billing">Billing</NavLink>}
               {isAdmin && <NavLink href="/dashboard/admin/settings">Settings</NavLink>}
+              {isAdmin && <NavLink href="/dashboard/admin/site">Website</NavLink>}
               {isReceptionist && <NavLink href="/dashboard/treatments/today">Today&apos;s Schedule</NavLink>}
               {isReceptionist && <NavLink href="/dashboard/patients">Patients</NavLink>}
               {isReceptionist && <NavLink href="/dashboard/admin/billing">Billing</NavLink>}
@@ -108,6 +116,7 @@ export default function Navbar({ user }: { user: PersonWithRoles | null }) {
                   </div>
 
                   <NavLink href="/dashboard/holidays">Holidays</NavLink>
+                  <NavLink href="/dashboard/patients">Patients</NavLink>
                 </>
               )}
 
@@ -152,14 +161,16 @@ export default function Navbar({ user }: { user: PersonWithRoles | null }) {
                 <Link href="/dashboard/admin/staff" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Staff Management</Link>
                 <Link href="/dashboard/admin/billing" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Billing</Link>
                 <Link href="/dashboard/admin/settings" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Clinic Settings</Link>
+                <Link href="/dashboard/admin/site" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Website</Link>
               </>
             )}
 
-            {isDentist && (
+              {isDentist && (
               <>
                 <Link href="/dashboard/treatments/today" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Today&apos;s Appointments</Link>
                 <Link href="/dashboard/treatments/upcoming" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Upcoming Appointments</Link>
                 <Link href="/dashboard/treatments/past" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Past Treatments</Link>
+                <Link href="/dashboard/patients" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Patients</Link>
                 <Link href="/dashboard/statistics/patients" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Patient Statistics</Link>
                 <Link href="/dashboard/statistics/dentists" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Dentist Statistics</Link>
                 <Link href="/dashboard/holidays" className="block px-4 py-3 rounded-xl text-base font-medium text-sand-50/80 hover:bg-sand-50/8 hover:text-sand-50">Holidays</Link>

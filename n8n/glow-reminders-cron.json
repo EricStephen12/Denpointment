@@ -1,0 +1,57 @@
+{
+  "name": "Glow - Daily reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
+        }
+      },
+      "id": "schedule-reminders",
+      "name": "Every day 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "url": "https://YOUR-VERCEL-DOMAIN/api/cron/reminders",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_CRON_SECRET"
+            }
+          ]
+        }
+      },
+      "id": "http-reminders",
+      "name": "Call Vercel reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0]
+    },
+    {
+      "parameters": {
+        "content": "## Setup\n1. Replace `YOUR-VERCEL-DOMAIN` with your real Vercel URL.\n2. Replace `YOUR_CRON_SECRET` with the same value as Vercel `CRON_SECRET`.\n3. Set timezone to Africa/Lagos in workflow settings if needed.\n4. Activate.",
+        "height": 260,
+        "width": 380
+      },
+      "id": "note-reminders",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [520, -40]
+    }
+  ],
+  "connections": {
+    "Every day 09:00": {
+      "main": [[{ "node": "Call Vercel reminders", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "timezone": "Africa/Lagos" }
+}

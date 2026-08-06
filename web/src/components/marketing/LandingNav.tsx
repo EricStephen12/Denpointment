@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CLINIC_NAME } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
 
-export default function LandingNav() {
+export default function LandingNav({ clinicName = CLINIC_NAME }: { clinicName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -23,8 +23,6 @@ export default function LandingNav() {
         }`}
       >
         <div className="max-w-[1800px] mx-auto px-6 md:px-12 flex items-center justify-between">
-          
-          {/* Left: Menu trigger / Links */}
           <div className="flex-1 flex items-center justify-start">
             <button
               onClick={() => setIsOpen(true)}
@@ -35,14 +33,12 @@ export default function LandingNav() {
             </button>
           </div>
 
-          {/* Center: Logo */}
           <div className="flex-1 flex justify-center">
             <Link href="/" className="font-display text-2xl tracking-widest text-sand-50 uppercase">
-              {CLINIC_NAME}
+              {clinicName}
             </Link>
           </div>
 
-          {/* Right: Actions */}
           <div className="flex-1 flex items-center justify-end gap-8">
             <Link
               href="/sign-in"
@@ -60,14 +56,13 @@ export default function LandingNav() {
         </div>
       </header>
 
-      {/* Fullscreen Menu Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-[60] bg-ink-950 flex flex-col justify-between animate-fade-in">
           <div className="max-w-[1800px] mx-auto w-full px-6 md:px-12 py-8 flex items-center justify-between">
             <div className="flex-1" />
             <div className="flex-1 flex justify-center">
               <span className="font-display text-2xl tracking-widest text-sand-50 uppercase opacity-50">
-                {CLINIC_NAME.split(" ")[0]}
+                {clinicName.split(" ")[0]}
               </span>
             </div>
             <div className="flex-1 flex justify-end">

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { BarChart2 } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
 
 export default async function DentistStatisticsPage() {
   const dbUser = await getCurrentPerson();
@@ -65,7 +66,7 @@ export default async function DentistStatisticsPage() {
                 <td>{r.totalAppointments}</td>
                 <td>{r.uniquePatients}</td>
                 <td>{r.totalTreatments}</td>
-                <td>${r.revenue}</td>
+                <td>{formatNaira(r.revenue)}</td>
               </tr>
             )) : (
               <tr><td colSpan={6} className="td-empty">No dentists found.</td></tr>

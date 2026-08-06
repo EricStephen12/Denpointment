@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { BarChart2 } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
 
 export default async function PatientStatisticsPage() {
   const dbUser = await getCurrentPerson();
@@ -32,8 +33,8 @@ export default async function PatientStatisticsPage() {
     { label: "Unique Patients", value: uniquePatients },
     { label: "Total Appointments", value: totalAppointments },
     { label: "Treatments Recorded", value: treatments.length },
-    { label: "Total Revenue", value: `$${totalRevenue}` },
-    { label: "Average Charge", value: `$${avgCharge}` },
+    { label: "Total Revenue", value: formatNaira(totalRevenue) },
+    { label: "Average Charge", value: formatNaira(avgCharge) },
   ];
 
   return (

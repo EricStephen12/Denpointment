@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
 import { markTreatmentPaid } from "@/app/actions/billing";
 import { Receipt } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
 
 export default async function BillingPage({
   searchParams,
@@ -46,15 +47,15 @@ export default async function BillingPage({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="dash-stat-card">
-          <p className="text-2xl font-display text-sand-50">${totalRevenue}</p>
+          <p className="text-2xl font-display text-sand-50">{formatNaira(totalRevenue)}</p>
           <p className="dash-label mt-1">Total Billed</p>
         </div>
         <div className="dash-stat-card">
-          <p className="text-2xl font-display text-turq-400">${collected}</p>
+          <p className="text-2xl font-display text-turq-400">{formatNaira(collected)}</p>
           <p className="dash-label mt-1">Collected</p>
         </div>
         <div className="dash-stat-card">
-          <p className="text-2xl font-display text-red-400">${outstanding}</p>
+          <p className="text-2xl font-display text-red-400">{formatNaira(outstanding)}</p>
           <p className="dash-label mt-1">Outstanding</p>
         </div>
         <div className="dash-stat-card">
@@ -92,7 +93,7 @@ export default async function BillingPage({
                 </td>
                 <td>Dr. {t.dentist.person.lastName}</td>
                 <td>{t.appointment.day}/{t.appointment.month}/{t.appointment.year}</td>
-                <td>${t.charge}</td>
+                <td>{formatNaira(t.charge)}</td>
                 <td>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${t.paid ? 'bg-turq-600/20 text-turq-300' : 'bg-amber-900/40 text-amber-400'}`}>
                     {t.paid ? 'Paid' : 'Unpaid'}

@@ -5,6 +5,8 @@ import { getCurrentPerson, isDentist, isReceptionist, isAdmin } from "@/lib/auth
 import { addTreatment } from "@/app/actions/treatments";
 import { toggleCheckedIn } from "@/app/actions/checkin";
 import { CalendarCheck, CheckCircle2, LayoutGrid } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
+import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
   const dbUser = await getCurrentPerson();
@@ -119,7 +121,10 @@ export default async function TodaysAppointmentsPage() {
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div>
                   <p className="font-semibold text-sand-50">
-                    {app.hour}:00 — {app.patient.person.firstName} {app.patient.person.lastName}
+                    {app.hour}:00 —{" "}
+                    <Link href={`/dashboard/patients/${app.patient.patientId}`} className="hover:text-turq-400 transition-colors">
+                      {app.patient.person.firstName} {app.patient.person.lastName}
+                    </Link>
                   </p>
                   <p className="text-sm text-sand-50/50">
                     {staffView && <>Dr. {app.dentist.person.firstName} {app.dentist.person.lastName} · </>}
@@ -167,7 +172,7 @@ export default async function TodaysAppointmentsPage() {
                     <select name="serviceId" className="dash-input">
                       <option value="">Custom charge instead</option>
                       {services.map((s) => (
-                        <option key={s.serviceId} value={s.serviceId}>{s.name} — ${s.price}</option>
+                        <option key={s.serviceId} value={s.serviceId}>{s.name} — {formatNaira(s.price)}</option>
                       ))}
                     </select>
                   </div>

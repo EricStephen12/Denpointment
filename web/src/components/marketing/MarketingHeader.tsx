@@ -13,7 +13,7 @@ const LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export default function MarketingHeader() {
+export default function MarketingHeader({ clinicName = CLINIC_NAME }: { clinicName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -26,7 +26,7 @@ export default function MarketingHeader() {
             href="/"
             className="font-display text-2xl tracking-tight text-ink-950 lowercase hover:text-turq-600 transition-colors"
           >
-            {CLINIC_NAME.split(" ")[0]}
+            {clinicName.split(" ")[0]}
           </Link>
 
           {/* Desktop nav */}

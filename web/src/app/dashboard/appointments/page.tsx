@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatNaira } from "@/lib/currency";
 
 function formatHour(h: number): string {
   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -202,7 +203,7 @@ export default async function AppointmentsPage() {
                             className="inline-flex items-center gap-1 text-xs text-ink-950 bg-turq-600 hover:bg-turq-500 px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer"
                           >
                             <CreditCard className="h-3 w-3" />
-                            Pay ${treatment.charge}
+                            Pay {formatNaira(treatment.charge)}
                           </button>
                         </form>
                       )
@@ -227,7 +228,7 @@ export default async function AppointmentsPage() {
                       {treatment.charge != null && (
                         <div className="flex items-start gap-2">
                           <span className="text-xs font-medium text-sand-50/40 w-20 shrink-0 pt-0.5">Charge</span>
-                          <p className="text-sm font-medium text-sand-50">${treatment.charge}</p>
+                          <p className="text-sm font-medium text-sand-50">{formatNaira(treatment.charge)}</p>
                         </div>
                       )}
                       {treatment.medicines.length > 0 && (

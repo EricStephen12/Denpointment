@@ -2,7 +2,7 @@ import React from 'react';
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, isAdmin, isReceptionist, isDentist } from "@/lib/auth";
 import { registerWalkInPatient } from "@/app/actions/patients";
 import { Search, UserPlus, Calendar } from 'lucide-react';
 
@@ -13,7 +13,9 @@ export default async function PatientsPage({
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
-  if (!isAdmin(dbUser) && !isReceptionist(dbUser)) redirect("/dashboard");
+  if (!isAdmin(dbUser) && !isReceptionist(dbUser) && !isDentist(dbUser)) redirect("/dashboard");
+
+  const canRegister = isAdmin(dbUser) || isReceptionist(dbUser);
 
   const { q } = await searchParams;
   const query = (q || "").trim();
@@ -47,8 +49,8 @@ export default async function PatientsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3">
+      <div className={`grid grid-cols-1 ${canRegister ? "lg:grid-cols-5" : ""} gap-8`}>
+        <div className={canRegister ? "lg:col-span-3" : ""}>
           <form className="flex gap-3 mb-6" method="get">
             <input type="text" name="q" defaultValue={query} placeholder="Search by name, email, or phone…"
               className="dash-input flex-1" />
@@ -76,14 +78,23 @@ export default async function PatientsPage({
                 )}
                 {patients.map((p) => (
                   <tr key={p.patientId}>
-                    <td className="td-primary">{p.person.firstName} {p.person.lastName}</td>
-                    <td>{p.person.email}</td>
-                    <td>{p.person.contacts[0]?.contactNumber || "—"}</td>
-                    <td className="text-right">
+                    <td className="td-primary">
+                    <Link href={`/dashboard/patients/${p.patientId}`} className="hover:text-turq-400 transition-colors">
+                      {p.person.firstName} {p.person.lastName}
+                    </Link>
+                  </td>
+                  <td>{p.person.email}</td>
+                  <td>{p.person.contacts[0]?.contactNumber || "—"}</td>
+                    <td className="text-right space-x-3">
+                    <Link href={`/dashboard/patients/${p.patientId}`} className="inline-flex items-center gap-1 text-xs text-sand-50/50 hover:text-turq-400 font-medium">
+                      Profile
+                    </Link>
+                    {canRegister && (
                       <Link href={`/dashboard/book?patientId=${p.patientId}`} className="inline-flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300 font-medium">
                         <Calendar className="h-3 w-3" /> Book
                       </Link>
-                    </td>
+                    )}
+                  </td>
                   </tr>
                 ))}
               </tbody>
@@ -91,6 +102,7 @@ export default async function PatientsPage({
           </div>
         </div>
 
+        {canRegister && (
         <div className="lg:col-span-2">
           <div className="dash-surface p-5">
             <h2 className="text-sm font-semibold text-sand-50 mb-4 flex items-center gap-2">
@@ -132,6 +144,7 @@ export default async function PatientsPage({
             </form>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

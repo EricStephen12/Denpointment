@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { History } from 'lucide-react';
+import { formatNaira } from "@/lib/currency";
+import Link from "next/link";
 
 export default async function PastTreatmentsPage({
   searchParams,
@@ -83,13 +85,17 @@ export default async function PastTreatmentsPage({
               const treatment = app.treatments[0];
               return (
                 <tr key={app.appointmentId}>
-                  <td className="td-primary">{app.patient.person.firstName} {app.patient.person.lastName}</td>
+                  <td className="td-primary">
+                    <Link href={`/dashboard/patients/${app.patient.patientId}`} className="hover:text-turq-400 transition-colors">
+                      {app.patient.person.firstName} {app.patient.person.lastName}
+                    </Link>
+                  </td>
                   <td>{app.hour}:00 {app.day}/{app.month}/{app.year}</td>
                   {!treatment ? (
                     <td colSpan={4} className="italic text-sand-50/30">No treatment recorded</td>
                   ) : (
                     <>
-                      <td>${treatment.charge}</td>
+                      <td>{formatNaira(treatment.charge)}</td>
                       <td>{treatment.action}</td>
                       <td>{treatment.complaint}</td>
                       <td>

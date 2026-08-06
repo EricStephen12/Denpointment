@@ -18,11 +18,12 @@ export default function AdminDashboard({ user }: { user: PersonWithRoles }) {
       </div>
 
       <div className="border-t border-sand-50/10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-sand-50/8 border-b border-sand-50/10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-sand-50/8 border-b border-sand-50/10">
           {[
             { label: 'Staff Management', href: '/dashboard/admin/staff' },
             { label: 'Billing & Revenue', href: '/dashboard/admin/billing' },
             { label: 'Clinic Settings', href: '/dashboard/admin/settings' },
+            { label: 'Website', href: '/dashboard/admin/site' },
           ].map(({ label, href }) => (
             <Link
               key={label}

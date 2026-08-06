@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isPatient, isReceptionist } from "@/lib/auth";
 import { bookAppointment } from "@/app/actions/appointments";
-import { CLINIC_ADDRESS } from "@/lib/constants";
+import { getSiteContent } from "@/lib/site";
 import { Calendar } from 'lucide-react';
+import Link from "next/link";
 import BookingCalendar from "@/components/dashboards/BookingCalendar";
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -136,9 +137,20 @@ export default async function BookAppointmentPage({
       }))
     : undefined;
 
+  const site = await getSiteContent();
+
+  // Patients must complete address + phone before they can book.
+  let profileIncomplete = false;
+  if (!staffBooking && isPatient(dbUser)) {
+    const profile = await prisma.person.findUnique({
+      where: { personId: dbUser.personId },
+      include: { addresses: true, contacts: true },
+    });
+    profileIncomplete = !profile || profile.addresses.length === 0 || profile.contacts.length === 0;
+  }
+
   return (
     <div className="max-w-xl mx-auto">
-      {/* Header */}
       <div className="mb-8 animate-fade-up">
         <p className="text-xs font-medium text-turq-400 uppercase tracking-widest mb-3">
           {staffBooking ? "Staff Booking" : "Your Next Visit"}
@@ -158,18 +170,47 @@ export default async function BookAppointmentPage({
         </p>
       </div>
 
-      {/* Calendar */}
-      <BookingCalendar
-        slots={slots}
-        workingDays={workingDays}
-        openHour={openHour}
-        closeHour={closeHour}
-        clinicAddress={CLINIC_ADDRESS}
-        patientId={patientId}
-        isStaffBooking={staffBooking}
-        patients={patients}
-        bookAction={bookAppointment}
-      />
+      {profileIncomplete ? (
+        <div className="dash-surface p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="dash-icon-badge">
+              <Calendar className="h-5 w-5 text-turq-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-display text-sand-50">Complete your profile first</h2>
+              <p className="text-sm text-sand-50/50 mt-1">
+                Add an address and a phone number so the clinic can reach you about your visit.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/profile/add-address"
+              className="bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors"
+            >
+              Add address
+            </Link>
+            <Link
+              href="/dashboard/profile/add-phone"
+              className="border border-sand-50/20 text-sand-50 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-sand-50/8 transition-colors"
+            >
+              Add phone
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <BookingCalendar
+          slots={slots}
+          workingDays={workingDays}
+          openHour={openHour}
+          closeHour={closeHour}
+          clinicAddress={site.address}
+          patientId={patientId}
+          isStaffBooking={staffBooking}
+          patients={patients}
+          bookAction={bookAppointment}
+        />
+      )}
     </div>
   );
 }

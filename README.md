@@ -23,6 +23,17 @@ npm run dev
 
 The app runs at [http://localhost:3000](http://localhost:3000).
 
+The **website** is hosted on **Vercel**. **Railway** is used only for **n8n** (automations), not for this Next.js app.
+
+Step-by-step automation guide + importable workflows: [`n8n/README.md`](./n8n/README.md).
+
+### n8n on Railway (automations only)
+
+1. Railway → **New Project** → deploy the **n8n** template.
+2. Add a public domain; set `WEBHOOK_URL` to that URL (trailing `/`).
+3. Import workflows from [`n8n/`](./n8n/) or build them using the guide.
+4. On Vercel, set `N8N_WEBHOOK_BOOKING`, `N8N_WEBHOOK_PAYMENT`, `N8N_WEBHOOK_CONTACT` to each workflow’s Production webhook URL, then redeploy.
+
 ## Roles
 
 - **Patient** — books/cancels appointments, views appointment & treatment history, manages their own profile (address, phone, chronic conditions).
@@ -32,6 +43,8 @@ The app runs at [http://localhost:3000](http://localhost:3000).
 
 Bookings are validated against the clinic's configured business hours, working days, and each dentist's holidays (**Dashboard → Settings**, admin only).
 
+Admins can also edit the public website write-ups, accent color, and featured package prices from **Dashboard → Website** — no code changes required.
+
 ### How staff accounts are created
 
 There's no self sign-up for staff. An **Admin** pre-registers a staff member's
@@ -40,11 +53,19 @@ up (or logs in, if they already have an account) through Clerk using the
 **same email address**, their account is automatically linked to that role —
 no manual database work required.
 
+To create the **first** admin (chicken-and-egg), seed from the `web/` folder:
+
+```bash
+SEED_ADMIN_EMAIL=you@example.com npm run db:seed
+```
+
+Then sign in with Clerk using that same email.
+
 ## Integrations
 
 - **Resend** — booking confirmations, appointment reminders, and payment receipts. Set `RESEND_API_KEY` and `EMAIL_FROM`. If unset, emails are skipped with a console warning (the app still works without it).
 - **Paystack** — patients can pay their treatment balance online from **My Appointments**. Set `PAYSTACK_SECRET_KEY`, and register `/api/webhooks/paystack` as a webhook endpoint in the Paystack dashboard for reliable payment confirmation.
-- **Reminder emails** — `GET /api/cron/reminders` emails patients with an appointment tomorrow. Scheduled automatically once a day via `vercel.json` if deployed on Vercel (set `CRON_SECRET` in your Vercel project settings to secure it).
+- **Reminder emails** — `GET /api/cron/reminders` emails patients with an appointment tomorrow. Scheduled via `vercel.json` on Vercel (set `CRON_SECRET` in Vercel project settings). You can also trigger the same URL from n8n on Railway.
 
 ## Project Structure
 

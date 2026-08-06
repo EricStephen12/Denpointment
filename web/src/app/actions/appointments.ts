@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist } from "@/lib/auth";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import { notifyN8n } from "@/lib/n8n";
 
 // Action to book a new appointment.
 // Patients book for themselves; receptionists can book on behalf of any patient.
@@ -23,6 +24,17 @@ export async function bookAppointment(formData: FormData) {
   } else {
     if (dbPerson.patients.length === 0) throw new Error("Not authorized as a patient");
     patientId = dbPerson.patients[0].patientId;
+  }
+
+  // Patients must have an address and phone before booking (staff bookings skip this).
+  if (!staffBooking) {
+    const profile = await prisma.patient.findUnique({
+      where: { patientId },
+      include: { person: { include: { addresses: true, contacts: true } } },
+    });
+    if (!profile || profile.person.addresses.length === 0 || profile.person.contacts.length === 0) {
+      throw new Error("Please add an address and phone number on your profile before booking.");
+    }
   }
 
   const dateStr = formData.get("date") as string;
@@ -110,15 +122,28 @@ export async function bookAppointment(formData: FormData) {
   }
 
   if (patient) {
-    // Best-effort — a failed email should never block a successful booking.
+    const dentistName = `${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`;
+    const date = new Date(year, month - 1, day);
+
+    // Best-effort — a failed email/automation should never block a successful booking.
     sendAppointmentConfirmationEmail({
       to: patient.person.email,
       patientName: patient.person.firstName,
-      dentistName: `${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`,
+      dentistName,
       room: assignedDentist.roomNumber,
-      date: new Date(year, month - 1, day),
+      date,
       hour,
     }).catch((err) => console.error("[email] confirmation failed:", err));
+
+    notifyN8n("booking", {
+      patientName: `${patient.person.firstName} ${patient.person.lastName}`,
+      patientEmail: patient.person.email,
+      dentistName,
+      room: assignedDentist.roomNumber,
+      date: date.toISOString().slice(0, 10),
+      hour,
+      staffBooking,
+    }).catch(() => undefined);
   }
 
   revalidatePath('/dashboard');
