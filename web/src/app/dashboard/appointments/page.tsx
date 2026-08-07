@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatNaira } from "@/lib/currency";
+import {
+  formatAppointmentDate,
+  isAppointmentUpcoming,
+  relativeAppointmentLabel,
+} from "@/lib/clinic-date";
 
 function formatHour(h: number): string {
   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -42,15 +47,11 @@ export default async function AppointmentsPage() {
     orderBy: [{ year: 'asc' }, { month: 'asc' }, { day: 'asc' }, { hour: 'asc' }]
   });
 
-  const upcoming = allAppointments.filter(app => {
-    const d = new Date(app.year, app.month - 1, app.day, app.hour);
-    return d >= now;
-  });
+  const upcoming = allAppointments.filter((app) => isAppointmentUpcoming(app, now));
 
-  const past = allAppointments.filter(app => {
-    const d = new Date(app.year, app.month - 1, app.day, app.hour);
-    return d < now;
-  }).reverse();
+  const past = allAppointments
+    .filter((app) => !isAppointmentUpcoming(app, now))
+    .reverse();
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -65,6 +66,10 @@ export default async function AppointmentsPage() {
         <p className="mt-2 text-sand-50/50 text-sm">
           Track your upcoming visits and past treatments.
         </p>
+        <p className="mt-3 text-xs text-sand-50/40 max-w-md">
+          Online payment appears here after your dentist adds a treatment charge — tap{" "}
+          <span className="text-turq-300">Pay</span> to checkout with Paystack (card / transfer).
+        </p>
       </div>
 
       {/* ── Upcoming ── */}
@@ -76,12 +81,10 @@ export default async function AppointmentsPage() {
         {upcoming.length > 0 ? (
           <div className="space-y-4">
             {upcoming.map((app) => {
-              const apptDate = new Date(app.year, app.month - 1, app.day);
-              const dateLabel = apptDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              });
+              const dateLabel = relativeAppointmentLabel(
+                { year: app.year, month: app.month, day: app.day },
+                now,
+              );
 
               return (
                 <div
@@ -168,12 +171,10 @@ export default async function AppointmentsPage() {
           <div className="space-y-4">
             {past.map((app) => {
               const treatment = app.treatments[0];
-              const apptDate = new Date(app.year, app.month - 1, app.day);
-              const dateLabel = apptDate.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              });
+              const dateLabel = formatAppointmentDate(
+                { year: app.year, month: app.month, day: app.day },
+                { month: "short", day: "numeric", year: "numeric" },
+              );
 
               return (
                 <div

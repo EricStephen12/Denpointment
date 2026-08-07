@@ -12,12 +12,13 @@ const ENV_KEYS: Record<N8nEvent, string> = {
   contact: "N8N_WEBHOOK_CONTACT",
 };
 
+/** Returns true if the webhook was configured and responded OK. */
 export async function notifyN8n(
   event: N8nEvent,
   payload: Record<string, unknown>,
-): Promise<void> {
+): Promise<boolean> {
   const url = process.env[ENV_KEYS[event]]?.trim();
-  if (!url) return;
+  if (!url) return false;
 
   try {
     const res = await fetch(url, {
@@ -33,8 +34,11 @@ export async function notifyN8n(
     });
     if (!res.ok) {
       console.error(`[n8n] ${event} webhook returned ${res.status}`);
+      return false;
     }
+    return true;
   } catch (error) {
     console.error(`[n8n] ${event} webhook failed:`, error);
+    return false;
   }
 }

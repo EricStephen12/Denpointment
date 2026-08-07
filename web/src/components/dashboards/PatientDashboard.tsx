@@ -4,6 +4,7 @@ import { Calendar, FileText, Phone, ArrowRight, MapPin, Clock } from 'lucide-rea
 import { cancelAppointment } from '@/app/actions/appointments';
 import { prisma } from '@/lib/prisma';
 import type { PersonWithRoles } from '@/lib/auth';
+import { isAppointmentUpcoming, relativeAppointmentLabel } from '@/lib/clinic-date';
 
 function formatHour(h: number): string {
   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -24,32 +25,25 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
       })
     : [];
 
-  const upcoming = allUpcoming.find((app) => {
-    const d = new Date(app.year, app.month - 1, app.day, app.hour);
-    return d >= now;
-  }) ?? null;
+  const upcoming = allUpcoming.find((app) => isAppointmentUpcoming(app, now)) ?? null;
 
-  // Time-based greeting
-  const hour = now.getHours();
+  // Time-based greeting (clinic clock — Abuja)
+  const hour = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Lagos",
+    hour: "numeric",
+    hourCycle: "h23",
+  })
+    .formatToParts(now)
+    .find((p) => p.type === "hour");
+  const clinicHour = hour ? parseInt(hour.value, 10) : now.getHours();
   const greeting =
-    hour < 12 ? 'GOOD MORNING' : hour < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+    clinicHour < 12 ? 'GOOD MORNING' : clinicHour < 17 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
 
-  // Date label for appointment
-  const apptDate = upcoming
-    ? new Date(upcoming.year, upcoming.month - 1, upcoming.day)
-    : null;
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  const dateLabel = apptDate
-    ? apptDate.toDateString() === now.toDateString()
-      ? 'Today'
-      : apptDate.toDateString() === tomorrow.toDateString()
-      ? 'Tomorrow'
-      : apptDate.toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-        })
+  const dateLabel = upcoming
+    ? relativeAppointmentLabel(
+        { year: upcoming.year, month: upcoming.month, day: upcoming.day },
+        now,
+      )
     : null;
 
   const timeLabel = upcoming ? formatHour(upcoming.hour) : null;

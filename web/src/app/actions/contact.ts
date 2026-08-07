@@ -22,23 +22,52 @@ export async function sendContactMessage(formData: FormData) {
   }
 
   const site = await getSiteContent();
+  const hasN8nConfigured = Boolean(process.env.N8N_WEBHOOK_CONTACT?.trim());
+  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
+
+  if (!hasResend && !hasN8nConfigured) {
+    return {
+      error:
+        "Contact form isn't fully set up yet. Add RESEND_API_KEY or N8N_WEBHOOK_CONTACT, or call the clinic.",
+    };
+  }
+
   try {
-    await sendContactInquiryEmail({
+    const emailResult = await sendContactInquiryEmail({
       to: site.email,
       fromName: name,
       fromEmail: email,
       message,
       clinicName: site.clinicName,
     });
-    await notifyN8n("contact", {
-      name,
-      email,
-      message,
-      clinicEmail: site.email,
-    });
-    return { ok: true };
+
+    const n8nOk = hasN8nConfigured
+      ? await notifyN8n("contact", {
+          name,
+          email,
+          message,
+          clinicEmail: site.email,
+        })
+      : false;
+
+    if (emailResult.sent || n8nOk) {
+      return { ok: true };
+    }
+
+    return {
+      error: "Couldn't send your message right now. Please try calling the clinic.",
+    };
   } catch (error) {
     console.error("[contact] Failed to send inquiry:", error);
+    if (hasN8nConfigured) {
+      const n8nOk = await notifyN8n("contact", {
+        name,
+        email,
+        message,
+        clinicEmail: site.email,
+      });
+      if (n8nOk) return { ok: true };
+    }
     return { error: "Couldn't send your message right now. Please try calling the clinic." };
   }
 }

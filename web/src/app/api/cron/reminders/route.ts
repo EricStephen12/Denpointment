@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendAppointmentReminderEmail } from "@/lib/email";
+import { addCalendarDays, getClinicDay } from "@/lib/clinic-date";
 
 /**
- * Sends reminder emails for appointments happening tomorrow that haven't
- * been reminded about yet. Trigger this on a schedule (e.g. once a day)
- * via Vercel Cron, or any external scheduler that can hit a URL.
+ * Sends reminder emails for appointments happening tomorrow (clinic time)
+ * that haven't been reminded about yet.
  *
- * Protect it with a CRON_SECRET env var — set the same value as the
- * scheduler's Authorization header: `Bearer <CRON_SECRET>`.
+ * Protect with CRON_SECRET — Authorization: Bearer <CRON_SECRET>.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -23,11 +22,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const year = tomorrow.getFullYear();
-  const month = tomorrow.getMonth() + 1;
-  const day = tomorrow.getDate();
+  const tomorrow = addCalendarDays(getClinicDay(), 1);
+  const { year, month, day } = tomorrow;
 
   const appointments = await prisma.appointment.findMany({
     where: { year, month, day, reminderSent: false },
@@ -45,10 +41,13 @@ export async function GET(request: NextRequest) {
         patientName: app.patient.person.firstName,
         dentistName: `${app.dentist.person.firstName} ${app.dentist.person.lastName}`,
         room: app.room,
-        date: new Date(app.year, app.month - 1, app.day),
+        date: { year: app.year, month: app.month, day: app.day },
         hour: app.hour,
       });
-      await prisma.appointment.update({ where: { appointmentId: app.appointmentId }, data: { reminderSent: true } });
+      await prisma.appointment.update({
+        where: { appointmentId: app.appointmentId },
+        data: { reminderSent: true },
+      });
       sent++;
     } catch (error) {
       console.error(`[reminders] Failed for appointment ${app.appointmentId}:`, error);

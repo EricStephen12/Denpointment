@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getCurrentPerson } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { CheckCircle, Calendar as CalendarIcon, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { formatAppointmentDate } from "@/lib/clinic-date";
 
 export default async function BookingSuccessPage({
   searchParams,
@@ -18,12 +19,14 @@ export default async function BookingSuccessPage({
     redirect("/dashboard/appointments");
   }
 
-  const dateObj = new Date(date + "T00:00:00");
-  const friendlyDate = dateObj.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric"
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match) {
+    redirect("/dashboard/appointments");
+  }
+  const friendlyDate = formatAppointmentDate({
+    year: parseInt(match[1], 10),
+    month: parseInt(match[2], 10),
+    day: parseInt(match[3], 10),
   });
 
   const h = parseInt(hour, 10);

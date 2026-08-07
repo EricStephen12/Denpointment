@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { SignOutButton, useAuth } from "@clerk/nextjs";
 import { CLINIC_NAME, CLINIC_ADDRESS, CLINIC_PHONE, CLINIC_HOURS } from "@/lib/constants";
 
 type Props = {
@@ -14,6 +17,8 @@ export default function MarketingFooter({
   phone = CLINIC_PHONE,
   hoursLabel = CLINIC_HOURS,
 }: Props) {
+  const { isSignedIn, isLoaded } = useAuth();
+
   return (
     <footer className="bg-ink-950 text-sand-50 pt-32 pb-12 px-6 md:px-12 border-t hairline">
       <div className="max-w-[1800px] mx-auto">
@@ -43,8 +48,36 @@ export default function MarketingFooter({
           <div className="md:col-span-4">
             <h4 className="text-turq-300 text-xs tracking-[0.3em] uppercase mb-8">Portal</h4>
             <ul className="space-y-4 text-sm tracking-wide text-sand-50/70">
-              <li><Link href="/sign-up" className="hover:text-turq-400 transition-colors">Book Appointment</Link></li>
-              <li><Link href="/sign-in" className="hover:text-turq-400 transition-colors">Patient Login</Link></li>
+              {isLoaded && isSignedIn && (
+                <>
+                  <li>
+                    <Link href="/dashboard" className="hover:text-turq-400 transition-colors">
+                      Dashboard
+                    </Link>
+                  </li>
+                  <li>
+                    <SignOutButton>
+                      <button type="button" className="hover:text-turq-400 transition-colors">
+                        Sign Out
+                      </button>
+                    </SignOutButton>
+                  </li>
+                </>
+              )}
+              {isLoaded && !isSignedIn && (
+                <>
+                  <li>
+                    <Link href="/sign-up" className="hover:text-turq-400 transition-colors">
+                      Book Appointment
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/sign-in" className="hover:text-turq-400 transition-colors">
+                      Patient Login
+                    </Link>
+                  </li>
+                </>
+              )}
             </ul>
           </div>
         </div>

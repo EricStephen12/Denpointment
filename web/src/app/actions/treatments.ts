@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
+import { isAppointmentToday } from "@/lib/clinic-date";
 
 async function requireDentistId() {
   const person = await getCurrentPerson();
@@ -10,10 +11,6 @@ async function requireDentistId() {
     throw new Error("You're not authorized to record treatments.");
   }
   return person.dentists[0].dentistId;
-}
-
-function isSameDay(a: { year: number; month: number; day: number }, d: Date) {
-  return a.year === d.getFullYear() && a.month === d.getMonth() + 1 && a.day === d.getDate();
 }
 
 export async function addTreatment(formData: FormData) {
@@ -48,7 +45,7 @@ export async function addTreatment(formData: FormData) {
   if (!appointment || appointment.dId !== dentistId) {
     throw new Error("You can only add treatments for your own appointments.");
   }
-  if (!isSameDay(appointment, new Date())) {
+  if (!isAppointmentToday(appointment)) {
     throw new Error("Treatments can only be added for today's appointments.");
   }
 

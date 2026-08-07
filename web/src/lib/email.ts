@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { CLINIC_NAME } from "@/lib/constants";
 import { formatNaira } from "@/lib/currency";
+import { formatAppointmentDate, type CalendarDay } from "@/lib/clinic-date";
 import { getSiteContent } from "@/lib/site";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -37,16 +38,11 @@ export async function sendAppointmentConfirmationEmail(params: {
   patientName: string;
   dentistName: string;
   room: string;
-  date: Date;
+  date: CalendarDay;
   hour: number;
 }) {
   const { to, patientName, dentistName, room, date, hour } = params;
-  const dateLabel = date.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const dateLabel = formatAppointmentDate(date);
 
   const name = await clinicName();
   await sendEmail(
@@ -74,16 +70,11 @@ export async function sendAppointmentReminderEmail(params: {
   patientName: string;
   dentistName: string;
   room: string;
-  date: Date;
+  date: CalendarDay;
   hour: number;
 }) {
   const { to, patientName, dentistName, room, date, hour } = params;
-  const dateLabel = date.toLocaleDateString(undefined, {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const dateLabel = formatAppointmentDate(date);
 
   const name = await clinicName();
   await sendEmail(
@@ -143,7 +134,7 @@ export async function sendContactInquiryEmail(params: {
   if (!resend) {
     console.warn(`[email] RESEND_API_KEY not set — contact inquiry from ${fromEmail} logged only`);
     console.info(`[contact] ${safeName} <${fromEmail}>: ${message}`);
-    throw new Error("Email is not configured on the server.");
+    return { sent: false as const };
   }
 
   await sendEmail(
@@ -157,4 +148,5 @@ export async function sendContactInquiryEmail(params: {
       </div>
     `
   );
+  return { sent: true as const };
 }

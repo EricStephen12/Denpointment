@@ -27,6 +27,7 @@ export default async function Home() {
             src="/images/dental-smile1.jpg"
             alt="Premium Dental Care"
             fill
+            sizes="100vw"
             className="object-cover object-center grayscale-[80%] opacity-50 md:opacity-40 brightness-50"
             priority
           />
@@ -64,6 +65,7 @@ export default async function Home() {
               src="/images/dental-smile2.jpg"
               alt="Exceptional Care"
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="img-bleed grayscale-[20%]"
             />
           </div>
@@ -105,7 +107,7 @@ export default async function Home() {
         ].map((srv, i) => (
           <div key={srv.title} className="max-w-[1800px] mx-auto px-6 md:px-12 py-16 md:py-32 grid grid-cols-1 md:grid-cols-12 gap-12 items-center hairline border-t-sand-50/10">
             <div className={`md:col-span-6 h-[50vh] md:h-[70vh] w-full relative ${i % 2 !== 0 ? "md:order-last" : ""}`}>
-              <Image src={srv.img} alt={srv.title} fill className="img-bleed grayscale-[10%]" />
+              <Image src={srv.img} alt={srv.title} fill sizes="(max-width: 768px) 100vw, 50vw" className="img-bleed grayscale-[10%]" />
             </div>
 
             <div className={`md:col-span-5 ${i % 2 !== 0 ? "md:col-start-2" : "md:col-start-8"}`}>
@@ -122,6 +124,38 @@ export default async function Home() {
             </div>
           </div>
         ))}
+      </section>
+
+      {/* ── Family & patients gallery (new photos added alongside dental imagery) ── */}
+      <section className="py-28 md:py-40 px-6 md:px-12 border-t border-sand-50/10">
+        <div className="max-w-[1800px] mx-auto">
+          <Reveal>
+            <p className="text-turq-300 text-xs tracking-[0.3em] uppercase mb-8">In the community</p>
+            <h2 className="font-display text-4xl md:text-6xl text-sand-50 uppercase leading-tight mb-6 max-w-3xl">
+              SMILES THAT GO <span className="italic text-turq-400">HOME.</span>
+            </h2>
+            <p className="text-sand-50/50 text-sm max-w-md mb-16">
+              Real families and patients — the reason we show up every day.
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {[
+              { src: "/images/family-hero.jpeg", alt: "Happy family", className: "md:row-span-2 min-h-[50vh] md:min-h-full" },
+              { src: "/images/children-laugh.jpeg", alt: "Joyful smiles", className: "min-h-[40vh]" },
+              { src: "/images/child-portrait.jpeg", alt: "Young patient smile", className: "min-h-[40vh]" },
+            ].map((photo) => (
+              <div key={photo.src} className={`relative overflow-hidden ${photo.className}`}>
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover object-center"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── 4. Typography Break ── */}

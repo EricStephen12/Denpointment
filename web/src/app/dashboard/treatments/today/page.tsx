@@ -6,6 +6,7 @@ import { addTreatment } from "@/app/actions/treatments";
 import { toggleCheckedIn } from "@/app/actions/checkin";
 import { CalendarCheck, CheckCircle2, LayoutGrid } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
+import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
 import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
@@ -16,9 +17,7 @@ export default async function TodaysAppointmentsPage() {
   if (!isDentist(dbUser) && !staffView) redirect("/dashboard");
 
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
+  const { year, month, day } = getClinicDay(now);
 
   const [appointments, services, settings, allDentists] = await Promise.all([
     prisma.appointment.findMany({
@@ -62,7 +61,7 @@ export default async function TodaysAppointmentsPage() {
         <div>
           <h1 className="dash-title font-display">Today&apos;s Appointments</h1>
           <p className="dash-body mt-0.5">
-            {now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {formatAppointmentDate({ year, month, day })} · Abuja time
           </p>
         </div>
       </div>

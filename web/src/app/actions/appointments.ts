@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist } from "@/lib/auth";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import { compareCalendarDays, getClinicDay, toDateKey } from "@/lib/clinic-date";
 import { notifyN8n } from "@/lib/n8n";
 
 // Action to book a new appointment.
@@ -53,11 +54,11 @@ export async function bookAppointment(formData: FormData) {
   const year = parseInt(dateParts[1], 10);
   const month = parseInt(dateParts[2], 10);
   const day = parseInt(dateParts[3], 10);
-  const dateObj = new Date(year, month - 1, day);
+  const bookedDay = { year, month, day };
+  // Weekday check uses a noon UTC instant so the calendar day is stable.
+  const dateObj = new Date(Date.UTC(year, month - 1, day, 12));
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  if (dateObj < today) {
+  if (compareCalendarDays(bookedDay, getClinicDay()) < 0) {
     throw new Error("You can't book an appointment in the past.");
   }
 
@@ -69,7 +70,7 @@ export async function bookAppointment(formData: FormData) {
   if (hour < openHour || hour >= closeHour) {
     throw new Error(`The clinic is only open between ${openHour}:00 and ${closeHour}:00.`);
   }
-  if (!workingDays.includes(dateObj.getDay())) {
+  if (!workingDays.includes(dateObj.getUTCDay())) {
     throw new Error("The clinic is closed on the selected day.");
   }
 
@@ -129,7 +130,6 @@ export async function bookAppointment(formData: FormData) {
 
   if (patient) {
     const dentistName = `${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`;
-    const date = new Date(year, month - 1, day);
 
     // Best-effort — a failed email/automation should never block a successful booking.
     sendAppointmentConfirmationEmail({
@@ -137,7 +137,7 @@ export async function bookAppointment(formData: FormData) {
       patientName: patient.person.firstName,
       dentistName,
       room: assignedDentist.roomNumber,
-      date,
+      date: bookedDay,
       hour,
     }).catch((err) => console.error("[email] confirmation failed:", err));
 
@@ -146,7 +146,7 @@ export async function bookAppointment(formData: FormData) {
       patientEmail: patient.person.email,
       dentistName,
       room: assignedDentist.roomNumber,
-      date: date.toISOString().slice(0, 10),
+      date: toDateKey(bookedDay),
       hour,
       staffBooking,
     }).catch(() => undefined);

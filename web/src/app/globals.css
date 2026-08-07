@@ -323,36 +323,51 @@ html {
 }
 
 /* ── Clerk Overrides for Minimalist Aesthetic ── */
-.cl-card {
+.cl-card,
+.cl-cardBox,
+.cl-main {
   box-shadow: none !important;
   background: transparent !important;
   border-radius: 0 !important;
   border: none !important;
-  padding: 0 !important;
 }
-.cl-cardBox {
-  box-shadow: none !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  border: none !important;
+.cl-card {
+  padding: 0 !important;
 }
 .cl-header {
   display: none !important;
+}
+.cl-footer,
+.cl-footerPages {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.cl-footerAction {
+  background: transparent !important;
 }
 .cl-socialButtonsBlockButton {
   border-radius: 0 !important;
   border-color: rgba(248, 246, 241, 0.2) !important;
   background: transparent !important;
   color: var(--color-sand-50) !important;
+  box-shadow: none !important;
 }
 .cl-socialButtonsBlockButton:hover {
   background: rgba(248, 246, 241, 0.05) !important;
+}
+.cl-socialButtonsBlockButtonText {
+  color: var(--color-sand-50) !important;
 }
 .cl-formFieldInput {
   border-radius: 0 !important;
   border-color: rgba(248, 246, 241, 0.2) !important;
   background: transparent !important;
   color: var(--color-sand-50) !important;
+}
+.cl-formFieldInput::placeholder {
+  color: rgba(248, 246, 241, 0.35) !important;
 }
 .cl-formFieldInput:focus {
   border-color: var(--color-turq-400) !important;
@@ -365,6 +380,7 @@ html {
   text-transform: uppercase !important;
   letter-spacing: 0.1em !important;
   font-weight: 500 !important;
+  box-shadow: none !important;
 }
 .cl-formButtonPrimary:hover {
   background-color: var(--color-turq-400) !important;
@@ -375,9 +391,14 @@ html {
 .cl-dividerText {
   color: rgba(248, 246, 241, 0.4) !important;
 }
-.cl-footerActionText {
+.cl-footerActionText,
+.cl-formFieldLabel {
   color: rgba(248, 246, 241, 0.6) !important;
 }
 .cl-footerActionLink {
   color: var(--color-turq-400) !important;
+}
+/* Hide Clerk branding strip on our branded auth pages */
+.cl-footer .cl-buttonArrowIcon {
+  display: none !important;
 }

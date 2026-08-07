@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { History } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
+import { formatAppointmentDate, isAppointmentUpcoming } from "@/lib/clinic-date";
 import Link from "next/link";
 
 export default async function PastTreatmentsPage({
@@ -28,19 +29,18 @@ export default async function PastTreatmentsPage({
     orderBy: [{ year: 'desc' }, { month: 'desc' }, { day: 'desc' }, { hour: 'desc' }],
   });
 
-  let past = appointments.filter((app) => {
-    const d = new Date(app.year, app.month - 1, app.day, app.hour);
-    return d < now;
-  });
+  let past = appointments.filter((app) => !isAppointmentUpcoming(app, now));
 
   if (date) {
-    const filterDate = new Date(date);
-    past = past.filter(
-      (app) =>
-        app.year === filterDate.getFullYear() &&
-        app.month === filterDate.getMonth() + 1 &&
-        app.day === filterDate.getDate()
-    );
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const day = parseInt(match[3], 10);
+      past = past.filter(
+        (app) => app.year === year && app.month === month && app.day === day,
+      );
+    }
   }
 
   return (

@@ -3,6 +3,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { verifyPaystackTransaction } from "@/lib/paystack";
 import { sendPaymentReceiptEmail } from "@/lib/email";
+import { notifyN8n } from "@/lib/n8n";
 
 export default async function PaymentCallbackPage({
   searchParams,
@@ -43,12 +44,21 @@ export default async function PaymentCallbackPage({
       // patient gets instant feedback even if the webhook hasn't landed yet.
       if (treatment && !treatment.paid) {
         await prisma.treatment.update({ where: { treatmentId: treatment.treatmentId }, data: { paid: true } });
+        const serviceName = treatment.service?.name || treatment.action;
         await sendPaymentReceiptEmail({
           to: treatment.appointment.patient.person.email,
           patientName: treatment.appointment.patient.person.firstName,
           amount: treatment.charge,
-          serviceName: treatment.service?.name || treatment.action,
+          serviceName,
         }).catch((err) => console.error("[email] receipt failed:", err));
+
+        notifyN8n("payment", {
+          patientName: `${treatment.appointment.patient.person.firstName} ${treatment.appointment.patient.person.lastName}`,
+          patientEmail: treatment.appointment.patient.person.email,
+          amount: treatment.charge,
+          serviceName,
+          reference,
+        }).catch(() => undefined);
       }
     }
   } catch (error) {

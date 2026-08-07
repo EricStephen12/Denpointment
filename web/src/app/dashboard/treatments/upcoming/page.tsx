@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { CalendarClock } from 'lucide-react';
 import Link from "next/link";
+import { isAppointmentUpcoming } from "@/lib/clinic-date";
 
 export default async function UpcomingAppointmentsPage() {
   const dbUser = await getCurrentPerson();
@@ -19,10 +20,7 @@ export default async function UpcomingAppointmentsPage() {
     orderBy: [{ year: 'asc' }, { month: 'asc' }, { day: 'asc' }, { hour: 'asc' }],
   });
 
-  const upcoming = appointments.filter((app) => {
-    const d = new Date(app.year, app.month - 1, app.day, app.hour);
-    return d >= now;
-  });
+  const upcoming = appointments.filter((app) => isAppointmentUpcoming(app, now));
 
   return (
     <div>

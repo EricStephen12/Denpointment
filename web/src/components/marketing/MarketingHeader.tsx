@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignOutButton, useAuth } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import { CLINIC_NAME } from "@/lib/constants";
 
@@ -16,6 +17,7 @@ const LINKS = [
 export default function MarketingHeader({ clinicName = CLINIC_NAME }: { clinicName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { isSignedIn, isLoaded } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full bg-sand-50/90 backdrop-blur-xl border-b border-ink-950/10">
@@ -48,18 +50,40 @@ export default function MarketingHeader({ clinicName = CLINIC_NAME }: { clinicNa
 
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3 bg-ink-950 rounded-full p-1.5 pl-4">
-            <Link
-              href="/sign-in"
-              className="text-sand-400 text-sm hover:text-sand-50 transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/sign-up"
-              className="bg-turq-600 hover:bg-turq-500 text-ink-950 px-5 py-2 rounded-full text-sm font-medium transition-colors"
-            >
-              Book Now
-            </Link>
+            {isLoaded && !isSignedIn && (
+              <>
+                <Link
+                  href="/sign-in"
+                  className="text-sand-400 text-sm hover:text-sand-50 transition-colors"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="bg-turq-600 hover:bg-turq-500 text-ink-950 px-5 py-2 rounded-full text-sm font-medium transition-colors"
+                >
+                  Book Now
+                </Link>
+              </>
+            )}
+            {isLoaded && isSignedIn && (
+              <>
+                <SignOutButton>
+                  <button
+                    type="button"
+                    className="text-sand-400 text-sm hover:text-sand-50 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </SignOutButton>
+                <Link
+                  href="/dashboard"
+                  className="bg-turq-600 hover:bg-turq-500 text-ink-950 px-5 py-2 rounded-full text-sm font-medium transition-colors"
+                >
+                  Dashboard
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile toggle */}
@@ -88,20 +112,44 @@ export default function MarketingHeader({ clinicName = CLINIC_NAME }: { clinicNa
               </Link>
             ))}
             <div className="pt-4 flex flex-col gap-3">
-              <Link
-                href="/sign-in"
-                onClick={() => setIsOpen(false)}
-                className="text-center py-3 border border-ink-950/15 rounded-full text-sm text-ink-950 hover:bg-ink-950/5 transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/sign-up"
-                onClick={() => setIsOpen(false)}
-                className="text-center py-3 bg-turq-600 hover:bg-turq-500 rounded-full text-sm font-medium text-ink-950 transition-colors"
-              >
-                Book Now
-              </Link>
+              {isLoaded && !isSignedIn && (
+                <>
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setIsOpen(false)}
+                    className="text-center py-3 border border-ink-950/15 rounded-full text-sm text-ink-950 hover:bg-ink-950/5 transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setIsOpen(false)}
+                    className="text-center py-3 bg-turq-600 hover:bg-turq-500 rounded-full text-sm font-medium text-ink-950 transition-colors"
+                  >
+                    Book Now
+                  </Link>
+                </>
+              )}
+              {isLoaded && isSignedIn && (
+                <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="text-center py-3 bg-turq-600 hover:bg-turq-500 rounded-full text-sm font-medium text-ink-950 transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                  <SignOutButton>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(false)}
+                      className="text-center py-3 border border-ink-950/15 rounded-full text-sm text-ink-950 hover:bg-ink-950/5 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </SignOutButton>
+                </>
+              )}
             </div>
           </div>
         </div>

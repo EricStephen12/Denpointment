@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { SignOutButton, useAuth } from "@clerk/nextjs";
 import { CLINIC_NAME } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
 
 export default function LandingNav({ clinicName = CLINIC_NAME }: { clinicName?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isSignedIn, isLoaded } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -40,18 +42,40 @@ export default function LandingNav({ clinicName = CLINIC_NAME }: { clinicName?: 
           </div>
 
           <div className="flex-1 flex items-center justify-end gap-8">
-            <Link
-              href="/sign-in"
-              className="hidden sm:block text-sand-50/70 hover:text-sand-50 transition-colors text-[11px] tracking-[0.15em] uppercase"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/sign-up"
-              className="text-sand-50 hover:text-turq-400 transition-colors text-[11px] tracking-[0.15em] uppercase"
-            >
-              Book Appointment
-            </Link>
+            {isLoaded && !isSignedIn && (
+              <>
+                <Link
+                  href="/sign-in"
+                  className="hidden sm:block text-sand-50/70 hover:text-sand-50 transition-colors text-[11px] tracking-[0.15em] uppercase"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/sign-up"
+                  className="text-sand-50 hover:text-turq-400 transition-colors text-[11px] tracking-[0.15em] uppercase"
+                >
+                  Book Appointment
+                </Link>
+              </>
+            )}
+            {isLoaded && isSignedIn && (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-sand-50 hover:text-turq-400 transition-colors text-[11px] tracking-[0.15em] uppercase"
+                >
+                  Dashboard
+                </Link>
+                <SignOutButton>
+                  <button
+                    type="button"
+                    className="hidden sm:block text-sand-50/70 hover:text-sand-50 transition-colors text-[11px] tracking-[0.15em] uppercase"
+                  >
+                    Sign Out
+                  </button>
+                </SignOutButton>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -81,6 +105,7 @@ export default function LandingNav({ clinicName = CLINIC_NAME }: { clinicName?: 
               { href: "/#team", label: "The Doctors" },
               { href: "/#testimonials", label: "Testimonials" },
               { href: "/#faq", label: "FAQ" },
+              { href: "/contact", label: "Contact" },
             ].map((link) => (
               <Link
                 key={link.href}
@@ -94,8 +119,30 @@ export default function LandingNav({ clinicName = CLINIC_NAME }: { clinicName?: 
           </div>
 
           <div className="py-12 flex justify-center gap-12 text-[10px] tracking-[0.3em] uppercase text-sand-50/50">
-            <Link href="/sign-in" onClick={() => setIsOpen(false)} className="hover:text-sand-50 transition-colors">Patient Portal</Link>
-            <Link href="/contact" onClick={() => setIsOpen(false)} className="hover:text-sand-50 transition-colors">Contact Clinic</Link>
+            {isLoaded && !isSignedIn && (
+              <Link href="/sign-in" onClick={() => setIsOpen(false)} className="hover:text-sand-50 transition-colors">
+                Patient Portal
+              </Link>
+            )}
+            {isLoaded && isSignedIn && (
+              <>
+                <Link href="/dashboard" onClick={() => setIsOpen(false)} className="hover:text-sand-50 transition-colors">
+                  Dashboard
+                </Link>
+                <SignOutButton>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="hover:text-sand-50 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </SignOutButton>
+              </>
+            )}
+            <Link href="/contact" onClick={() => setIsOpen(false)} className="hover:text-sand-50 transition-colors">
+              Contact Clinic
+            </Link>
           </div>
         </div>
       )}

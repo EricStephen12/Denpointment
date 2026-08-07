@@ -7,6 +7,12 @@ import { getSiteContent } from "@/lib/site";
 import { Calendar } from 'lucide-react';
 import Link from "next/link";
 import BookingCalendar from "@/components/dashboards/BookingCalendar";
+import {
+  addCalendarDays,
+  getClinicDay,
+  toDateKey,
+  type CalendarDay,
+} from "@/lib/clinic-date";
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -21,23 +27,22 @@ async function buildSlotMap(
   closeHour: number,
   workingDays: number[],
 ) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const endDate = new Date(today);
-  endDate.setMonth(endDate.getMonth() + 3);
+  const today = getClinicDay();
+  const endDay = addCalendarDays(today, 92);
+  const rangeStart = new Date(Date.UTC(today.year, today.month - 1, today.day));
+  const rangeEnd = new Date(Date.UTC(endDay.year, endDay.month - 1, endDay.day));
 
   // Fetch all appointments and holidays in the range at once
   const [allAppointments, allHolidays] = await Promise.all([
     prisma.appointment.findMany({
       where: {
-        year: { gte: today.getFullYear() },
+        year: { gte: today.year },
       },
       select: { year: true, month: true, day: true, hour: true, dId: true },
     }),
     prisma.holidayDate.findMany({
       where: {
-        restDate: { gte: today, lte: endDate },
+        restDate: { gte: rangeStart, lte: rangeEnd },
       },
       select: { restDate: true, restingId: true },
     }),
@@ -46,7 +51,7 @@ async function buildSlotMap(
   // Build lookup maps
   const appointmentMap = new Map<string, Map<number, number>>();
   for (const app of allAppointments) {
-    const key = `${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`;
+    const key = toDateKey(app);
     if (!appointmentMap.has(key)) appointmentMap.set(key, new Map());
     const hourMap = appointmentMap.get(key)!;
     hourMap.set(app.hour, (hourMap.get(app.hour) || 0) + 1);
@@ -55,17 +60,23 @@ async function buildSlotMap(
   const holidayMap = new Map<string, Set<number>>();
   for (const h of allHolidays) {
     const d = h.restDate;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Holidays are date-only; read as UTC calendar day to avoid TZ drift.
+    const key = toDateKey({
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth() + 1,
+      day: d.getUTCDate(),
+    });
     if (!holidayMap.has(key)) holidayMap.set(key, new Set());
     holidayMap.get(key)!.add(h.restingId);
   }
 
   const slots: Record<string, number[]> = {};
-  const cursor = new Date(today);
+  let cursor: CalendarDay = today;
 
-  while (cursor <= endDate) {
-    if (workingDays.includes(cursor.getDay())) {
-      const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+  while (toDateKey(cursor) <= toDateKey(endDay)) {
+    const weekday = new Date(Date.UTC(cursor.year, cursor.month - 1, cursor.day, 12)).getUTCDay();
+    if (workingDays.includes(weekday)) {
+      const key = toDateKey(cursor);
 
       const dentistsOnHoliday = holidayMap.get(key) || new Set<number>();
       const availableDentistCount = dentists.filter(
@@ -89,7 +100,7 @@ async function buildSlotMap(
       }
     }
 
-    cursor.setDate(cursor.getDate() + 1);
+    cursor = addCalendarDays(cursor, 1);
   }
 
   return slots;
