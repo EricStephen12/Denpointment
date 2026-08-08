@@ -41,9 +41,17 @@ model Patient {
   personId  Int    @unique @map("person_id")
   person    Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
 
-  appointments  Appointment[]
-  toothFindings ToothFinding[]
-  images        PatientImage[]
+  appointments      Appointment[]
+  toothFindings     ToothFinding[]
+  images            PatientImage[]
+  allergies         Allergy[]
+  medicalNotes      MedicalHistoryNote[]
+  treatmentPlans    TreatmentPlan[]
+  perioReadings     PerioReading[]
+  consents          ConsentRecord[]
+  recalls           Recall[]
+  insurancePolicies PatientInsurance[]
+  labCases          LabCase[]
 
   @@map("patients")
 }
@@ -54,11 +62,17 @@ model Dentist {
   roomNumber String @map("room_number") @db.VarChar(5)
   person     Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
 
-  appointments  Appointment[]
-  treatments    Treatment[]
-  holidays      HolidayDate[]
-  toothFindings ToothFinding[]
-  images        PatientImage[]
+  appointments   Appointment[]
+  treatments     Treatment[]
+  holidays       HolidayDate[]
+  toothFindings  ToothFinding[]
+  images         PatientImage[]
+  medicalNotes   MedicalHistoryNote[]
+  treatmentPlans TreatmentPlan[]
+  perioReadings  PerioReading[]
+  consents       ConsentRecord[]
+  recalls        Recall[]
+  labCases       LabCase[]
 
   @@map("dentists")
 }
@@ -158,6 +172,8 @@ model ToothFinding {
   treatmentId Int?           @map("treatment_id")
   toothNumber Int            @map("tooth_number")
   condition   ToothCondition
+  /// Comma-separated surfaces: M,D,O,B,L,I (mesial, distal, occlusal/incisal, buccal/labial, lingual/palatal)
+  surfaces    String?        @db.VarChar(20)
   notes       String?        @db.VarChar(500)
   active      Boolean        @default(true)
   recordedAt  DateTime       @default(now()) @map("recorded_at")
@@ -169,6 +185,186 @@ model ToothFinding {
 
   @@index([patientId, toothNumber, active])
   @@map("tooth_findings")
+}
+
+enum PlanItemStatus {
+  planned
+  in_progress
+  completed
+  cancelled
+}
+
+enum ConsentStatus {
+  pending
+  signed
+  declined
+}
+
+enum LabCaseStatus {
+  sent
+  in_lab
+  received
+  fitted
+  cancelled
+}
+
+enum RecallStatus {
+  due
+  scheduled
+  completed
+  cancelled
+}
+
+model Allergy {
+  allergyId  Int      @id @default(autoincrement()) @map("allergy_id")
+  patientId  Int      @map("patient_id")
+  name       String   @db.VarChar(80)
+  severity   String?  @db.VarChar(20)
+  notes      String?  @db.VarChar(200)
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("allergies")
+}
+
+model MedicalHistoryNote {
+  noteId     Int      @id @default(autoincrement()) @map("note_id")
+  patientId  Int      @map("patient_id")
+  dentistId  Int?     @map("dentist_id")
+  body       String   @db.Text
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  patient Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist? @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId, recordedAt])
+  @@map("medical_history_notes")
+}
+
+model TreatmentPlan {
+  planId    Int      @id @default(autoincrement()) @map("plan_id")
+  patientId Int      @map("patient_id")
+  dentistId Int      @map("dentist_id")
+  title     String   @db.VarChar(120)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  patient Patient             @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist             @relation(fields: [dentistId], references: [dentistId])
+  items   TreatmentPlanItem[]
+
+  @@index([patientId])
+  @@map("treatment_plans")
+}
+
+model TreatmentPlanItem {
+  itemId          Int            @id @default(autoincrement()) @map("item_id")
+  planId          Int            @map("plan_id")
+  description     String         @db.VarChar(200)
+  toothNumber     Int?           @map("tooth_number")
+  surfaces        String?        @db.VarChar(20)
+  estimatedCharge Int?           @map("estimated_charge")
+  status          PlanItemStatus @default(planned)
+  sortOrder       Int            @default(0) @map("sort_order")
+
+  plan TreatmentPlan @relation(fields: [planId], references: [planId], onDelete: Cascade)
+
+  @@index([planId])
+  @@map("treatment_plan_items")
+}
+
+model PerioReading {
+  readingId   Int      @id @default(autoincrement()) @map("reading_id")
+  patientId   Int      @map("patient_id")
+  dentistId   Int      @map("dentist_id")
+  toothNumber Int      @map("tooth_number")
+  pocketMm    Int?     @map("pocket_mm")
+  bleeding    Boolean  @default(false)
+  mobility    Int      @default(0)
+  notes       String?  @db.VarChar(200)
+  active      Boolean  @default(true)
+  recordedAt  DateTime @default(now()) @map("recorded_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId, toothNumber, active])
+  @@map("perio_readings")
+}
+
+model ConsentRecord {
+  consentId    Int           @id @default(autoincrement()) @map("consent_id")
+  patientId    Int           @map("patient_id")
+  dentistId    Int?          @map("dentist_id")
+  title        String        @db.VarChar(120)
+  summary      String?       @db.Text
+  status       ConsentStatus @default(pending)
+  signedAt     DateTime?     @map("signed_at")
+  signedByName String?       @map("signed_by_name") @db.VarChar(80)
+  notes        String?       @db.VarChar(200)
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  patient Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist? @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId])
+  @@map("consent_records")
+}
+
+model Recall {
+  recallId  Int          @id @default(autoincrement()) @map("recall_id")
+  patientId Int          @map("patient_id")
+  dentistId Int?         @map("dentist_id")
+  reason    String       @db.VarChar(120)
+  dueDate   DateTime     @map("due_date") @db.Date
+  status    RecallStatus @default(due)
+  notes     String?      @db.VarChar(200)
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  patient Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist? @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId, dueDate])
+  @@map("recalls")
+}
+
+model PatientInsurance {
+  insuranceId  Int      @id @default(autoincrement()) @map("insurance_id")
+  patientId    Int      @map("patient_id")
+  provider     String   @db.VarChar(80)
+  policyNumber String   @map("policy_number") @db.VarChar(60)
+  memberId     String?  @map("member_id") @db.VarChar(60)
+  groupNumber  String?  @map("group_number") @db.VarChar(60)
+  notes        String?  @db.VarChar(200)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("patient_insurance")
+}
+
+model LabCase {
+  labCaseId       Int           @id @default(autoincrement()) @map("lab_case_id")
+  patientId       Int           @map("patient_id")
+  dentistId       Int           @map("dentist_id")
+  labName         String        @map("lab_name") @db.VarChar(80)
+  itemDescription String        @map("item_description") @db.VarChar(200)
+  toothNumber     Int?          @map("tooth_number")
+  sentAt          DateTime      @default(now()) @map("sent_at")
+  dueDate         DateTime?     @map("due_date") @db.Date
+  status          LabCaseStatus @default(sent)
+  notes           String?       @db.VarChar(200)
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId, status])
+  @@map("lab_cases")
 }
 
 model Service {

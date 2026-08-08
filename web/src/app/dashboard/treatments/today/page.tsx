@@ -9,6 +9,7 @@ import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
 import PrescriptionFields from "@/components/dashboards/PrescriptionFields";
 import VisitStatusSelect from "@/components/dashboards/VisitStatusSelect";
+import TreatmentEditor from "@/components/dashboards/TreatmentEditor";
 import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
@@ -152,14 +153,30 @@ export default async function TodaysAppointmentsPage() {
               </div>
 
               {treatmentCount > 0 && (
-                <ul className="mb-3 space-y-1.5 text-sm text-sand-50/60 border-t border-sand-50/8 pt-3">
+                <ul className="mb-3 space-y-2 text-sm text-sand-50/60 border-t border-sand-50/8 pt-3">
                   {app.treatments.map((t) => (
                     <li key={t.treatmentId}>
-                      {t.toothNumber != null && (
-                        <span className="text-turq-300 mr-1.5">#{t.toothNumber}</span>
+                      {!staffView ? (
+                        <TreatmentEditor
+                          treatment={{
+                            treatmentId: t.treatmentId,
+                            action: t.action,
+                            complaint: t.complaint,
+                            description: t.description,
+                            toothNumber: t.toothNumber,
+                            charge: t.charge,
+                            paid: t.paid,
+                          }}
+                        />
+                      ) : (
+                        <>
+                          {t.toothNumber != null && (
+                            <span className="text-turq-300 mr-1.5">#{t.toothNumber}</span>
+                          )}
+                          <span className="text-sand-50/80">{t.action}</span>
+                          <span className="text-sand-50/40"> — {formatNaira(t.charge)}</span>
+                        </>
                       )}
-                      <span className="text-sand-50/80">{t.action}</span>
-                      <span className="text-sand-50/40"> — {formatNaira(t.charge)}</span>
                     </li>
                   ))}
                 </ul>

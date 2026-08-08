@@ -15,10 +15,12 @@ import {
   UPPER_RIGHT,
   conditionMeta,
 } from "@/lib/odontogram";
+import { TOOTH_SURFACES, parseSurfaces, type ToothSurface } from "@/lib/tooth-surfaces";
 
 export type ChartFinding = {
   toothNumber: number;
   condition: ToothCondition;
+  surfaces: string | null;
   notes: string | null;
 };
 
@@ -32,6 +34,7 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
   const [dentition, setDentition] = useState<"adult" | "primary">("adult");
   const [selected, setSelected] = useState<number | null>(null);
   const [condition, setCondition] = useState<ToothCondition>("caries");
+  const [surfaces, setSurfaces] = useState<ToothSurface[]>([]);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -60,11 +63,19 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
     const existing = byTooth.get(n);
     if (existing) {
       setCondition(existing.condition);
+      setSurfaces(parseSurfaces(existing.surfaces));
       setNotes(existing.notes ?? "");
     } else {
       setCondition("caries");
+      setSurfaces([]);
       setNotes("");
     }
+  }
+
+  function toggleSurface(s: ToothSurface) {
+    setSurfaces((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+    );
   }
 
   function run(action: (fd: FormData) => Promise<void>, extra?: Record<string, string>) {
@@ -191,13 +202,43 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
                     placeholder="Optional clinical note"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-sand-50/50 mb-1.5">
+                    Surfaces (M D O B L I)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TOOTH_SURFACES.map((s) => {
+                      const on = surfaces.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggleSurface(s)}
+                          className={`w-8 h-8 rounded-md border text-xs font-semibold transition-colors ${
+                            on
+                              ? "bg-turq-600 text-ink-950 border-turq-500"
+                              : "border-sand-50/20 text-sand-50/55 hover:border-sand-50/40"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
               {error && <p className="text-sm text-red-400">{error}</p>}
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => run(upsertToothFinding, { condition, notes })}
+                  onClick={() =>
+                    run(upsertToothFinding, {
+                      condition,
+                      notes,
+                      surfaces: surfaces.join(","),
+                    })
+                  }
                   className="bg-turq-600 text-ink-950 py-2 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors disabled:opacity-60"
                 >
                   {pending ? "Saving…" : "Save finding"}
@@ -218,8 +259,8 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
             <p className="text-sm text-sand-50/50">
               {selectedFinding
                 ? `${conditionMeta(selectedFinding.condition).label}${
-                    selectedFinding.notes ? ` — ${selectedFinding.notes}` : ""
-                  }`
+                    selectedFinding.surfaces ? ` · ${selectedFinding.surfaces}` : ""
+                  }${selectedFinding.notes ? ` — ${selectedFinding.notes}` : ""}`
                 : "No finding recorded on this tooth."}
             </p>
           )}
@@ -266,7 +307,10 @@ function ArchRow({
             >
               <span>{n}</span>
               {meta && meta.value !== "healthy" && (
-                <span className="text-[9px] opacity-80">{meta.short}</span>
+                <span className="text-[9px] opacity-80">
+                  {meta.short}
+                  {finding?.surfaces ? ` ${finding.surfaces}` : ""}
+                </span>
               )}
             </button>
           );

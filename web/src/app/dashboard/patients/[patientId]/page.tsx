@@ -8,6 +8,7 @@ import { conditionMeta } from "@/lib/odontogram";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import Odontogram from "@/components/dashboards/Odontogram";
 import PatientImages from "@/components/dashboards/PatientImages";
+import ClinicalCarePanel from "@/components/dashboards/ClinicalCarePanel";
 import { User, ArrowLeft, Calendar } from "lucide-react";
 
 export default async function PatientProfilePage({
@@ -43,6 +44,20 @@ export default async function PatientProfilePage({
         orderBy: { createdAt: "desc" },
         take: 40,
       },
+      allergies: { orderBy: { recordedAt: "desc" } },
+      medicalNotes: { orderBy: { recordedAt: "desc" }, take: 30 },
+      treatmentPlans: {
+        orderBy: { createdAt: "desc" },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      },
+      perioReadings: {
+        where: { active: true },
+        orderBy: { toothNumber: "asc" },
+      },
+      consents: { orderBy: { createdAt: "desc" } },
+      recalls: { orderBy: { dueDate: "asc" } },
+      insurancePolicies: { orderBy: { createdAt: "desc" } },
+      labCases: { orderBy: { sentAt: "desc" } },
       appointments: {
         include: {
           dentist: { include: { person: true } },
@@ -61,6 +76,8 @@ export default async function PatientProfilePage({
     ? person.birthDate.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : "—";
   const canEditChart = isDentist(dbUser);
+  const canEditClinical =
+    isDentist(dbUser) || isReceptionist(dbUser) || isAdmin(dbUser);
 
   return (
     <div>
@@ -113,6 +130,7 @@ export default async function PatientProfilePage({
                 {patient.toothFindings.map((f) => (
                   <li key={f.findingId}>
                     #{f.toothNumber} · {conditionMeta(f.condition).label}
+                    {f.surfaces ? ` (${f.surfaces})` : ""}
                     {f.notes ? ` — ${f.notes}` : ""}
                   </li>
                 ))}
@@ -180,9 +198,85 @@ export default async function PatientProfilePage({
           findings={patient.toothFindings.map((f) => ({
             toothNumber: f.toothNumber,
             condition: f.condition,
+            surfaces: f.surfaces,
             notes: f.notes,
           }))}
           canEdit={canEditChart}
+        />
+      </div>
+
+      <div className="mb-8">
+        <ClinicalCarePanel
+          patientId={patient.patientId}
+          canEdit={canEditClinical}
+          isDentist={canEditChart}
+          data={{
+            allergies: patient.allergies.map((a) => ({
+              allergyId: a.allergyId,
+              name: a.name,
+              severity: a.severity,
+              notes: a.notes,
+            })),
+            medicalNotes: patient.medicalNotes.map((n) => ({
+              noteId: n.noteId,
+              body: n.body,
+              recordedAt: n.recordedAt.toISOString(),
+            })),
+            treatmentPlans: patient.treatmentPlans.map((p) => ({
+              planId: p.planId,
+              title: p.title,
+              notes: p.notes,
+              items: p.items.map((i) => ({
+                itemId: i.itemId,
+                description: i.description,
+                toothNumber: i.toothNumber,
+                surfaces: i.surfaces,
+                estimatedCharge: i.estimatedCharge,
+                status: i.status,
+              })),
+            })),
+            perioReadings: patient.perioReadings.map((r) => ({
+              readingId: r.readingId,
+              toothNumber: r.toothNumber,
+              pocketMm: r.pocketMm,
+              bleeding: r.bleeding,
+              mobility: r.mobility,
+              notes: r.notes,
+            })),
+            consents: patient.consents.map((c) => ({
+              consentId: c.consentId,
+              title: c.title,
+              summary: c.summary,
+              status: c.status,
+              signedByName: c.signedByName,
+              signedAt: c.signedAt?.toISOString() ?? null,
+            })),
+            recalls: patient.recalls.map((r) => ({
+              recallId: r.recallId,
+              reason: r.reason,
+              dueDate: r.dueDate.toISOString(),
+              status: r.status,
+              notes: r.notes,
+            })),
+            insurancePolicies: patient.insurancePolicies.map((p) => ({
+              insuranceId: p.insuranceId,
+              provider: p.provider,
+              policyNumber: p.policyNumber,
+              memberId: p.memberId,
+              groupNumber: p.groupNumber,
+              notes: p.notes,
+              active: p.active,
+            })),
+            labCases: patient.labCases.map((l) => ({
+              labCaseId: l.labCaseId,
+              labName: l.labName,
+              itemDescription: l.itemDescription,
+              toothNumber: l.toothNumber,
+              dueDate: l.dueDate?.toISOString() ?? null,
+              status: l.status,
+              notes: l.notes,
+            })),
+          }}
         />
       </div>
 

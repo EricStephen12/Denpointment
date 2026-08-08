@@ -151,3 +151,82 @@ export async function addTreatment(formData: FormData) {
   revalidatePath(`/dashboard/patients/${appointment.pId}`);
   revalidatePath("/dashboard/appointments");
 }
+
+export async function updateTreatment(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
+  const action = ((formData.get("action") as string) || "").trim().slice(0, 200);
+  const complaint = ((formData.get("complaint") as string) || "").trim().slice(0, 200);
+  const description = ((formData.get("description") as string) || "").trim().slice(0, 4000);
+  const toothRaw = (formData.get("toothNumber") as string) || "";
+  const toothNumber = toothRaw ? parseInt(toothRaw, 10) : null;
+  const charge = parseInt(formData.get("charge") as string, 10);
+
+  if (!treatmentId || !action || !complaint) {
+    throw new Error("Treatment, complaint, and action are required.");
+  }
+  if (Number.isNaN(charge) || charge < 0) {
+    throw new Error("Enter a valid charge.");
+  }
+  if (toothNumber != null && !isValidFdiTooth(toothNumber)) {
+    throw new Error("Invalid tooth number.");
+  }
+
+  const existing = await prisma.treatment.findUnique({
+    where: { treatmentId },
+    include: { appointment: true },
+  });
+  if (!existing || existing.treatorId !== dentistId) {
+    throw new Error("You can only edit your own treatments.");
+  }
+  if (existing.paid) {
+    throw new Error("Paid treatments can’t be edited. Reverse payment with admin first.");
+  }
+
+  await prisma.treatment.update({
+    where: { treatmentId },
+    data: {
+      action,
+      complaint,
+      description: description || null,
+      toothNumber,
+      charge,
+    },
+  });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath(`/dashboard/patients/${existing.appointment.pId}`);
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/admin/billing");
+}
+
+export async function deleteTreatment(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
+  if (!treatmentId) throw new Error("Invalid treatment.");
+
+  const existing = await prisma.treatment.findUnique({
+    where: { treatmentId },
+    include: { appointment: true },
+  });
+  if (!existing || existing.treatorId !== dentistId) {
+    throw new Error("You can only delete your own treatments.");
+  }
+  if (existing.paid) {
+    throw new Error("Paid treatments can’t be deleted.");
+  }
+
+  await prisma.medicine.deleteMany({ where: { tId: treatmentId } });
+  await prisma.toothFinding.updateMany({
+    where: { treatmentId },
+    data: { treatmentId: null },
+  });
+  await prisma.treatment.delete({ where: { treatmentId } });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath(`/dashboard/patients/${existing.appointment.pId}`);
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/admin/billing");
+}
