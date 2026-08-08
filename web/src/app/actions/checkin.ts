@@ -1,9 +1,11 @@
-"use server"
+"use server";
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
+import { checkedInFromStatus } from "@/lib/appointment-status";
 
+/** Legacy toggle — flips between scheduled and checked_in. Prefer setAppointmentStatus. */
 export async function toggleCheckedIn(formData: FormData) {
   const person = await getCurrentPerson();
   if (!person || (!isAdmin(person) && !isReceptionist(person))) {
@@ -11,8 +13,15 @@ export async function toggleCheckedIn(formData: FormData) {
   }
 
   const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
-  const checkedIn = formData.get("checkedIn") === "true";
+  const currentlyCheckedIn = formData.get("checkedIn") === "true";
+  const status = currentlyCheckedIn ? "scheduled" : "checked_in";
 
-  await prisma.appointment.update({ where: { appointmentId }, data: { checkedIn: !checkedIn } });
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: {
+      status,
+      checkedIn: checkedInFromStatus(status),
+    },
+  });
   revalidatePath("/dashboard/treatments/today");
 }

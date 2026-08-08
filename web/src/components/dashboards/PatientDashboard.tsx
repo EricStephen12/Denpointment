@@ -52,9 +52,19 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
     ? [
         { label: 'BOOKED', done: true },
         { label: 'REMINDER', done: upcoming.reminderSent },
-        { label: 'CHECK-IN', done: upcoming.checkedIn },
+        {
+          label: 'CHECK-IN',
+          done:
+            upcoming.status === 'checked_in' ||
+            upcoming.status === 'in_chair' ||
+            upcoming.status === 'completed' ||
+            upcoming.checkedIn,
+        },
         { label: 'TREATMENT', done: upcoming.treatments.length > 0 },
-        { label: 'DONE', done: false },
+        {
+          label: 'DONE',
+          done: upcoming.status === 'completed',
+        },
       ]
     : [];
 

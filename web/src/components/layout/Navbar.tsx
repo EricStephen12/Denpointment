@@ -116,7 +116,7 @@ export default function Navbar({
                   </div>
 
                   <NavLink href="/dashboard/holidays">Holidays</NavLink>
-                  <NavLink href="/dashboard/patients">Patients</NavLink>
+                  <NavLink href="/dashboard/patients">Patients / Chart</NavLink>
                 </>
               )}
 

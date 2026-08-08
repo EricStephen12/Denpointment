@@ -170,7 +170,6 @@ export default async function AppointmentsPage() {
         {past.length > 0 ? (
           <div className="space-y-4">
             {past.map((app) => {
-              const treatment = app.treatments[0];
               const dateLabel = formatAppointmentDate(
                 { year: app.year, month: app.month, day: app.day },
                 { month: "short", day: "numeric", year: "numeric" },
@@ -181,73 +180,71 @@ export default async function AppointmentsPage() {
                   key={app.appointmentId}
                   className="dash-card p-5 sm:p-6"
                 >
-                  {/* Header row */}
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div>
-                      <p className="text-sm font-medium text-sand-50">{dateLabel}</p>
-                      <p className="text-xs text-sand-50/40 mt-0.5">
-                        {formatHour(app.hour)} · Dr. {app.dentist.person.firstName} {app.dentist.person.lastName}
-                      </p>
-                    </div>
-
-                    {treatment ? (
-                      treatment.paid ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-turq-600/20 text-turq-300">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Paid
-                        </span>
-                      ) : (
-                        <form action={initiateTreatmentPayment}>
-                          <input type="hidden" name="treatmentId" value={treatment.treatmentId} />
-                          <button
-                            type="submit"
-                            className="inline-flex items-center gap-1 text-xs text-ink-950 bg-turq-600 hover:bg-turq-500 px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer"
-                          >
-                            <CreditCard className="h-3 w-3" />
-                            Pay {formatNaira(treatment.charge)}
-                          </button>
-                        </form>
-                      )
-                    ) : null}
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-sand-50">{dateLabel}</p>
+                    <p className="text-xs text-sand-50/40 mt-0.5">
+                      {formatHour(app.hour)} · Dr. {app.dentist.person.firstName} {app.dentist.person.lastName}
+                    </p>
                   </div>
 
-                  {/* Treatment details */}
-                  {treatment ? (
-                    <div className="space-y-2 pt-3 border-t border-sand-50/8">
-                      {treatment.complaint && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-medium text-sand-50/40 w-20 shrink-0 pt-0.5">Complaint</span>
-                          <p className="text-sm text-sand-50/60">{treatment.complaint}</p>
-                        </div>
-                      )}
-                      {treatment.action && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-medium text-sand-50/40 w-20 shrink-0 pt-0.5">Treatment</span>
-                          <p className="text-sm text-sand-50/60">{treatment.action}</p>
-                        </div>
-                      )}
-                      {treatment.charge != null && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-medium text-sand-50/40 w-20 shrink-0 pt-0.5">Charge</span>
-                          <p className="text-sm font-medium text-sand-50">{formatNaira(treatment.charge)}</p>
-                        </div>
-                      )}
-                      {treatment.medicines.length > 0 && (
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs font-medium text-sand-50/40 w-20 shrink-0 pt-0.5">Medicines</span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {treatment.medicines.map((m) => (
-                              <span
-                                key={m.medicineId}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs bg-sand-50/8 text-sand-50/60"
-                              >
-                                <Pill className="h-3 w-3 text-turq-400" />
-                                {m.medicineName}
+                  {app.treatments.length > 0 ? (
+                    <div className="space-y-4 pt-3 border-t border-sand-50/8">
+                      {app.treatments.map((treatment) => (
+                        <div key={treatment.treatmentId} className="space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm text-sand-50/80">
+                              {treatment.toothNumber != null && (
+                                <span className="text-turq-300 mr-1.5">#{treatment.toothNumber}</span>
+                              )}
+                              {treatment.action}
+                            </p>
+                            {treatment.paid ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-turq-600/20 text-turq-300 shrink-0">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Paid
                               </span>
-                            ))}
+                            ) : (
+                              <form action={initiateTreatmentPayment}>
+                                <input type="hidden" name="treatmentId" value={treatment.treatmentId} />
+                                <button
+                                  type="submit"
+                                  className="inline-flex items-center gap-1 text-xs text-ink-950 bg-turq-600 hover:bg-turq-500 px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer"
+                                >
+                                  <CreditCard className="h-3 w-3" />
+                                  Pay {formatNaira(treatment.charge)}
+                                </button>
+                              </form>
+                            )}
                           </div>
+                          {treatment.complaint && (
+                            <p className="text-xs text-sand-50/40">Complaint: {treatment.complaint}</p>
+                          )}
+                          {treatment.description && (
+                            <p className="text-xs text-sand-50/40 whitespace-pre-wrap">{treatment.description}</p>
+                          )}
+                          {treatment.medicines.length > 0 && (
+                            <div className="space-y-1.5">
+                              {treatment.medicines.map((m) => (
+                                <div
+                                  key={m.medicineId}
+                                  className="flex items-start gap-1.5 text-xs text-sand-50/60"
+                                >
+                                  <Pill className="h-3 w-3 text-turq-400 mt-0.5 shrink-0" />
+                                  <span>
+                                    <span className="text-sand-50/80">{m.medicineName}</span>
+                                    {[m.dose, m.frequency, m.duration].filter(Boolean).length > 0 && (
+                                      <> — {[m.dose, m.frequency, m.duration].filter(Boolean).join(" · ")}</>
+                                    )}
+                                    {m.instructions ? (
+                                      <span className="block text-sand-50/40">{m.instructions}</span>
+                                    ) : null}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
                   ) : (
                     <p className="text-xs text-sand-50/30 italic pt-3 border-t border-sand-50/8">

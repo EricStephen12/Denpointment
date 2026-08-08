@@ -37,7 +37,7 @@ Step-by-step automation guide + importable workflows: [`n8n/README.md`](./n8n/RE
 ## Roles
 
 - **Patient** — books/cancels appointments, views appointment & treatment history, manages their own profile (address, phone, chronic conditions).
-- **Dentist** — views today's/upcoming/past appointments, records treatments (from a standardized service price list) for today's visits, manages holiday/unavailable dates, views statistics.
+- **Dentist** — views today's/upcoming/past appointments, updates visit status (checked in → in chair → completed / no-show), records one or more procedures per visit (service price list, tooth/FDI, clinical notes, structured prescriptions), maintains a per-patient 2D odontogram (adult + kids), uploads clinical photos/X-rays (Cloudinary), manages holidays, views statistics.
 - **Receptionist** — searches/registers patients (including walk-ins and phone bookings), books appointments on behalf of any patient, checks patients in, views the clinic-wide schedule for today, and manages billing/payment status.
 - **Admin** — manages staff accounts, clinic business hours, the service price list, and clinic-wide billing/revenue reporting.
 

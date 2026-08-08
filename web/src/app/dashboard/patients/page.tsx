@@ -45,7 +45,9 @@ export default async function PatientsPage({
         </div>
         <div>
           <h1 className="dash-title font-display">Patients</h1>
-          <p className="dash-body mt-0.5">Search existing patients or register a walk-in / phone booking.</p>
+          <p className="dash-body mt-0.5">
+            Search a patient, open their profile — the <span className="text-turq-300">2D dental chart</span> is at the bottom of that page.
+          </p>
         </div>
       </div>
 

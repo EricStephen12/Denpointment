@@ -4,6 +4,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isDentist, isReceptionist } from "@/lib/auth";
 import { formatNaira } from "@/lib/currency";
+import { conditionMeta } from "@/lib/odontogram";
+import { isCloudinaryConfigured } from "@/lib/cloudinary";
+import Odontogram from "@/components/dashboards/Odontogram";
+import PatientImages from "@/components/dashboards/PatientImages";
 import { User, ArrowLeft, Calendar } from "lucide-react";
 
 export default async function PatientProfilePage({
@@ -31,6 +35,14 @@ export default async function PatientProfilePage({
           diseases: true,
         },
       },
+      toothFindings: {
+        where: { active: true },
+        orderBy: { toothNumber: "asc" },
+      },
+      images: {
+        orderBy: { createdAt: "desc" },
+        take: 40,
+      },
       appointments: {
         include: {
           dentist: { include: { person: true } },
@@ -48,6 +60,7 @@ export default async function PatientProfilePage({
   const birthLabel = person.birthDate
     ? person.birthDate.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : "—";
+  const canEditChart = isDentist(dbUser);
 
   return (
     <div>
@@ -93,6 +106,19 @@ export default async function PatientProfilePage({
             label="Chronic conditions"
             value={person.diseases.map((d) => d.chronicDisease).join(", ") || "None recorded"}
           />
+          {patient.toothFindings.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Active findings</p>
+              <ul className="space-y-1 text-sm text-sand-50/70">
+                {patient.toothFindings.map((f) => (
+                  <li key={f.findingId}>
+                    #{f.toothNumber} · {conditionMeta(f.condition).label}
+                    {f.notes ? ` — ${f.notes}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {(isReceptionist(dbUser) || isAdmin(dbUser)) && (
             <Link
               href={`/dashboard/book?patientId=${patient.patientId}`}
@@ -122,7 +148,12 @@ export default async function PatientProfilePage({
                   </tr>
                 ) : (
                   patient.appointments.map((app) => {
-                    const treatment = app.treatments[0];
+                    const labels = app.treatments
+                      .map((t) =>
+                        t.toothNumber != null ? `#${t.toothNumber} ${t.action}` : t.action,
+                      )
+                      .join("; ");
+                    const total = app.treatments.reduce((sum, t) => sum + t.charge, 0);
                     return (
                       <tr key={app.appointmentId}>
                         <td>
@@ -131,8 +162,8 @@ export default async function PatientProfilePage({
                         <td>
                           Dr. {app.dentist.person.firstName} {app.dentist.person.lastName}
                         </td>
-                        <td>{treatment?.action || "—"}</td>
-                        <td>{treatment ? formatNaira(treatment.charge) : "—"}</td>
+                        <td>{labels || "—"}</td>
+                        <td>{app.treatments.length > 0 ? formatNaira(total) : "—"}</td>
                       </tr>
                     );
                   })
@@ -142,6 +173,31 @@ export default async function PatientProfilePage({
           </div>
         </section>
       </div>
+
+      <div id="dental-chart" className="scroll-mt-24 mb-8">
+        <Odontogram
+          patientId={patient.patientId}
+          findings={patient.toothFindings.map((f) => ({
+            toothNumber: f.toothNumber,
+            condition: f.condition,
+            notes: f.notes,
+          }))}
+          canEdit={canEditChart}
+        />
+      </div>
+
+      <PatientImages
+        patientId={patient.patientId}
+        canEdit={canEditChart}
+        cloudinaryReady={isCloudinaryConfigured()}
+        images={patient.images.map((img) => ({
+          imageId: img.imageId,
+          kind: img.kind,
+          url: img.url,
+          caption: img.caption,
+          createdAt: img.createdAt.toISOString(),
+        }))}
+      />
     </div>
   );
 }

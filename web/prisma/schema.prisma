@@ -41,7 +41,9 @@ model Patient {
   personId  Int    @unique @map("person_id")
   person    Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
 
-  appointments Appointment[]
+  appointments  Appointment[]
+  toothFindings ToothFinding[]
+  images        PatientImage[]
 
   @@map("patients")
 }
@@ -52,9 +54,11 @@ model Dentist {
   roomNumber String @map("room_number") @db.VarChar(5)
   person     Person @relation(fields: [personId], references: [personId], onDelete: Cascade)
 
-  appointments Appointment[]
-  treatments   Treatment[]
-  holidays     HolidayDate[]
+  appointments  Appointment[]
+  treatments    Treatment[]
+  holidays      HolidayDate[]
+  toothFindings ToothFinding[]
+  images        PatientImage[]
 
   @@map("dentists")
 }
@@ -75,17 +79,34 @@ model Receptionist {
   @@map("receptionists")
 }
 
+enum AppointmentStatus {
+  scheduled
+  checked_in
+  in_chair
+  completed
+  no_show
+  cancelled
+}
+
+enum ClinicalImageKind {
+  photo
+  xray
+  other
+}
+
 model Appointment {
-  appointmentId Int     @id @default(autoincrement()) @map("appointment_id")
-  dId           Int     @map("d_id")
-  pId           Int     @map("p_id")
-  room          String  @db.VarChar(5)
+  appointmentId Int               @id @default(autoincrement()) @map("appointment_id")
+  dId           Int               @map("d_id")
+  pId           Int               @map("p_id")
+  room          String            @db.VarChar(5)
   hour          Int
   month         Int
   day           Int
   year          Int
-  checkedIn     Boolean @default(false) @map("checked_in")
-  reminderSent  Boolean @default(false) @map("reminder_sent")
+  /// Kept in sync with `status` for older UI (true when checked_in / in_chair / completed).
+  checkedIn     Boolean           @default(false) @map("checked_in")
+  status        AppointmentStatus @default(scheduled)
+  reminderSent  Boolean           @default(false) @map("reminder_sent")
 
   dentist    Dentist     @relation(fields: [dId], references: [dentistId])
   patient    Patient     @relation(fields: [pId], references: [patientId])
@@ -95,24 +116,59 @@ model Appointment {
   @@map("appointments")
 }
 
+enum ToothCondition {
+  healthy
+  caries
+  filling
+  crown
+  missing
+  root_canal
+  extraction_planned
+  watch
+  other
+}
+
 model Treatment {
   treatmentId Int     @id @default(autoincrement()) @map("treatment_id")
-  description String? @db.VarChar(50)
+  description String? @db.Text
   charge      Int
-  action      String  @db.VarChar(25)
-  complaint   String  @db.VarChar(25)
+  action      String  @db.VarChar(200)
+  complaint   String  @db.VarChar(200)
+  toothNumber Int?    @map("tooth_number") // FDI notation, e.g. 16
   paid        Boolean @default(false)
   paystackRef String? @unique @map("paystack_ref") @db.VarChar(100)
   aId         Int     @map("a_id")
   treatorId   Int     @map("treator_id")
   serviceId   Int?    @map("service_id")
 
-  appointment Appointment @relation(fields: [aId], references: [appointmentId])
-  dentist     Dentist     @relation(fields: [treatorId], references: [dentistId])
-  service     Service?    @relation(fields: [serviceId], references: [serviceId])
-  medicines   Medicine[]
+  appointment   Appointment    @relation(fields: [aId], references: [appointmentId])
+  dentist       Dentist        @relation(fields: [treatorId], references: [dentistId])
+  service       Service?       @relation(fields: [serviceId], references: [serviceId])
+  medicines     Medicine[]
+  toothFindings ToothFinding[]
 
   @@map("treatments")
+}
+
+/// Persistent odontogram finding for a patient tooth (FDI numbering).
+model ToothFinding {
+  findingId   Int            @id @default(autoincrement()) @map("finding_id")
+  patientId   Int            @map("patient_id")
+  dentistId   Int            @map("dentist_id")
+  treatmentId Int?           @map("treatment_id")
+  toothNumber Int            @map("tooth_number")
+  condition   ToothCondition
+  notes       String?        @db.VarChar(500)
+  active      Boolean        @default(true)
+  recordedAt  DateTime       @default(now()) @map("recorded_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  patient   Patient    @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist   Dentist    @relation(fields: [dentistId], references: [dentistId])
+  treatment Treatment? @relation(fields: [treatmentId], references: [treatmentId], onDelete: SetNull)
+
+  @@index([patientId, toothNumber, active])
+  @@map("tooth_findings")
 }
 
 model Service {
@@ -160,13 +216,34 @@ model SiteSettings {
 }
 
 model Medicine {
-  medicineId   Int    @id @default(autoincrement()) @map("medicine_id")
-  tId          Int    @map("t_id")
-  medicineName String @map("medicine_name") @db.VarChar(50)
+  medicineId   Int     @id @default(autoincrement()) @map("medicine_id")
+  tId          Int     @map("t_id")
+  medicineName String  @map("medicine_name") @db.VarChar(80)
+  dose         String? @db.VarChar(40)
+  frequency    String? @db.VarChar(40)
+  duration     String? @db.VarChar(40)
+  instructions String? @db.VarChar(200)
 
   treatment Treatment @relation(fields: [tId], references: [treatmentId])
 
   @@map("medicines")
+}
+
+model PatientImage {
+  imageId    Int               @id @default(autoincrement()) @map("image_id")
+  patientId  Int               @map("patient_id")
+  dentistId  Int               @map("dentist_id")
+  kind       ClinicalImageKind @default(photo)
+  url        String            @db.VarChar(500)
+  publicId   String            @map("public_id") @db.VarChar(200)
+  caption    String?           @db.VarChar(200)
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId, createdAt])
+  @@map("patient_images")
 }
 
 model Address {

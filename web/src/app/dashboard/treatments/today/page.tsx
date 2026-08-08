@@ -3,10 +3,12 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isReceptionist, isAdmin } from "@/lib/auth";
 import { addTreatment } from "@/app/actions/treatments";
-import { toggleCheckedIn } from "@/app/actions/checkin";
-import { CalendarCheck, CheckCircle2, LayoutGrid } from 'lucide-react';
+import { CalendarCheck, LayoutGrid } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
 import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
+import { statusMeta } from "@/lib/appointment-status";
+import PrescriptionFields from "@/components/dashboards/PrescriptionFields";
+import VisitStatusSelect from "@/components/dashboards/VisitStatusSelect";
 import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
@@ -93,9 +95,7 @@ export default async function TodaysAppointmentsPage() {
                       return (
                         <td key={d.dentistId}>
                           {app ? (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              app.checkedIn ? 'bg-turq-600/20 text-turq-300' : 'bg-amber-900/40 text-amber-400'
-                            }`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusMeta(app.status).tone}`}>
                               {app.patient.person.firstName} {app.patient.person.lastName}
                             </span>
                           ) : (
@@ -114,7 +114,7 @@ export default async function TodaysAppointmentsPage() {
 
       <div className="space-y-4">
         {appointments.length > 0 ? appointments.map((app) => {
-          const alreadyTreated = app.treatments.length > 0;
+          const treatmentCount = app.treatments.length;
           return (
             <div key={app.appointmentId} className="dash-card p-5">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -128,43 +128,86 @@ export default async function TodaysAppointmentsPage() {
                   <p className="text-sm text-sand-50/50">
                     {staffView && <>Dr. {app.dentist.person.firstName} {app.dentist.person.lastName} · </>}
                     Room {app.room}
+                    {" · "}
+                    <Link
+                      href={`/dashboard/patients/${app.patient.patientId}#dental-chart`}
+                      className="text-turq-400 hover:text-turq-300"
+                    >
+                      Open chart
+                    </Link>
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {staffView && (
-                    <form action={toggleCheckedIn}>
-                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                      <input type="hidden" name="checkedIn" value={String(app.checkedIn)} />
-                      <button type="submit"
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                          app.checkedIn ? 'bg-turq-600/20 text-turq-300' : 'bg-sand-50/8 text-sand-50/50 hover:bg-sand-50/12'
-                        }`}>
-                        <CheckCircle2 className="h-3 w-3" /> {app.checkedIn ? 'Checked in' : 'Check in'}
-                      </button>
-                    </form>
-                  )}
-                  {alreadyTreated ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <VisitStatusSelect appointmentId={app.appointmentId} status={app.status} />
+                  {treatmentCount > 0 ? (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-turq-600/20 text-turq-300">
-                      Treatment recorded
+                      {treatmentCount} procedure{treatmentCount === 1 ? "" : "s"}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-900/40 text-amber-400">
-                      Pending
+                      No procedure yet
                     </span>
                   )}
                 </div>
               </div>
 
-              {!staffView && !alreadyTreated && (
+              {treatmentCount > 0 && (
+                <ul className="mb-3 space-y-1.5 text-sm text-sand-50/60 border-t border-sand-50/8 pt-3">
+                  {app.treatments.map((t) => (
+                    <li key={t.treatmentId}>
+                      {t.toothNumber != null && (
+                        <span className="text-turq-300 mr-1.5">#{t.toothNumber}</span>
+                      )}
+                      <span className="text-sand-50/80">{t.action}</span>
+                      <span className="text-sand-50/40"> — {formatNaira(t.charge)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {!staffView && (
                 <form action={addTreatment} className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-sand-50/8">
                   <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                  <div>
-                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Complaint</label>
-                    <input type="text" name="complaint" required maxLength={25} className="dash-input" />
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-sand-50/40 mb-1">
+                      {treatmentCount > 0
+                        ? "Add another procedure for this visit"
+                        : "Record treatment for this visit"}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Action Taken</label>
-                    <input type="text" name="action" required maxLength={25} className="dash-input" />
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Complaint</label>
+                    <input type="text" name="complaint" required maxLength={200} className="dash-input" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Action taken</label>
+                    <input type="text" name="action" required maxLength={200} className="dash-input" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Tooth (FDI, optional)</label>
+                    <input
+                      type="number"
+                      name="toothNumber"
+                      min={11}
+                      max={85}
+                      placeholder="e.g. 16 or 51"
+                      className="dash-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Update chart as</label>
+                    <select name="chartCondition" className="dash-input" defaultValue="">
+                      <option value="">Don’t update chart</option>
+                      <option value="caries">Caries</option>
+                      <option value="filling">Filling</option>
+                      <option value="crown">Crown</option>
+                      <option value="missing">Missing</option>
+                      <option value="root_canal">Root canal</option>
+                      <option value="extraction_planned">Extract planned</option>
+                      <option value="watch">Watch</option>
+                      <option value="healthy">Healthy</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-sand-50/50 mb-1">Service (sets price)</label>
@@ -176,21 +219,18 @@ export default async function TodaysAppointmentsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Charge ($, if no service selected)</label>
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Charge (₦, if no service)</label>
                     <input type="number" name="charge" min={0} className="dash-input" />
                   </div>
+                  <PrescriptionFields />
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Medicines (comma-separated)</label>
-                    <input type="text" name="medicines" placeholder="e.g. Ibuprofen, Amoxicillin" className="dash-input" />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Notes (optional)</label>
-                    <input type="text" name="description" maxLength={50} className="dash-input" />
+                    <label className="block text-xs font-medium text-sand-50/50 mb-1">Clinical notes</label>
+                    <textarea name="description" rows={3} maxLength={4000} className="dash-input resize-y" />
                   </div>
                   <div className="sm:col-span-2">
                     <button type="submit"
                       className="bg-turq-600 text-ink-950 py-2 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors">
-                      Save Treatment
+                      Save procedure
                     </button>
                   </div>
                 </form>
