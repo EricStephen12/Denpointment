@@ -4,6 +4,7 @@ import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import { getSiteContent, ACCENT_PRESETS, type AccentColorName } from "@/lib/site";
 import { updateSiteSettings } from "@/app/actions/site";
 import { Palette } from "lucide-react";
+import PackageFieldsEditor from "@/components/dashboards/PackageFieldsEditor";
 
 export default async function WebsiteSettingsPage({
   searchParams,
@@ -117,34 +118,13 @@ export default async function WebsiteSettingsPage({
         {/* Packages */}
         <section className="dash-surface p-5 space-y-4">
           <h2 className="text-sm font-semibold text-sand-50">Featured Packages</h2>
-          <p className="text-xs text-sand-50/40">
-            Prices are in Nigerian Naira (₦). Leave a package blank to hide it until you fill all three fields.
-          </p>
-          <div className="space-y-6">
-            {[0, 1, 2].map((i) => {
-              const pkg = site.packages[i];
-              return (
-                <div key={i} className="grid grid-cols-1 md:grid-cols-6 gap-3 border-t border-sand-50/10 pt-4">
-                  <p className="md:col-span-6 text-xs uppercase tracking-wider text-sand-50/40">Package {i + 1}</p>
-                  <div className="md:col-span-2">
-                    <Field label="Title" name={`pkgTitle${i}`} defaultValue={pkg?.title ?? ""} maxLength={40} />
-                  </div>
-                  <div className="md:col-span-1">
-                    <Field
-                      label="Price (₦)"
-                      name={`pkgPrice${i}`}
-                      type="number"
-                      defaultValue={pkg?.price != null ? String(pkg.price) : ""}
-                      min={0}
-                    />
-                  </div>
-                  <div className="md:col-span-3">
-                    <Field label="Description" name={`pkgDesc${i}`} defaultValue={pkg?.desc ?? ""} maxLength={200} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <PackageFieldsEditor
+            initial={site.packages.map((pkg) => ({
+              title: pkg.title,
+              price: String(pkg.price),
+              desc: pkg.desc,
+            }))}
+          />
         </section>
 
         <button

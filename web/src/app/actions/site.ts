@@ -27,21 +27,41 @@ function text(formData: FormData, name: string, maxLength: number): string | nul
 
 function parsePackagesForm(formData: FormData): SitePackage[] | null {
   const packages: SitePackage[] = [];
-  for (let i = 0; i < 3; i++) {
+  const MAX = 12;
+
+  for (let i = 0; i < MAX; i++) {
     const title = ((formData.get(`pkgTitle${i}`) as string) || "").trim();
     const priceRaw = ((formData.get(`pkgPrice${i}`) as string) || "").trim();
     const desc = ((formData.get(`pkgDesc${i}`) as string) || "").trim();
 
-    if (!title && !priceRaw && !desc) continue;
+    // Stop when this index and higher have no fields at all (removed trailing rows).
+    if (!title && !priceRaw && !desc) {
+      const hasLater = Array.from({ length: MAX - i - 1 }, (_, k) => i + 1 + k).some((j) => {
+        const t = ((formData.get(`pkgTitle${j}`) as string) || "").trim();
+        const p = ((formData.get(`pkgPrice${j}`) as string) || "").trim();
+        const d = ((formData.get(`pkgDesc${j}`) as string) || "").trim();
+        return Boolean(t || p || d);
+      });
+      if (!hasLater) break;
+      continue;
+    }
+
     if (!title || !priceRaw || !desc) {
-      throw new Error(`Package ${i + 1} needs a title, price, and description (or leave all three empty).`);
+      throw new Error(
+        `Package ${i + 1} needs a title, price, and description (or clear/remove the row).`,
+      );
     }
     const price = parseInt(priceRaw, 10);
     if (Number.isNaN(price) || price < 0) {
       throw new Error(`Package ${i + 1} has an invalid price.`);
     }
-    packages.push({ title, price, desc });
+    packages.push({
+      title: title.slice(0, 40),
+      price,
+      desc: desc.slice(0, 200),
+    });
   }
+
   return packages.length > 0 ? packages : null;
 }
 

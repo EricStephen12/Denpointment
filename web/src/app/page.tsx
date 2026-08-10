@@ -175,9 +175,9 @@ export default async function Home() {
       {/* ── 5. Pricing (Stripped Back) ── */}
       <section className="py-20 px-6 md:px-12 max-w-[1800px] mx-auto border-t border-sand-50/10">
         <Reveal>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 md:gap-6">
             {site.packages.map((pkg) => (
-              <div key={pkg.title} className="flex flex-col border-t border-sand-50/20 pt-8">
+              <div key={`${pkg.title}-${pkg.price}`} className="flex flex-col border-t border-sand-50/20 pt-8">
                 <h3 className="text-xs tracking-[0.2em] uppercase text-turq-300 mb-6">{pkg.title}</h3>
                 <p className="font-display text-6xl italic text-sand-50 mb-6">{formatNaira(pkg.price)}</p>
                 <p className="text-sand-50/50 text-sm leading-relaxed mb-10 flex-1">{pkg.desc}</p>
