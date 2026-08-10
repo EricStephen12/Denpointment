@@ -36,14 +36,22 @@ Step-by-step automation guide + importable workflows: [`n8n/README.md`](./n8n/RE
 
 ## Roles
 
-- **Patient** — books/cancels appointments, views appointment & treatment history, manages their own profile (address, phone, chronic conditions).
-- **Dentist** — views today's/upcoming/past appointments, updates visit status (checked in → in chair → completed / no-show), records one or more procedures per visit (service price list, tooth/FDI, clinical notes, structured prescriptions), maintains a per-patient 2D odontogram (adult + kids), uploads clinical photos/X-rays (Cloudinary), manages holidays, views statistics.
-- **Receptionist** — searches/registers patients (including walk-ins and phone bookings), books appointments on behalf of any patient, checks patients in, views the clinic-wide schedule for today, and manages billing/payment status.
-- **Admin** — manages staff accounts, clinic business hours, the service price list, and clinic-wide billing/revenue reporting.
+- **Patient** — books/cancels appointments, views appointment & treatment history, pays treatment balance online (Paystack), manages their own profile (address, phone, chronic conditions).
+- **Dentist** — today's/upcoming/past visits, visit status (checked in → in chair → completed / no-show), multi-procedure charting (tooth/FDI, surfaces, notes, Rx), edit/delete unpaid procedures, patient odontogram (adult + kids), photos/X-rays, full clinical care panel (allergies, history, plans, perio, consents, recalls, insurance, lab cases), holidays, statistics.
+- **Receptionist** — searches/registers patients (walk-ins and phone bookings), books for any patient, check-in, clinic-wide today schedule, billing/payment status; can also edit allergies, history notes, consents, recalls, and insurance on the patient page.
+- **Admin** — staff accounts, business hours, service price list, clinic-wide billing/revenue, public website content (**Dashboard → Website**).
 
-Bookings are validated against the clinic's configured business hours, working days, and each dentist's holidays (**Dashboard → Settings**, admin only).
+Bookings are validated against clinic business hours, working days, and each dentist's holidays (**Dashboard → Settings**, admin only).
 
-Admins can also edit the public website write-ups, accent color, and featured package prices from **Dashboard → Website** — no code changes required.
+### Clinical chart (where to find it)
+
+**Dashboard → Patients / Chart** → open a patient → scroll to:
+
+1. **Dental chart** — odontogram + surface marks (M/D/O/B/L/I)
+2. **Clinical care** — History · Plans · Perio · Consents · Recalls · Insurance · Labs
+3. **Photos & X-rays** — requires Cloudinary env vars (uploads stay disabled until set)
+
+A prior booking is **not** required to chart a patient — only that the patient record exists.
 
 ### How staff accounts are created
 
@@ -64,16 +72,37 @@ Then sign in with Clerk using that same email.
 ## Integrations
 
 - **Resend** — booking confirmations, appointment reminders, and payment receipts. Set `RESEND_API_KEY` and `EMAIL_FROM`. If unset, emails are skipped with a console warning (the app still works without it).
-- **Paystack** — patients can pay their treatment balance online from **My Appointments**. Set `PAYSTACK_SECRET_KEY`, and register `/api/webhooks/paystack` as a webhook endpoint in the Paystack dashboard for reliable payment confirmation.
-- **Reminder emails** — `GET /api/cron/reminders` emails patients with an appointment tomorrow. Scheduled via `vercel.json` on Vercel (set `CRON_SECRET` in Vercel project settings). You can also trigger the same URL from n8n on Railway.
+- **Paystack** — patients pay treatment balance from **My Appointments**. Set `PAYSTACK_SECRET_KEY`, and register `/api/webhooks/paystack` in the Paystack dashboard.
+- **Cloudinary** — patient photos & X-rays. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+- **Reminder emails** — `GET /api/cron/reminders` emails patients with an appointment tomorrow. Scheduled via `vercel.json` on Vercel (set `CRON_SECRET`). You can also trigger the same URL from n8n on Railway.
+- **n8n (Railway)** — optional webhooks after booking, payment, and contact form (`N8N_WEBHOOK_*`).
+
+## Handoff checklist
+
+Use this before going live or transferring the project:
+
+1. **Database** — Neon (or other Postgres) URLs in Vercel + local `.env`. Run `npx prisma migrate deploy` from `web/` (includes tooth chart + full clinical care migrations).
+2. **Clerk** — production keys on Vercel; staff emails match Admin → Staff pre-provisioned rows.
+3. **Paystack** — live/test secret on Vercel; webhook → `https://<domain>/api/webhooks/paystack`.
+4. **Cloudinary** — set the three `CLOUDINARY_*` vars or photo uploads stay off.
+5. **Resend** — `RESEND_API_KEY` + verified `EMAIL_FROM` (or accept console-only skip in staging).
+6. **Cron** — `CRON_SECRET` set on Vercel so appointment reminders run.
+7. **n8n** — optional; see [`n8n/README.md`](./n8n/README.md) if automations are in scope.
+8. **Smoke test** — patient book → receptionist check-in → dentist chart + procedure + Rx → patient Pay → admin billing.
+
+### Out of scope / not built
+
+No insurance claim filing, e-prescribe network, full periodontal charting grids, or third-party lab portals — clinic records only (manual status tracking).
 
 ## Project Structure
 
 ```
 web/
-  prisma/schema.prisma        Database schema
+  prisma/schema.prisma        Database schema + migrations
   src/app/                    Routes (App Router)
   src/app/actions/            Server actions (mutations)
   src/components/             Dashboards, layout/navigation
-  src/lib/                    Shared Prisma client, auth helpers, constants
+  src/lib/                    Prisma, auth, clinic date, odontogram, payments
+n8n/                          Importable automation workflows (Railway)
+legacy/                       Old Flask prototype (reference only)
 ```
