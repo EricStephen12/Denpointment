@@ -105,7 +105,7 @@ type Tab =
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "history", label: "History" },
-  { id: "plans", label: "Plans" },
+  { id: "plans", label: "Treatment plan" },
   { id: "perio", label: "Perio" },
   { id: "consents", label: "Consents" },
   { id: "recalls", label: "Recalls" },
@@ -169,7 +169,7 @@ export default function ClinicalCarePanel({
       <div>
         <h2 className="text-sm font-semibold text-sand-50">Clinical care</h2>
         <p className="text-xs text-sand-50/40 mt-1">
-          Allergies, plans, perio, consents, recalls, insurance, and lab cases
+          Allergies, treatment plans, perio, consents, recalls, insurance, and lab cases
         </p>
       </div>
 
@@ -303,7 +303,9 @@ export default function ClinicalCarePanel({
       {tab === "plans" && (
         <div className="space-y-5">
           {data.treatmentPlans.length === 0 ? (
-            <p className="text-sm text-sand-50/40">No treatment plans yet.</p>
+            <p className="text-sm text-sand-50/40">
+              No clinical treatment plans yet (proposed procedures — not payment installments).
+            </p>
           ) : (
             data.treatmentPlans.map((plan) => (
               <div key={plan.planId} className="space-y-2 border-b border-sand-50/8 pb-4 last:border-0">
@@ -412,13 +414,19 @@ export default function ClinicalCarePanel({
                 run(createTreatmentPlan, e.currentTarget);
               }}
             >
-              <p className="text-xs font-medium text-sand-50/50">New treatment plan</p>
-              <input name="title" required maxLength={120} placeholder="Plan title" className="dash-input" />
+              <p className="text-xs font-medium text-sand-50/50">New clinical treatment plan</p>
+              <input
+                name="title"
+                required
+                maxLength={120}
+                placeholder="e.g. Upper right restorations"
+                className="dash-input"
+              />
               <textarea
                 name="notes"
                 rows={2}
                 maxLength={4000}
-                placeholder="Notes (optional)"
+                placeholder="Clinical notes (optional)"
                 className="dash-input resize-y"
               />
               <button
@@ -426,7 +434,7 @@ export default function ClinicalCarePanel({
                 disabled={pending}
                 className="bg-turq-600 text-ink-950 py-2 px-3 rounded-lg text-sm font-semibold disabled:opacity-60"
               >
-                Create plan
+                Create treatment plan
               </button>
             </form>
           )}

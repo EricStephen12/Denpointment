@@ -53,6 +53,36 @@ export function conditionMeta(condition: ToothCondition) {
   return TOOTH_CONDITIONS.find((c) => c.value === condition) ?? TOOTH_CONDITIONS[TOOTH_CONDITIONS.length - 1];
 }
 
+/** Solid fills for SVG tooth art (Tailwind classes don’t apply to SVG fill). */
+export function conditionFill(condition: ToothCondition | null | undefined): {
+  crown: string;
+  root: string;
+  stroke: string;
+} {
+  switch (condition) {
+    case "caries":
+      return { crown: "#7f1d1d", root: "#450a0a", stroke: "#f87171" };
+    case "filling":
+      return { crown: "#0c4a6e", root: "#082f49", stroke: "#38bdf8" };
+    case "crown":
+      return { crown: "#78350f", root: "#451a03", stroke: "#fbbf24" };
+    case "missing":
+      return { crown: "#3f3f46", root: "#27272a", stroke: "#71717a" };
+    case "root_canal":
+      return { crown: "#4c1d95", root: "#2e1065", stroke: "#c4b5fd" };
+    case "extraction_planned":
+      return { crown: "#7c2d12", root: "#431407", stroke: "#fb923c" };
+    case "watch":
+      return { crown: "#713f12", root: "#422006", stroke: "#facc15" };
+    case "healthy":
+      return { crown: "#134e4a", root: "#042f2e", stroke: "#2dd4bf" };
+    case "other":
+      return { crown: "#3f3f46", root: "#27272a", stroke: "#a1a1aa" };
+    default:
+      return { crown: "#1c1917", root: "#0c0a09", stroke: "#57534e" };
+  }
+}
+
 export function parseToothCondition(raw: string): ToothCondition | null {
   const found = TOOTH_CONDITIONS.find((c) => c.value === raw);
   return found ? found.value : null;

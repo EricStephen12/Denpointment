@@ -13,6 +13,7 @@ import {
   TOOTH_CONDITIONS,
   UPPER_LEFT,
   UPPER_RIGHT,
+  conditionFill,
   conditionMeta,
 } from "@/lib/odontogram";
 import { TOOTH_SURFACES, parseSurfaces, type ToothSurface } from "@/lib/tooth-surfaces";
@@ -102,7 +103,7 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-sand-50">Dental chart</h2>
           <p className="text-xs text-sand-50/40 mt-1">
-            FDI numbering · tap a tooth to mark condition
+            FDI numbering · illustrated teeth · tap one to mark condition
           </p>
         </div>
         <div className="flex rounded-lg border border-sand-50/15 overflow-hidden text-xs">
@@ -140,12 +141,13 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
         ))}
       </div>
 
-      <div className="space-y-3 select-none">
+      <div className="space-y-4 select-none">
         {arches.slice(0, 2).map((arch) => (
           <ArchRow
             key={arch.label}
             label={arch.label}
             teeth={arch.teeth}
+            archSide="upper"
             byTooth={byTooth}
             selected={selected}
             onSelect={selectTooth}
@@ -157,6 +159,7 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
             key={arch.label}
             label={arch.label}
             teeth={arch.teeth}
+            archSide="lower"
             byTooth={byTooth}
             selected={selected}
             onSelect={selectTooth}
@@ -273,43 +276,54 @@ export default function Odontogram({ patientId, findings, canEdit }: Props) {
 function ArchRow({
   label,
   teeth,
+  archSide,
   byTooth,
   selected,
   onSelect,
 }: {
   label: string;
   teeth: readonly number[];
+  archSide: "upper" | "lower";
   byTooth: Map<number, ChartFinding>;
   selected: number | null;
   onSelect: (n: number) => void;
 }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-sand-50/30 mb-1.5">{label}</p>
-      <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
+      <p className="text-[10px] uppercase tracking-wider text-sand-50/30 mb-2">{label}</p>
+      <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
         {teeth.map((n) => {
           const finding = byTooth.get(n);
           const meta = finding ? conditionMeta(finding.condition) : null;
           const isSelected = selected === n;
+          const fill = conditionFill(finding?.condition);
           return (
             <button
               key={n}
               type="button"
               title={finding ? `${n}: ${meta?.label}` : `Tooth ${n}`}
               onClick={() => onSelect(n)}
-              className={`w-10 h-12 sm:w-11 sm:h-14 rounded-md border text-xs font-medium flex flex-col items-center justify-center transition-colors ${
-                isSelected
-                  ? "ring-2 ring-turq-400 border-turq-400 bg-turq-600/20 text-sand-50"
-                  : meta
-                    ? meta.color
-                    : "border-sand-50/15 bg-sand-50/5 text-sand-50/70 hover:border-sand-50/30"
+              className={`group relative w-11 h-[4.25rem] sm:w-12 sm:h-[4.75rem] rounded-lg p-0.5 transition-transform hover:scale-105 focus:outline-none ${
+                isSelected ? "ring-2 ring-turq-400 ring-offset-2 ring-offset-ink-950" : ""
               }`}
             >
-              <span>{n}</span>
-              {meta && meta.value !== "healthy" && (
-                <span className="text-[9px] opacity-80">
+              <ToothSvg
+                archSide={archSide}
+                missing={finding?.condition === "missing"}
+                fill={fill}
+              />
+              <span className="absolute inset-x-0 top-0.5 text-center text-[9px] font-semibold text-sand-50/90 drop-shadow">
+                {n}
+              </span>
+              {meta && meta.value !== "healthy" && meta.value !== "missing" && (
+                <span className="absolute inset-x-0 bottom-0.5 text-center text-[8px] font-medium text-sand-50/85">
                   {meta.short}
                   {finding?.surfaces ? ` ${finding.surfaces}` : ""}
+                </span>
+              )}
+              {finding?.condition === "missing" && (
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-sand-50/50">
+                  ×
                 </span>
               )}
             </button>
@@ -317,5 +331,55 @@ function ArchRow({
         })}
       </div>
     </div>
+  );
+}
+
+function ToothSvg({
+  archSide,
+  missing,
+  fill,
+}: {
+  archSide: "upper" | "lower";
+  missing: boolean;
+  fill: { crown: string; root: string; stroke: string };
+}) {
+  const flip = archSide === "upper";
+  return (
+    <svg
+      viewBox="0 0 40 56"
+      className={`h-full w-full ${missing ? "opacity-35" : ""}`}
+      aria-hidden
+    >
+      <g transform={flip ? "translate(0 56) scale(1 -1)" : undefined}>
+        {/* Roots */}
+        <path
+          d="M14 28 C12 36 10 46 11 52 C12 54 14 54 15 52 C16 46 17 38 18 32 Z"
+          fill={fill.root}
+          stroke={fill.stroke}
+          strokeWidth="0.8"
+          opacity="0.95"
+        />
+        <path
+          d="M22 32 C23 38 24 46 25 52 C26 54 28 54 29 52 C30 46 28 36 26 28 Z"
+          fill={fill.root}
+          stroke={fill.stroke}
+          strokeWidth="0.8"
+          opacity="0.95"
+        />
+        {/* Crown */}
+        <path
+          d="M8 8 C8 3 14 1 20 1 C26 1 32 3 32 8 C33 14 31 22 28 26 C26 28 24 29 20 29 C16 29 14 28 12 26 C9 22 7 14 8 8 Z"
+          fill={fill.crown}
+          stroke={fill.stroke}
+          strokeWidth="1.2"
+        />
+        {/* Highlight */}
+        <path
+          d="M14 6 C15 4 18 3 20 3 C22 4 23 6 22 8 C20 9 16 8 14 6 Z"
+          fill="#ffffff"
+          opacity="0.18"
+        />
+      </g>
+    </svg>
   );
 }
