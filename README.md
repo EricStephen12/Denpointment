@@ -72,7 +72,9 @@ Then sign in with Clerk using that same email.
 ## Integrations
 
 - **Resend** — booking confirmations, appointment reminders, and payment receipts. Set `RESEND_API_KEY` and `EMAIL_FROM`. If unset, emails are skipped with a console warning (the app still works without it).
-- **Paystack** — patients pay treatment balance from **My Appointments**. Set `PAYSTACK_SECRET_KEY`, and register `/api/webhooks/paystack` in the Paystack dashboard.
+- **Paystack** — patients pay treatment balance from **My Appointments**. Set `PAYSTACK_SECRET_KEY`, and register webhook  
+  `https://denpointment-theta.vercel.app/api/webhooks/paystack`  
+  (this hub also forwards ecommerce `ORD-*` payments when `STORE_PAYSTACK_WEBHOOK_URL` is set).
 - **Cloudinary** — patient photos & X-rays. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 - **Reminder emails** — `GET /api/cron/reminders` emails patients with an appointment tomorrow. Scheduled via `vercel.json` on Vercel (set `CRON_SECRET`). You can also trigger the same URL from n8n on Railway.
 - **n8n (Railway)** — optional webhooks after booking, payment, and contact form (`N8N_WEBHOOK_*`).

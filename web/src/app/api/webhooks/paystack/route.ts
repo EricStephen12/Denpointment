@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendPaymentReceiptEmail } from "@/lib/email";
 import { notifyN8n } from "@/lib/n8n";
+import {
+  forwardPaystackWebhookToStore,
+  paystackReferenceTarget,
+} from "@/lib/paystack-webhook-hub";
 
 interface PaystackChargeSuccessEvent {
   event: string;
@@ -21,6 +25,38 @@ function isValidSignature(rawBody: string, signature: string | null, secretKey: 
   return timingSafeEqual(expectedBuf, signatureBuf);
 }
 
+async function markClinicTreatmentPaid(reference: string) {
+  const treatment = await prisma.treatment.findUnique({
+    where: { paystackRef: reference },
+    include: {
+      service: true,
+      appointment: { include: { patient: { include: { person: true } } } },
+    },
+  });
+
+  if (!treatment || treatment.paid) return;
+
+  await prisma.treatment.update({
+    where: { treatmentId: treatment.treatmentId },
+    data: { paid: true },
+  });
+
+  await sendPaymentReceiptEmail({
+    to: treatment.appointment.patient.person.email,
+    patientName: treatment.appointment.patient.person.firstName,
+    amount: treatment.charge,
+    serviceName: treatment.service?.name || treatment.action,
+  }).catch((err) => console.error("[email] receipt failed:", err));
+
+  notifyN8n("payment", {
+    patientName: `${treatment.appointment.patient.person.firstName} ${treatment.appointment.patient.person.lastName}`,
+    patientEmail: treatment.appointment.patient.person.email,
+    amount: treatment.charge,
+    serviceName: treatment.service?.name || treatment.action,
+    reference,
+  }).catch(() => undefined);
+}
+
 export async function POST(request: NextRequest) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY;
   if (!secretKey) {
@@ -34,35 +70,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const event = JSON.parse(rawBody) as PaystackChargeSuccessEvent;
+  let event: PaystackChargeSuccessEvent;
+  try {
+    event = JSON.parse(rawBody) as PaystackChargeSuccessEvent;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   if (event.event === "charge.success") {
-    const treatment = await prisma.treatment.findUnique({
-      where: { paystackRef: event.data.reference },
-      include: {
-        service: true,
-        appointment: { include: { patient: { include: { person: true } } } },
-      },
-    });
+    const reference = event.data?.reference;
+    const target = paystackReferenceTarget(reference);
 
-    if (treatment && !treatment.paid) {
-      await prisma.treatment.update({ where: { treatmentId: treatment.treatmentId }, data: { paid: true } });
-
-      await sendPaymentReceiptEmail({
-        to: treatment.appointment.patient.person.email,
-        patientName: treatment.appointment.patient.person.firstName,
-        amount: treatment.charge,
-        serviceName: treatment.service?.name || treatment.action,
-      }).catch((err) => console.error("[email] receipt failed:", err));
-
-      notifyN8n("payment", {
-        patientName: `${treatment.appointment.patient.person.firstName} ${treatment.appointment.patient.person.lastName}`,
-        patientEmail: treatment.appointment.patient.person.email,
-        amount: treatment.charge,
-        serviceName: treatment.service?.name || treatment.action,
-        reference: event.data.reference,
-      }).catch(() => undefined);
+    if (target === "store") {
+      try {
+        const forwarded = await forwardPaystackWebhookToStore(rawBody, signature!);
+        if (!forwarded.ok) {
+          const detail = await forwarded.text().catch(() => "");
+          console.error(
+            "[paystack-hub] store forward failed:",
+            forwarded.status,
+            detail.slice(0, 300),
+          );
+          // Tell Paystack to retry — store client verify still covers most cases.
+          return NextResponse.json({ error: "Store webhook failed" }, { status: 502 });
+        }
+        return NextResponse.json({ received: true, routed: "store" });
+      } catch (err) {
+        console.error("[paystack-hub] store forward error:", err);
+        return NextResponse.json({ error: "Store webhook not configured" }, { status: 502 });
+      }
     }
+
+    if (target === "clinic" && reference) {
+      await markClinicTreatmentPaid(reference);
+      return NextResponse.json({ received: true, routed: "clinic" });
+    }
+
+    // Unknown reference shape — ignore safely (other apps / test events).
+    console.warn("[paystack-hub] unhandled reference:", reference);
   }
 
   return NextResponse.json({ received: true });
