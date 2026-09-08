@@ -75,6 +75,51 @@ html {
   color: var(--color-ink-950);
 }
 
+/* ── Sleek modern scrollbars across the entire app ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(248, 246, 241, 0.15) transparent;
+}
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(248, 246, 241, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(248, 246, 241, 0.28);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* ── Grigoriak-inspired: full-bleed image helper ── */
 .img-bleed {
   display: block;
@@ -169,93 +214,103 @@ html {
   border-radius: 1rem;
 }
 .dash-surface {
-  background: rgba(248, 246, 241, 0.04);
-  border: 1px solid rgba(248, 246, 241, 0.08);
-  border-radius: 0.75rem;
+  background: rgba(18, 22, 28, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Tables */
 .dash-table-wrap {
   overflow-x: auto;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(248, 246, 241, 0.08);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 18, 24, 0.6);
+  backdrop-filter: blur(12px);
 }
 .dash-table {
   min-width: 100%;
   font-size: 0.875rem;
 }
 .dash-table thead {
-  background: rgba(248, 246, 241, 0.04);
+  background: rgba(255, 255, 255, 0.02);
 }
 .dash-table thead th {
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.25rem;
   text-align: left;
-  font-weight: 500;
-  color: rgba(248, 246, 241, 0.4);
-  border-bottom: 1px solid rgba(248, 246, 241, 0.08);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(248, 246, 241, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 .dash-table tbody tr {
-  border-bottom: 1px solid rgba(248, 246, 241, 0.06);
-  transition: background 0.15s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
 }
 .dash-table tbody tr:last-child {
   border-bottom: none;
 }
 .dash-table tbody tr:hover {
-  background: rgba(248, 246, 241, 0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 .dash-table td {
-  padding: 0.75rem 1rem;
-  color: rgba(248, 246, 241, 0.7);
+  padding: 1rem 1.25rem;
+  color: rgba(248, 246, 241, 0.75);
 }
 .dash-table td.td-primary {
   font-weight: 500;
   color: var(--color-sand-50);
 }
 .dash-table td.td-empty {
-  padding: 1.5rem 1rem;
+  padding: 2.5rem 1rem;
   text-align: center;
-  color: rgba(248, 246, 241, 0.3);
-  font-style: italic;
+  color: rgba(248, 246, 241, 0.35);
 }
 
 /* Text */
 .dash-label {
   font-size: 0.75rem;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(248, 246, 241, 0.4);
+  font-weight: 600;
+  color: rgba(248, 246, 241, 0.45);
 }
 .dash-title {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--color-sand-50);
 }
 .dash-body {
   font-size: 0.875rem;
-  color: rgba(248, 246, 241, 0.6);
+  color: rgba(248, 246, 241, 0.55);
 }
 
 /* Form inputs (dashboard dark) */
 .dash-input {
   width: 100%;
-  border: 1px solid rgba(248, 246, 241, 0.12);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.875rem;
   font-size: 0.875rem;
-  background: rgba(248, 246, 241, 0.06);
+  background: rgba(0, 0, 0, 0.35);
   color: var(--color-sand-50);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.15s ease;
 }
 .dash-input::placeholder {
   color: rgba(248, 246, 241, 0.25);
 }
 .dash-input:focus {
   outline: none;
-  border-color: var(--color-turq-500);
-  box-shadow: 0 0 0 3px rgba(36, 132, 115, 0.15);
+  border-color: var(--color-turq-400);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(52, 168, 148, 0.18);
 }
 .dash-input option {
-  background: var(--color-ink-900);
+  background: #0f131a;
   color: var(--color-sand-50);
 }
 
@@ -270,8 +325,9 @@ html {
 /* Icon badge */
 .dash-icon-badge {
   padding: 0.5rem;
-  border-radius: 0.5rem;
-  background: rgba(36, 132, 115, 0.15);
+  border-radius: 0.625rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -283,19 +339,23 @@ html {
   font-weight: 500;
   padding: 0.375rem 0.75rem;
   border-radius: 9999px;
-  background: var(--color-turq-600);
-  color: var(--color-ink-950);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-sand-50);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .dash-pill-inactive {
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.375rem 0.75rem;
   border-radius: 9999px;
-  background: rgba(248, 246, 241, 0.06);
-  color: rgba(248, 246, 241, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(248, 246, 241, 0.55);
+  transition: all 0.15s ease;
 }
 .dash-pill-inactive:hover {
-  background: rgba(248, 246, 241, 0.1);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--color-sand-50);
 }
 
@@ -411,4 +471,51 @@ html {
 /* Hide Clerk branding strip on our branded auth pages */
 .cl-footer .cl-buttonArrowIcon {
   display: none !important;
+}
+
+/* ── Clean Clinic Day-Sheet Print Rules ── */
+@media print {
+  aside,
+  header,
+  nav,
+  footer,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .dash-table-wrap,
+  table {
+    border: 1px solid #333333 !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    box-shadow: none !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #cccccc !important;
+    color: #111111 !important;
+    padding: 8px 12px !important;
+    background: transparent !important;
+  }
+
+  th {
+    background-color: #f4f4f5 !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 11px !important;
+  }
+
+  .dash-title,
+  h1, h2, h3, p {
+    color: #000000 !important;
+  }
 }

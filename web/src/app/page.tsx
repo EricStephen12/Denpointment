@@ -10,6 +10,7 @@ import MarketingFooter from "@/components/marketing/MarketingFooter";
 import TeamSection from "@/components/marketing/TeamSection";
 import Testimonials from "@/components/marketing/Testimonials";
 import PriceListSection from "@/components/marketing/PriceListSection";
+import WhatsAppWidget from "@/components/common/WhatsAppWidget";
 
 export const revalidate = 3600;
 
@@ -268,6 +269,7 @@ export default async function Home() {
         hoursLabel={site.hoursLabel}
         user={user}
       />
+      <WhatsAppWidget clinicName={site.clinicName} phone={site.phone} />
     </div>
   );
 }

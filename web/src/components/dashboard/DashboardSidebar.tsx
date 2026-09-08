@@ -9,9 +9,6 @@ import {
   Calendar,
   Clock,
   Users,
-  ShieldCheck,
-  Stethoscope,
-  Headset,
   Sparkles,
   CreditCard,
   Settings,
@@ -20,9 +17,9 @@ import {
   LogOut,
   X,
   ExternalLink,
-  ChevronRight,
-  Sun,
   Activity,
+  Sun,
+  Stethoscope,
 } from "lucide-react";
 import type { PersonWithRoles } from "@/lib/auth";
 import { logoutAction } from "@/app/actions/auth";
@@ -53,16 +50,16 @@ export default function DashboardSidebar({
     : "U";
 
   let primaryRoleLabel = "Patient";
-  let primaryRoleBadgeClass = "bg-emerald-950/50 text-emerald-300 border-emerald-500/30";
+  let primaryRoleBadgeClass = "bg-sand-50/5 text-sand-50/60 border-sand-50/10";
   if (isAdmin) {
     primaryRoleLabel = "Admin";
-    primaryRoleBadgeClass = "bg-purple-950/50 text-purple-300 border-purple-500/30";
+    primaryRoleBadgeClass = "bg-purple-500/10 text-purple-300 border-purple-500/20";
   } else if (isDentist) {
     primaryRoleLabel = `Dentist (Room ${user?.dentists?.[0]?.roomNumber || "1"})`;
-    primaryRoleBadgeClass = "bg-turq-950/50 text-turq-300 border-turq-500/30";
+    primaryRoleBadgeClass = "bg-turq-500/10 text-turq-300 border-turq-500/20";
   } else if (isReceptionist) {
     primaryRoleLabel = "Receptionist";
-    primaryRoleBadgeClass = "bg-blue-950/50 text-blue-300 border-blue-500/30";
+    primaryRoleBadgeClass = "bg-blue-500/10 text-blue-300 border-blue-500/20";
   }
 
   const handleLogout = async () => {
@@ -82,49 +79,34 @@ export default function DashboardSidebar({
     href,
     icon: Icon,
     label,
-    badge,
-    badgeColor = "bg-turq-500/20 text-turq-300",
   }: {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     label: string;
-    badge?: string;
-    badgeColor?: string;
   }) => {
     const active = isLinkActive(href);
     return (
       <Link
         href={href}
         onClick={onClose}
-        className={`group relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all duration-200 ${
+        className={`group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-[13px] font-medium transition-all duration-150 ${
           active
-            ? "bg-turq-600 text-ink-950 font-semibold shadow-lg shadow-turq-600/20"
-            : "text-sand-50/70 hover:text-sand-50 hover:bg-sand-50/[0.06]"
+            ? "bg-white/[0.08] text-sand-50 font-semibold border-l-2 border-turq-400 pl-3 shadow-sm"
+            : "text-sand-50/60 hover:text-sand-50 hover:bg-white/[0.04]"
         }`}
       >
-        <div className="flex items-center gap-3">
-          <Icon
-            className={`h-4 w-4 transition-transform duration-200 group-hover:scale-110 ${
-              active ? "text-ink-950" : "text-sand-50/50 group-hover:text-turq-400"
-            }`}
-          />
-          <span>{label}</span>
-        </div>
-        {badge && (
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-              active ? "bg-ink-950/20 text-ink-950" : badgeColor
-            }`}
-          >
-            {badge}
-          </span>
-        )}
+        <Icon
+          className={`h-4 w-4 transition-colors ${
+            active ? "text-turq-400" : "text-sand-50/40 group-hover:text-sand-50/80"
+          }`}
+        />
+        <span>{label}</span>
       </Link>
     );
   };
 
   const SectionLabel = ({ label }: { label: string }) => (
-    <div className="px-3 pt-5 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-sand-50/30">
+    <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sand-50/35">
       {label}
     </div>
   );
@@ -147,20 +129,20 @@ export default function DashboardSidebar({
         }`}
       >
         {/* Brand Header */}
-        <div className="h-20 px-6 flex items-center justify-between border-b border-sand-50/10 flex-shrink-0">
+        <div className="h-18 px-6 flex items-center justify-between border-b border-sand-50/10 flex-shrink-0">
           <Link
             href="/dashboard"
             onClick={onClose}
             className="flex items-center gap-3 group"
           >
-            <div className="p-2.5 bg-turq-600/20 border border-turq-500/30 rounded-xl group-hover:bg-turq-600/30 transition-all shadow-md shadow-turq-600/10">
-              <Stethoscope className="h-5 w-5 text-turq-400" />
+            <div className="p-2 rounded-xl bg-turq-500/10 border border-turq-500/20 text-turq-400 group-hover:bg-turq-500/15 transition-all">
+              <Stethoscope className="h-4 w-4" />
             </div>
             <div>
-              <span className="font-display text-lg font-bold text-sand-50 tracking-tight block leading-none">
+              <span className="font-display text-base font-bold text-sand-50 tracking-tight block leading-none">
                 {clinicName}
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-[0.16em] text-turq-400/80 mt-1 block">
+              <span className="text-[10px] uppercase font-semibold tracking-wider text-sand-50/40 mt-1 block">
                 Practice Portal
               </span>
             </div>
@@ -176,18 +158,12 @@ export default function DashboardSidebar({
           </button>
         </div>
 
-        {/* Navigation Content (Scrollable) */}
+        {/* Navigation Content (Scrollable with subtle custom scrollbar) */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 custom-scrollbar">
           {/* Main Group */}
           <SectionLabel label="General" />
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Overview" />
-          <NavItem
-            href="/dashboard/book"
-            icon={CalendarPlus}
-            label="Book Appointment"
-            badge="Quick"
-            badgeColor="bg-turq-500/20 text-turq-300"
-          />
+          <NavItem href="/dashboard/book" icon={CalendarPlus} label="Book Appointment" />
           {isPurePatient && (
             <NavItem
               href="/dashboard/appointments"
@@ -203,16 +179,12 @@ export default function DashboardSidebar({
               <NavItem
                 href="/dashboard/admin/staff"
                 icon={Users}
-                label="Staff & Roles"
-                badge="Roles"
-                badgeColor="bg-purple-500/20 text-purple-300"
+                label="Staff & Permissions"
               />
               <NavItem
                 href="/dashboard/admin/automations"
                 icon={Sparkles}
                 label="Automations & Email"
-                badge="Resend"
-                badgeColor="bg-emerald-500/20 text-emerald-300"
               />
               <NavItem
                 href="/dashboard/admin/billing"
@@ -321,7 +293,7 @@ export default function DashboardSidebar({
         {/* User Card & Sign Out Footer */}
         <div className="p-4 border-t border-sand-50/10 bg-black/40 flex-shrink-0">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-turq-600 to-turq-400 text-ink-950 flex items-center justify-center font-bold text-sm shadow-md flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-turq-500/15 border border-turq-500/25 text-turq-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -333,7 +305,7 @@ export default function DashboardSidebar({
               </div>
               <div className="mt-1">
                 <span
-                  className={`inline-block text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border ${primaryRoleBadgeClass}`}
+                  className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium border ${primaryRoleBadgeClass}`}
                 >
                   {primaryRoleLabel}
                 </span>
@@ -345,7 +317,7 @@ export default function DashboardSidebar({
             type="button"
             disabled={isLoggingOut}
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-950/40 border border-red-900/30 transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-sand-50/60 hover:text-red-400 hover:bg-red-950/20 border border-sand-50/10 hover:border-red-900/30 transition-all disabled:opacity-50"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>

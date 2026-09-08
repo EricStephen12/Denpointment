@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import type { PersonWithRoles } from '@/lib/auth';
 import { getClinicDay } from '@/lib/clinic-date';
 
+import { formatNaira } from '@/lib/currency';
+
 export default async function AdminDashboard({ user }: { user?: PersonWithRoles } = {}) {
   const today = getClinicDay();
 
@@ -25,7 +27,7 @@ export default async function AdminDashboard({ user }: { user?: PersonWithRoles 
     { label: 'Pending Payments', value: unpaidCount.toString(), href: '/dashboard/admin/billing' },
     {
       label: 'Total Revenue',
-      value: `₦${(totalRevenue / 100).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`,
+      value: formatNaira(totalRevenue),
       href: '/dashboard/admin/billing',
     },
   ];

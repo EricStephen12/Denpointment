@@ -10,6 +10,7 @@ import { statusMeta } from "@/lib/appointment-status";
 import PrescriptionFields from "@/components/dashboards/PrescriptionFields";
 import VisitStatusSelect from "@/components/dashboards/VisitStatusSelect";
 import TreatmentEditor from "@/components/dashboards/TreatmentEditor";
+import PrintScheduleButton from "@/components/common/PrintScheduleButton";
 import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
@@ -57,16 +58,19 @@ export default async function TodaysAppointmentsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="dash-icon-badge">
-          <CalendarCheck className="h-5 w-5 text-turq-400" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="dash-icon-badge">
+            <CalendarCheck className="h-5 w-5 text-turq-400" />
+          </div>
+          <div>
+            <h1 className="dash-title font-display">Today&apos;s Appointments</h1>
+            <p className="dash-body mt-0.5">
+              {formatAppointmentDate({ year, month, day })} · Abuja time
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="dash-title font-display">Today&apos;s Appointments</h1>
-          <p className="dash-body mt-0.5">
-            {formatAppointmentDate({ year, month, day })} · Abuja time
-          </p>
-        </div>
+        <PrintScheduleButton />
       </div>
 
       {/* At-a-glance grid */}
