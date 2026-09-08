@@ -76,9 +76,10 @@ export async function signupAction(formData: FormData) {
   // Check if email already registered
   const existing = await prisma.person.findUnique({
     where: { email },
+    include: rolesInclude,
   });
 
-  if (existing) {
+  if (existing && existing.password) {
     return {
       error: "An account with this email already exists. Please log in instead.",
     };
@@ -87,6 +88,44 @@ export async function signupAction(formData: FormData) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   try {
+    if (existing && !existing.password) {
+      // User was pre-provisioned (e.g. staff invited by admin, or existing patient record without login)
+      await prisma.$transaction(async (tx) => {
+        await tx.person.update({
+          where: { personId: existing.personId },
+          data: {
+            password: hashedPassword,
+            firstName: firstName || existing.firstName,
+            lastName: lastName || existing.lastName,
+          },
+        });
+
+        if (phone) {
+          const formattedPhone = phone.replace(/[^0-9+]/g, "").slice(0, 15);
+          const hasPhone = existing.contacts?.some((c) => c.contactNumber === formattedPhone);
+          if (!hasPhone) {
+            await tx.personContactNumber.create({
+              data: { personId: existing.personId, contactNumber: formattedPhone },
+            });
+          }
+        }
+      });
+
+      let role = "patient";
+      if (existing.admins.length > 0) role = "admin";
+      else if (existing.dentists.length > 0) role = "dentist";
+      else if (existing.receptionists.length > 0) role = "receptionist";
+
+      await createSession({
+        personId: existing.personId,
+        email: existing.email,
+        name: `${firstName || existing.firstName} ${lastName || existing.lastName}`.trim(),
+        role,
+      });
+
+      return { success: true, redirectUrl };
+    }
+
     const created = await prisma.$transaction(async (tx) => {
       const person = await tx.person.create({
         data: {

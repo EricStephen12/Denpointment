@@ -9,7 +9,7 @@
  *   - ORD-*        → forwarded to STORE_PAYSTACK_WEBHOOK_URL (ecommerce)
  *
  * Both apps still verify payments on their own callback paths if this hub
- * or the forward fails — n8n is not involved.
+ * or the forward fails.
  */
 
 export function paystackReferenceTarget(

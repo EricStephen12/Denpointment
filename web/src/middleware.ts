@@ -4,6 +4,7 @@ import { jwtVerify } from "jose";
 
 const SECRET_KEY =
   process.env.AUTH_SECRET ||
+  process.env.JWT_SECRET ||
   "denpointment_secret_key_change_in_production_min32chars!";
 const key = new TextEncoder().encode(SECRET_KEY);
 

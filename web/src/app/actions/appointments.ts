@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist } from "@/lib/auth";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
 import { compareCalendarDays, getClinicDay, toDateKey } from "@/lib/clinic-date";
-import { notifyN8n } from "@/lib/n8n";
 
 // Action to book a new appointment.
 // Patients book for themselves; receptionists can book on behalf of any patient.
@@ -157,7 +156,7 @@ export async function bookAppointment(formData: FormData) {
   if (patient) {
     const dentistName = `${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`;
 
-    // Best-effort — a failed email/automation should never block a successful booking.
+    // Best-effort — a failed email should never block a successful booking.
     sendAppointmentConfirmationEmail({
       to: patient.person.email,
       patientName: patient.person.firstName,
@@ -167,17 +166,6 @@ export async function bookAppointment(formData: FormData) {
       hour,
       serviceName: service?.name,
     }).catch((err) => console.error("[email] confirmation failed:", err));
-
-    notifyN8n("booking", {
-      patientName: `${patient.person.firstName} ${patient.person.lastName}`,
-      patientEmail: patient.person.email,
-      dentistName,
-      room: assignedDentist.roomNumber,
-      date: toDateKey(bookedDay),
-      hour,
-      serviceName: service?.name,
-      staffBooking,
-    }).catch(() => undefined);
   }
 
   revalidatePath('/dashboard');
