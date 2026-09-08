@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useMemo, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { formatNaira } from "@/lib/currency";
 
 /* ── Types ── */
 interface SlotMap {
@@ -10,18 +11,26 @@ interface SlotMap {
   [dateKey: string]: number[];
 }
 
+export interface BookingService {
+  serviceId: number;
+  name: string;
+  price: number;
+}
+
 interface BookingCalendarProps {
   /** Pre-computed available slots for the next N months */
   slots: SlotMap;
-  /** Clinic working days (0=Sun … 6=Sat) */
-  workingDays: number[];
-  openHour: number;
-  closeHour: number;
   clinicAddress: string;
   /** For staff booking on behalf of a patient */
   patientId?: string;
   isStaffBooking?: boolean;
   patients?: { patientId: number; name: string; email: string }[];
+  /** Available clinical services for selection */
+  services?: BookingService[];
+  /** Initial pre-selected service name (e.g. from price list click) */
+  initialServiceName?: string;
+  /** Existing contact phone if already on file */
+  defaultPhone?: string;
   /** Server action to call on form submit */
   bookAction: (formData: FormData) => Promise<void>;
 }
@@ -47,13 +56,13 @@ function formatTime(h: number): string {
 
 export default function BookingCalendar({
   slots,
-  workingDays,
-  openHour,
-  closeHour,
   clinicAddress,
   patientId,
   isStaffBooking,
   patients,
+  services = [],
+  initialServiceName,
+  defaultPhone,
   bookAction,
 }: BookingCalendarProps) {
   const today = useMemo(() => new Date(), []);
@@ -62,6 +71,32 @@ export default function BookingCalendar({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState(patientId || "");
+  const [phone, setPhone] = useState(defaultPhone || "");
+
+  // Find initial service matching name if provided
+  const defaultServiceId = useMemo(() => {
+    if (!services || services.length === 0) return "";
+    if (initialServiceName) {
+      const match = services.find(
+        (s) =>
+          s.name.toLowerCase() === initialServiceName.toLowerCase() ||
+          s.name.toLowerCase().includes(initialServiceName.toLowerCase()) ||
+          initialServiceName.toLowerCase().includes(s.name.toLowerCase()),
+      );
+      if (match) return match.serviceId.toString();
+    }
+    const consultation = services.find(
+      (s) => s.name.toLowerCase() === "consultation"
+    );
+    return consultation ? consultation.serviceId.toString() : services[0].serviceId.toString();
+  }, [services, initialServiceName]);
+
+  const [selectedServiceId, setSelectedServiceId] = useState<string>(defaultServiceId);
+  const selectedService = useMemo(
+    () => services.find((s) => s.serviceId.toString() === selectedServiceId),
+    [services, selectedServiceId],
+  );
+
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -143,11 +178,22 @@ export default function BookingCalendar({
     if (!selectedDate || selectedHour === null) return;
     if (isStaffBooking && !selectedPatientId) return;
 
+    if (!isStaffBooking && !phone.trim()) {
+      setError("Please enter your phone number so we can confirm your appointment.");
+      return;
+    }
+
     const formData = new FormData();
     formData.set("date", selectedDate);
     formData.set("hour", selectedHour.toString());
+    if (selectedServiceId) {
+      formData.set("serviceId", selectedServiceId);
+    }
     if (isStaffBooking && selectedPatientId) {
       formData.set("patientId", selectedPatientId);
+    }
+    if (!isStaffBooking && phone.trim()) {
+      formData.set("phone", phone.trim());
     }
 
     setError(null);
@@ -192,18 +238,47 @@ export default function BookingCalendar({
       {/* Staff: patient selector */}
       {isStaffBooking && patients && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-sand-50/60 tracking-wide">
+          <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
             Patient
           </label>
           <select
             value={selectedPatientId}
             onChange={(e) => setSelectedPatientId(e.target.value)}
-            className="input-premium"
+            style={{ colorScheme: "dark" }}
+            className="input-premium !bg-ink-900 !text-sand-50"
           >
-            <option value="">Select a patient…</option>
+            <option value="" className="bg-ink-900 text-sand-50">Select a patient…</option>
             {patients.map((p) => (
-              <option key={p.patientId} value={p.patientId}>
+              <option key={p.patientId} value={p.patientId} className="bg-ink-900 text-sand-50">
                 {p.name} ({p.email})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Procedure / Treatment Selector */}
+      {services && services.length > 0 && (
+        <div id="booking-procedure-selector" className="space-y-2 scroll-mt-20">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
+              Procedure / Reason for Visit
+            </label>
+            {selectedService && (
+              <span className="text-xs font-display text-turq-300">
+                {formatNaira(selectedService.price)}
+              </span>
+            )}
+          </div>
+          <select
+            value={selectedServiceId}
+            onChange={(e) => setSelectedServiceId(e.target.value)}
+            style={{ colorScheme: "dark" }}
+            className="input-premium !bg-ink-900 !text-sand-50 py-3.5 text-sm font-medium border-sand-50/15 focus:border-turq-400"
+          >
+            {services.map((s) => (
+              <option key={s.serviceId} value={s.serviceId} className="bg-ink-900 text-sand-50 py-2">
+                {s.name} — {formatNaira(s.price)}
               </option>
             ))}
           </select>
@@ -345,6 +420,20 @@ export default function BookingCalendar({
                         <p className="text-xs font-medium text-turq-400 uppercase tracking-widest">
                           Booking Summary
                         </p>
+                        {selectedService && (
+                          <div className="flex items-start gap-3 pb-3 border-b border-sand-50/10">
+                            <Sparkles className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
+                            <div className="flex-1 flex items-baseline justify-between gap-2">
+                              <div>
+                                <p className="text-xs uppercase tracking-wider text-sand-50/50">Procedure</p>
+                                <p className="text-sm font-medium text-sand-50">{selectedService.name}</p>
+                              </div>
+                              <span className="text-sm font-display text-turq-300">
+                                {formatNaira(selectedService.price)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-start gap-3">
                           <Clock className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                           <div>
@@ -356,6 +445,25 @@ export default function BookingCalendar({
                           <MapPin className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                           <p className="text-sm text-sand-50/50">{clinicAddress}</p>
                         </div>
+
+                        {!isStaffBooking && (
+                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
+                              Contact Phone Number
+                            </label>
+                            <input
+                              type="tel"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              placeholder="+234 801 234 5678"
+                              required
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
+                            />
+                            <p className="text-[11px] text-sand-50/40">
+                              We&apos;ll send your booking confirmation & reminder to this number.
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       <button

@@ -1,48 +1,56 @@
 import { Gender, PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { DEFAULT_SERVICES } from "../src/lib/constants";
 
 const prisma = new PrismaClient();
 
 /**
- * Bootstraps the first admin account (and optional clinic defaults).
+ * Bootstraps the first admin account (and clinic defaults).
  *
  * Usage:
- *   SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_FIRST=Ada SEED_ADMIN_LAST=Admin npx prisma db seed
- *
- * After seeding, sign up / sign in with Clerk using that same email —
- * getCurrentPerson() will link the Clerk user to this admin row.
+ *   npx tsx prisma/seed.ts
+ * Or customize via env vars:
+ *   SEED_ADMIN_EMAIL=you@example.com SEED_ADMIN_PASSWORD=YourPassword123! npx tsx prisma/seed.ts
  */
 async function main() {
-  const email = (process.env.SEED_ADMIN_EMAIL || "").trim().toLowerCase();
-  if (!email) {
-    throw new Error(
-      "Set SEED_ADMIN_EMAIL to the email you'll use with Clerk (e.g. SEED_ADMIN_EMAIL=you@clinic.com).",
-    );
-  }
-
+  const email = (process.env.SEED_ADMIN_EMAIL || "admin@glowdental.com").trim().toLowerCase();
+  const rawPassword = process.env.SEED_ADMIN_PASSWORD || "Admin123!";
   const firstName = (process.env.SEED_ADMIN_FIRST || "Clinic").trim();
   const lastName = (process.env.SEED_ADMIN_LAST || "Admin").trim();
+
+  const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
   const existing = await prisma.person.findUnique({
     where: { email },
     include: { admins: true },
   });
 
-  if (existing?.admins.length) {
-    console.log(`Admin already exists for ${email} — nothing to do.`);
-  } else if (existing) {
-    await prisma.admin.create({ data: { personId: existing.personId } });
-    console.log(`Granted admin role to existing person ${email}.`);
+  if (existing) {
+    await prisma.person.update({
+      where: { personId: existing.personId },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    if (!existing.admins.length) {
+      await prisma.admin.create({ data: { personId: existing.personId } });
+      console.log(`Granted admin role and updated password for existing person ${email}.`);
+    } else {
+      console.log(`Updated password for existing admin ${email}.`);
+    }
   } else {
     const person = await prisma.person.create({
       data: {
         email,
+        password: hashedPassword,
         firstName,
         lastName,
         gender: Gender.female,
         admins: { create: {} },
       },
     });
-    console.log(`Created admin person #${person.personId} for ${email}.`);
+    console.log(`Created admin person #${person.personId} for ${email} with password.`);
   }
 
   await prisma.clinicSettings.upsert({
@@ -51,19 +59,21 @@ async function main() {
     create: { id: 1, openHour: 8, closeHour: 18, workingDays: [1, 2, 3, 4, 5, 6] },
   });
 
-  const serviceCount = await prisma.service.count();
-  if (serviceCount === 0) {
-    await prisma.service.createMany({
-      data: [
-        { name: "Consultation", price: 10000 },
-        { name: "Cleaning", price: 25000 },
-        { name: "Whitening", price: 65000 },
-      ],
-    });
-    console.log("Seeded default services.");
+  for (const service of DEFAULT_SERVICES) {
+    const existing = await prisma.service.findFirst({ where: { name: service.name } });
+    if (!existing) {
+      await prisma.service.create({ data: { name: service.name, price: service.price } });
+      console.log(`Added service: ${service.name} (${service.price})`);
+    } else if (existing.price !== service.price) {
+      await prisma.service.update({
+        where: { serviceId: existing.serviceId },
+        data: { price: service.price },
+      });
+      console.log(`Updated service price: ${service.name} -> ${service.price}`);
+    }
   }
 
-  console.log("Seed complete. Sign in with Clerk using that email to activate the admin account.");
+  console.log("Seed complete.");
 }
 
 main()

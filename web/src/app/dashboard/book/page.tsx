@@ -109,7 +109,7 @@ async function buildSlotMap(
 export default async function BookAppointmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ patientId?: string }>;
+  searchParams: Promise<{ patientId?: string; service?: string }>;
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
@@ -119,11 +119,16 @@ export default async function BookAppointmentPage({
     redirect("/dashboard");
   }
 
-  const { patientId } = await searchParams;
+  const { patientId, service } = await searchParams;
 
-  const [dentists, settings] = await Promise.all([
+  const [dentists, settings, rawServices] = await Promise.all([
     prisma.dentist.findMany({ select: { dentistId: true } }),
     prisma.clinicSettings.findUnique({ where: { id: 1 } }),
+    prisma.service.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: { serviceId: true, name: true, price: true },
+    }),
   ]);
 
   const openHour = settings?.openHour ?? 8;
@@ -150,15 +155,12 @@ export default async function BookAppointmentPage({
 
   const site = await getSiteContent();
 
-  // Patients must complete address + phone before they can book.
-  let profileIncomplete = false;
-  if (!staffBooking && isPatient(dbUser)) {
-    const profile = await prisma.person.findUnique({
-      where: { personId: dbUser.personId },
-      include: { addresses: true, contacts: true },
-    });
-    profileIncomplete = !profile || profile.addresses.length === 0 || profile.contacts.length === 0;
-  }
+  const userContact = isPatient(dbUser)
+    ? await prisma.personContactNumber.findFirst({
+        where: { personId: dbUser.personId },
+        select: { contactNumber: true },
+      })
+    : null;
 
   return (
     <div className="max-w-xl mx-auto">
@@ -181,35 +183,7 @@ export default async function BookAppointmentPage({
         </p>
       </div>
 
-      {profileIncomplete ? (
-        <div className="dash-surface p-6 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="dash-icon-badge">
-              <Calendar className="h-5 w-5 text-turq-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-display text-sand-50">Complete your profile first</h2>
-              <p className="text-sm text-sand-50/50 mt-1">
-                Add an address and a phone number so the clinic can reach you about your visit.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/profile/add-address"
-              className="bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors"
-            >
-              Add address
-            </Link>
-            <Link
-              href="/dashboard/profile/add-phone"
-              className="border border-sand-50/20 text-sand-50 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-sand-50/8 transition-colors"
-            >
-              Add phone
-            </Link>
-          </div>
-        </div>
-      ) : dentists.length === 0 ? (
+      {dentists.length === 0 ? (
         <div className="dash-surface p-6 space-y-2">
           <h2 className="text-lg font-display text-sand-50">No dentists available</h2>
           <p className="text-sm text-sand-50/50">
@@ -219,13 +193,13 @@ export default async function BookAppointmentPage({
       ) : (
         <BookingCalendar
           slots={slots}
-          workingDays={workingDays}
-          openHour={openHour}
-          closeHour={closeHour}
           clinicAddress={site.address}
           patientId={patientId}
           isStaffBooking={staffBooking}
           patients={patients}
+          services={rawServices}
+          initialServiceName={service}
+          defaultPhone={userContact?.contactNumber}
           bookAction={bookAppointment}
         />
       )}

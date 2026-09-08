@@ -484,3 +484,50 @@ model HolidayDate {
 
   @@map("holiday_dates")
 }
+
+// Singleton row (id = 1) holding email automation preferences & greeting templates.
+model AutomationSettings {
+  id                 Int      @id @default(1)
+  birthdayEnabled    Boolean  @default(true) @map("birthday_enabled")
+  birthdaySubject    String   @default("Wishing You a Very Happy Birthday!") @map("birthday_subject") @db.VarChar(150)
+  birthdayMessage    String?  @map("birthday_message") @db.Text
+
+  anniversaryEnabled Boolean  @default(true) @map("anniversary_enabled")
+  anniversarySubject String   @default("Happy Smile Anniversary!") @map("anniversary_subject") @db.VarChar(150)
+  anniversaryMessage String?  @map("anniversary_message") @db.Text
+
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("automation_settings")
+}
+
+// History of one-to-many broadcasts and promotional campaigns.
+model BroadcastCampaign {
+  id             Int      @id @default(autoincrement()) @map("id")
+  title          String   @db.VarChar(120)
+  subject        String   @db.VarChar(150)
+  headline       String?  @db.VarChar(150)
+  content        String   @db.Text
+  category       String   @default("broadcast") @db.VarChar(30) // "broadcast" or "promo"
+  targetAudience String   @default("all") @map("target_audience") @db.VarChar(50)
+  ctaLabel       String?  @map("cta_label") @db.VarChar(50)
+  ctaUrl         String?  @map("cta_url") @db.VarChar(255)
+  recipientCount Int      @default(0) @map("recipient_count")
+  sentAt         DateTime @default(now()) @map("sent_at")
+  status         String   @default("sent") @db.VarChar(20)
+
+  @@map("broadcast_campaigns")
+}
+
+// Year-based deduplication log ensuring patients receive at most one birthday and one anniversary greeting per year.
+model AutomationDispatchLog {
+  id       Int      @id @default(autoincrement())
+  personId Int      @map("person_id")
+  type     String   @db.VarChar(30) // "birthday" | "anniversary"
+  year     Int
+  sentAt   DateTime @default(now()) @map("sent_at")
+
+  @@unique([personId, type, year])
+  @@map("automation_dispatch_logs")
+}
+

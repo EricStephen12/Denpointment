@@ -8,12 +8,12 @@ import { formatAppointmentDate } from "@/lib/clinic-date";
 export default async function BookingSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; hour?: string; room?: string }>;
+  searchParams: Promise<{ date?: string; hour?: string; room?: string; service?: string }>;
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
 
-  const { date, hour, room } = await searchParams;
+  const { date, hour, room, service } = await searchParams;
 
   if (!date || !hour) {
     redirect("/dashboard/appointments");
@@ -42,14 +42,29 @@ export default async function BookingSuccessPage({
       </div>
 
       <h1 className="text-4xl font-display text-sand-50 mb-4">
-        You're all set, {dbUser.firstName}!
+        You&apos;re all set, {dbUser.firstName}!
       </h1>
       <p className="text-sand-50/50 mb-10">
-        Your appointment has been confirmed. We've sent the details to your email.
+        Your appointment has been confirmed. We&apos;ve sent the details to your email.
       </p>
 
       {/* Details Card */}
       <div className="dash-card p-8 text-left mb-10 space-y-6">
+        {service && (
+          <>
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-turq-600/15 border border-turq-500/20 rounded-2xl shrink-0">
+                <CheckCircle className="h-6 w-6 text-turq-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-turq-300 uppercase tracking-widest mb-1">Procedure</p>
+                <p className="font-semibold text-sand-50 text-base">{service}</p>
+              </div>
+            </div>
+            <div className="w-full h-px bg-sand-50/8" />
+          </>
+        )}
+
         <div className="flex items-start gap-4">
           <div className="p-3 bg-sand-50/8 rounded-2xl shrink-0">
             <CalendarIcon className="h-6 w-6 text-turq-400" />

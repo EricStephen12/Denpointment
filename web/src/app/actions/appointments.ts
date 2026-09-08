@@ -27,14 +27,28 @@ export async function bookAppointment(formData: FormData) {
     patientId = dbPerson.patients[0].patientId;
   }
 
-  // Patients must have an address and phone before booking (staff bookings skip this).
+  // Patients need a phone number for appointment confirmation.
+  // We accept it directly from the booking calendar if not yet saved on profile.
   if (!staffBooking) {
     const profile = await prisma.patient.findUnique({
       where: { patientId },
-      include: { person: { include: { addresses: true, contacts: true } } },
+      include: { person: { include: { contacts: true } } },
     });
-    if (!profile || profile.person.addresses.length === 0 || profile.person.contacts.length === 0) {
-      throw new Error("Please add an address and phone number on your profile before booking.");
+
+    const formPhone = (formData.get("phone") as string || "").trim();
+    const hasContact = profile && profile.person.contacts.length > 0;
+
+    if (!hasContact) {
+      if (!formPhone) {
+        throw new Error("Please enter your phone number so the clinic can confirm your booking.");
+      }
+      // Save phone number directly to patient's profile in background
+      await prisma.personContactNumber.create({
+        data: {
+          personId: profile!.personId,
+          contactNumber: formPhone.replace(/[^0-9+]/g, "").slice(0, 15),
+        },
+      });
     }
   }
 
@@ -74,42 +88,39 @@ export async function bookAppointment(formData: FormData) {
     throw new Error("The clinic is closed on the selected day.");
   }
 
-  // Find an available dentist for this slot
-  const allDentists = await prisma.dentist.findMany({ include: { person: true } });
-  let assignedDentist = null;
-
-  for (const dentist of allDentists) {
-    // Check if dentist is on holiday
-    const onHoliday = await prisma.holidayDate.findFirst({
-      where: { restingId: dentist.dentistId, restDate: new Date(year, month - 1, day) },
-    });
-    
-    if (onHoliday) continue;
-
-    // Check if dentist already has an appointment at this hour
-    const existingAppointment = await prisma.appointment.findFirst({
-      where: {
-        dId: dentist.dentistId,
-        year,
-        month,
-        day,
-        hour
-      }
-    });
-
-    if (!existingAppointment) {
-      assignedDentist = dentist;
-      break;
-    }
-  }
+  // Find an available dentist for this slot (optimized single query, ignores cancelled bookings)
+  const holidayDateMidnight = new Date(Date.UTC(year, month - 1, day));
+  const assignedDentist = await prisma.dentist.findFirst({
+    where: {
+      holidays: {
+        none: {
+          restDate: holidayDateMidnight,
+        },
+      },
+      appointments: {
+        none: {
+          year,
+          month,
+          day,
+          hour,
+          status: { not: "cancelled" },
+        },
+      },
+    },
+    include: { person: true },
+  });
 
   if (!assignedDentist) {
     throw new Error("Sorry, no dentists are available at this time. Please pick another slot.");
   }
 
+  const serviceIdRaw = formData.get("serviceId") as string | null;
+  const serviceId = serviceIdRaw ? parseInt(serviceIdRaw, 10) : null;
+  const service = serviceId ? await prisma.service.findUnique({ where: { serviceId } }) : null;
+
   let patient;
   try {
-    await prisma.appointment.create({
+    const createdAppointment = await prisma.appointment.create({
       data: {
         pId: patientId,
         dId: assignedDentist.dentistId,
@@ -120,6 +131,21 @@ export async function bookAppointment(formData: FormData) {
         room: assignedDentist.roomNumber,
       }
     });
+
+    if (service) {
+      await prisma.treatment.create({
+        data: {
+          aId: createdAppointment.appointmentId,
+          treatorId: assignedDentist.dentistId,
+          serviceId: service.serviceId,
+          action: service.name,
+          complaint: `Booked Procedure: ${service.name}`,
+          charge: service.price,
+          paid: false,
+        }
+      });
+    }
+
     patient = await prisma.patient.findUnique({ where: { patientId }, include: { person: true } });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -139,6 +165,7 @@ export async function bookAppointment(formData: FormData) {
       room: assignedDentist.roomNumber,
       date: bookedDay,
       hour,
+      serviceName: service?.name,
     }).catch((err) => console.error("[email] confirmation failed:", err));
 
     notifyN8n("booking", {
@@ -148,6 +175,7 @@ export async function bookAppointment(formData: FormData) {
       room: assignedDentist.roomNumber,
       date: toDateKey(bookedDay),
       hour,
+      serviceName: service?.name,
       staffBooking,
     }).catch(() => undefined);
   }
@@ -159,7 +187,8 @@ export async function bookAppointment(formData: FormData) {
     redirect('/dashboard');
   } else {
     const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    redirect(`/dashboard/book/success?date=${dateString}&hour=${hour}&room=${assignedDentist.roomNumber}`);
+    const serviceParam = service ? `&service=${encodeURIComponent(service.name)}` : '';
+    redirect(`/dashboard/book/success?date=${dateString}&hour=${hour}&room=${assignedDentist.roomNumber}${serviceParam}`);
   }
 }
 
@@ -186,22 +215,4 @@ export async function cancelAppointment(formData: FormData) {
 
   revalidatePath('/dashboard/appointments');
   revalidatePath('/dashboard');
-}
-
-// Action to retrieve upcoming appointments for a patient
-export async function getUpcomingAppointments(patientId: number) {
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      pId: patientId,
-    },
-    include: {
-      dentist: {
-        include: {
-          person: true
-        }
-      }
-    }
-  });
-
-  return appointments;
 }

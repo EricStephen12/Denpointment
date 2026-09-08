@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { LEGAL_LAST_UPDATED } from "@/lib/constants";
 import { getSiteContent } from "@/lib/site";
+import { getCurrentPerson } from "@/lib/auth";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 
 export default async function PrivacyPolicyPage() {
-  const site = await getSiteContent();
+  const [site, user] = await Promise.all([
+    getSiteContent(),
+    getCurrentPerson(),
+  ]);
 
   return (
     <div className="min-h-screen bg-sand-50 text-ink-950 flex flex-col">
-      <MarketingHeader clinicName={site.clinicName} />
+      <MarketingHeader clinicName={site.clinicName} user={user} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-16">
         <h1 className="font-display text-4xl md:text-5xl mb-2">Privacy Policy</h1>
@@ -89,6 +93,7 @@ export default async function PrivacyPolicyPage() {
         address={site.address}
         phone={site.phone}
         hoursLabel={site.hoursLabel}
+        user={user}
       />
     </div>
   );

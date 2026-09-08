@@ -22,7 +22,6 @@ export async function markTreatmentPaid(formData: FormData) {
 
   await prisma.treatment.update({ where: { treatmentId }, data: { paid: !paid } });
 
-  revalidatePath("/dashboard/billing");
   revalidatePath("/dashboard/admin/billing");
 }
 

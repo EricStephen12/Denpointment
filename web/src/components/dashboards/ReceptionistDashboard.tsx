@@ -1,9 +1,35 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 import type { PersonWithRoles } from '@/lib/auth';
+import { getClinicDay } from '@/lib/clinic-date';
 
-export default function ReceptionistDashboard({ user }: { user: PersonWithRoles }) {
+export default async function ReceptionistDashboard({ user }: { user: PersonWithRoles }) {
+  const today = getClinicDay();
+
+  const [todayTotal, checkedIn, totalPatients] = await Promise.all([
+    prisma.appointment.count({
+      where: { year: today.year, month: today.month, day: today.day },
+    }),
+    prisma.appointment.count({
+      where: {
+        year: today.year, month: today.month, day: today.day,
+        OR: [{ status: 'checked_in' }, { status: 'in_chair' }, { checkedIn: true }],
+      },
+    }),
+    prisma.patient.count(),
+  ]);
+
+  const pending = todayTotal - checkedIn;
+
+  const stats = [
+    { label: "Today's Total", value: todayTotal.toString(), href: '/dashboard/treatments/today' },
+    { label: 'Checked In', value: checkedIn.toString(), href: '/dashboard/treatments/today' },
+    { label: 'Pending', value: pending.toString(), href: '/dashboard/treatments/today' },
+    { label: 'Total Patients', value: totalPatients.toLocaleString(), href: '/dashboard/patients' },
+  ];
+
   return (
     <div className="space-y-16">
       {/* Editorial greeting */}
@@ -15,6 +41,22 @@ export default function ReceptionistDashboard({ user }: { user: PersonWithRoles 
           WELCOME BACK, <br />
           <span className="italic text-turq-400">{user?.firstName}.</span>
         </h1>
+      </div>
+
+      {/* Live today stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
+        {stats.map(({ label, value, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="bg-ink-900 hover:bg-turq-600/10 transition-colors p-8 flex flex-col gap-4 group"
+          >
+            <span className="text-xs text-sand-50/40 tracking-[0.2em] uppercase">{label}</span>
+            <span className="font-display text-3xl md:text-4xl text-sand-50 group-hover:text-turq-400 transition-colors">
+              {value}
+            </span>
+          </Link>
+        ))}
       </div>
 
       <div className="border-t border-sand-50/10">

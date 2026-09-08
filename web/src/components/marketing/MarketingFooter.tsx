@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { SignOutButton, useAuth } from "@clerk/nextjs";
 import { CLINIC_NAME, CLINIC_ADDRESS, CLINIC_PHONE, CLINIC_HOURS } from "@/lib/constants";
+import type { PersonWithRoles } from "@/lib/auth";
+import { logoutAction } from "@/app/actions/auth";
 
 type Props = {
   clinicName?: string;
   address?: string;
   phone?: string;
   hoursLabel?: string;
+  user?: PersonWithRoles | null;
 };
 
 export default function MarketingFooter({
@@ -16,8 +18,9 @@ export default function MarketingFooter({
   address = CLINIC_ADDRESS,
   phone = CLINIC_PHONE,
   hoursLabel = CLINIC_HOURS,
+  user = null,
 }: Props) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const isSignedIn = !!user;
 
   return (
     <footer className="bg-ink-950 text-sand-50 pt-32 pb-12 px-6 md:px-12 border-t hairline">
@@ -40,6 +43,7 @@ export default function MarketingFooter({
             <h4 className="text-turq-300 text-xs tracking-[0.3em] uppercase mb-8">Explore</h4>
             <ul className="space-y-4 text-sm tracking-wide text-sand-50/70">
               <li><Link href="/#services" className="hover:text-turq-400 transition-colors">Services</Link></li>
+              <li><Link href="/#pricing" className="hover:text-turq-400 transition-colors">Price List</Link></li>
               <li><Link href="/#team" className="hover:text-turq-400 transition-colors">Our Dentists</Link></li>
               <li><Link href="/#testimonials" className="hover:text-turq-400 transition-colors">Testimonials</Link></li>
             </ul>
@@ -48,7 +52,7 @@ export default function MarketingFooter({
           <div className="md:col-span-4">
             <h4 className="text-turq-300 text-xs tracking-[0.3em] uppercase mb-8">Portal</h4>
             <ul className="space-y-4 text-sm tracking-wide text-sand-50/70">
-              {isLoaded && isSignedIn && (
+              {isSignedIn ? (
                 <>
                   <li>
                     <Link href="/dashboard" className="hover:text-turq-400 transition-colors">
@@ -56,23 +60,27 @@ export default function MarketingFooter({
                     </Link>
                   </li>
                   <li>
-                    <SignOutButton>
-                      <button type="button" className="hover:text-turq-400 transition-colors">
-                        Sign Out
-                      </button>
-                    </SignOutButton>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await logoutAction();
+                        window.location.href = "/";
+                      }}
+                      className="hover:text-turq-400 transition-colors cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
                   </li>
                 </>
-              )}
-              {isLoaded && !isSignedIn && (
+              ) : (
                 <>
                   <li>
-                    <Link href="/sign-up" className="hover:text-turq-400 transition-colors">
+                    <Link href="/dashboard/book" className="hover:text-turq-400 transition-colors">
                       Book Appointment
                     </Link>
                   </li>
                   <li>
-                    <Link href="/sign-in" className="hover:text-turq-400 transition-colors">
+                    <Link href="/login" className="hover:text-turq-400 transition-colors">
                       Patient Login
                     </Link>
                   </li>

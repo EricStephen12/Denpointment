@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
@@ -64,13 +65,23 @@ export default async function BillingPage({
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <a href="/dashboard/admin/billing" className={showUnpaidOnly ? 'dash-pill-active' : 'dash-pill-inactive'}>
-          Unpaid Only
-        </a>
-        <a href="/dashboard/admin/billing?filter=all" className={!showUnpaidOnly ? 'dash-pill-active' : 'dash-pill-inactive'}>
-          All Treatments
-        </a>
+      <div className="flex gap-2 mb-8">
+        <Link
+          href="/dashboard/admin/billing"
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-colors ${
+            !filter ? "bg-turq-600 text-ink-950" : "bg-sand-50/5 text-sand-50/70 hover:text-sand-50"
+          }`}
+        >
+          Unpaid only ({unpaidCount})
+        </Link>
+        <Link
+          href="/dashboard/admin/billing?filter=all"
+          className={`px-4 py-2 rounded-full text-xs font-medium transition-colors ${
+            filter === "all" ? "bg-turq-600 text-ink-950" : "bg-sand-50/5 text-sand-50/70 hover:text-sand-50"
+          }`}
+        >
+          All treatments ({treatments.length})
+        </Link>
       </div>
 
       <div className="dash-table-wrap">

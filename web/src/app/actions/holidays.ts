@@ -16,14 +16,18 @@ async function requireDentistId() {
 export async function addHoliday(formData: FormData) {
   const dentistId = await requireDentistId();
 
-  const dateStr = formData.get("date") as string;
-  const reason = (formData.get("reason") as string || "").trim();
-  if (!dateStr) throw new Error("Please select a date.");
+  const dateStr = (formData.get("date") as string) || "";
+  const reason = ((formData.get("reason") as string) || "").trim();
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!dateParts) throw new Error("Please select a valid date.");
+  const year = parseInt(dateParts[1], 10);
+  const month = parseInt(dateParts[2], 10);
+  const day = parseInt(dateParts[3], 10);
 
   await prisma.holidayDate.create({
     data: {
       restingId: dentistId,
-      restDate: new Date(dateStr),
+      restDate: new Date(Date.UTC(year, month - 1, day)),
       reason: reason || null,
     },
   });

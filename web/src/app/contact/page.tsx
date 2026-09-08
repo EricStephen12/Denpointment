@@ -116,6 +116,17 @@ export default async function ContactPage() {
                   </p>
                 </div>
               </div>
+
+              <div className="mt-10 relative w-full aspect-[16/10] overflow-hidden border border-sand-50/10">
+                <iframe
+                  title={`${site.clinicName} location`}
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(site.address)}&z=16&output=embed`}
+                  className="absolute inset-0 h-full w-full"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
             </Reveal>
           </div>
 

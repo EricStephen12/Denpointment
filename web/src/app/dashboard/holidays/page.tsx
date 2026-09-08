@@ -5,21 +5,24 @@ import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { addHoliday, deleteHoliday } from "@/app/actions/holidays";
 import { Palmtree, Trash2 } from 'lucide-react';
 
+import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
+
 export default async function HolidaysPage() {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
   if (!isDentist(dbUser)) redirect("/dashboard");
 
   const dentistId = dbUser.dentists[0].dentistId;
-  const now = new Date();
+  const today = getClinicDay();
+  const todayStart = new Date(Date.UTC(today.year, today.month - 1, today.day));
 
   const holidays = await prisma.holidayDate.findMany({
     where: { restingId: dentistId },
     orderBy: { restDate: 'asc' },
   });
 
-  const upcoming = holidays.filter((h) => h.restDate >= now);
-  const past = holidays.filter((h) => h.restDate < now).reverse();
+  const upcoming = holidays.filter((h) => h.restDate >= todayStart);
+  const past = holidays.filter((h) => h.restDate < todayStart).reverse();
 
   return (
     <div>
@@ -69,7 +72,13 @@ export default async function HolidaysPage() {
                 <tbody>
                   {upcoming.length > 0 ? upcoming.map((h) => (
                     <tr key={h.holidayId}>
-                      <td className="td-primary">{h.restDate.toLocaleDateString()}</td>
+                      <td className="td-primary">
+                        {formatAppointmentDate({
+                          year: h.restDate.getUTCFullYear(),
+                          month: h.restDate.getUTCMonth() + 1,
+                          day: h.restDate.getUTCDate(),
+                        })}
+                      </td>
                       <td>{h.reason || "—"}</td>
                       <td className="text-right">
                         <form action={deleteHoliday}>
@@ -101,7 +110,13 @@ export default async function HolidaysPage() {
                 <tbody>
                   {past.length > 0 ? past.map((h) => (
                     <tr key={h.holidayId}>
-                      <td>{h.restDate.toLocaleDateString()}</td>
+                      <td>
+                        {formatAppointmentDate({
+                          year: h.restDate.getUTCFullYear(),
+                          month: h.restDate.getUTCMonth() + 1,
+                          day: h.restDate.getUTCDate(),
+                        })}
+                      </td>
                       <td>{h.reason || "—"}</td>
                     </tr>
                   )) : (

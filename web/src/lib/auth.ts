@@ -1,6 +1,16 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
-import type { Admin, Address, ChronicDisease, Dentist, Patient, Person, PersonContactNumber, Receptionist } from "@prisma/client";
+import { getSession } from "@/lib/session";
+import type {
+  Admin,
+  Address,
+  ChronicDisease,
+  Dentist,
+  Patient,
+  Person,
+  PersonContactNumber,
+  Receptionist,
+} from "@prisma/client";
 
 export type PersonWithRoles = Person & {
   admins: Admin[];
@@ -17,45 +27,33 @@ const rolesInclude = {
   receptionists: true,
   dentists: true,
   patients: true,
+  contacts: true,
+  addresses: true,
 } as const;
 
 /**
- * Resolves the currently signed-in Clerk user to our internal Person record
- * (including their role rows). Returns null if the visitor isn't signed in,
- * or if they're signed in but haven't completed onboarding yet.
- *
- * If a staff member was pre-provisioned by an admin (a Person row exists
- * with a matching email but no clerkId yet), this links the account on
- * first login instead of treating them as a new patient.
+ * Resolves the currently signed-in user via encrypted HTTP-only session cookie.
+ * Wrapped in React.cache() so all layout, pages, and components in the request
+ * share a single database query.
  */
-export async function getCurrentPerson(): Promise<PersonWithRoles | null> {
-  const clerkUser = await currentUser();
-  if (!clerkUser) return null;
+export const getCurrentPerson = cache(
+  async (): Promise<PersonWithRoles | null> => {
+    const session = await getSession();
+    if (!session || !session.personId) return null;
 
-  const existing = await prisma.person.findUnique({
-    where: { clerkId: clerkUser.id },
-    include: rolesInclude,
-  });
-  if (existing) return existing;
+    try {
+      const person = await prisma.person.findUnique({
+        where: { personId: session.personId },
+        include: rolesInclude,
+      });
 
-  const email = clerkUser.emailAddresses[0]?.emailAddress;
-  if (!email) return null;
-
-  const pending = await prisma.person.findUnique({
-    where: { email },
-    include: rolesInclude,
-  });
-
-  if (pending && !pending.clerkId) {
-    return prisma.person.update({
-      where: { personId: pending.personId },
-      data: { clerkId: clerkUser.id },
-      include: rolesInclude,
-    });
+      return person;
+    } catch (err) {
+      console.error("getCurrentPerson error:", err);
+      return null;
+    }
   }
-
-  return null;
-}
+);
 
 export function isAdmin(person: PersonWithRoles | null) {
   return !!person && person.admins.length > 0;
@@ -72,3 +70,6 @@ export function isDentist(person: PersonWithRoles | null) {
 export function isPatient(person: PersonWithRoles | null) {
   return !!person && person.patients.length > 0;
 }
+
+// Re-export actions from dedicated 'use server' file
+export { loginAction, signupAction, logoutAction } from "@/app/actions/auth";

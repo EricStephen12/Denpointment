@@ -5,12 +5,10 @@ import { getCurrentPerson, isPatient } from "@/lib/auth";
 import { cancelAppointment } from "@/app/actions/appointments";
 import { initiateTreatmentPayment } from "@/app/actions/billing";
 import {
-  CalendarClock,
   X,
   CreditCard,
   MapPin,
   Clock,
-  User,
   Calendar,
   ArrowRight,
   Pill,
@@ -109,6 +107,18 @@ export default async function AppointmentsPage() {
                               Room {app.room}
                             </span>
                           </div>
+                          {app.treatments.length > 0 && (
+                            <div className="pt-1 flex flex-wrap gap-1.5">
+                              {app.treatments.map((t) => (
+                                <span
+                                  key={t.treatmentId}
+                                  className="text-[11px] font-medium text-turq-300 bg-turq-950/60 border border-turq-500/25 px-2.5 py-0.5 rounded-full"
+                                >
+                                  {t.action}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Right: dentist */}

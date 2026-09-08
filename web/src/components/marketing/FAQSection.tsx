@@ -40,12 +40,12 @@ export default function FAQSection({
     },
     {
       question: "WHAT SERVICES DO YOU OFFER?",
-      answer: `${clinicName} offers preventive care (exams and cleanings), cosmetic whitening, restorative dentistry (fillings, crowns), and general dental consultations. Contact us to discuss your specific needs.`,
+      answer: `${clinicName} offers preventive care, whitening, restorative work (fillings and crowns), braces/alignment consultations, and smile transformation including teeth replacement planning. Ask us about the pathway that fits you.`,
     },
     {
       question: "HOW CAN I PAY FOR TREATMENT?",
       answer:
-        "Payment can be made in-person at the clinic on the day of your visit. Online payment is also available through your patient portal after a treatment. We accept major payment methods.",
+        "Payment can be made in-person at the clinic on the day of your visit. Online payment is also available through your patient portal after a treatment. We accept major payment methods including Paystack.",
     },
   ];
 

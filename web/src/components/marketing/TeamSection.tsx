@@ -26,7 +26,7 @@ export default async function TeamSection() {
             <div className="md:col-span-7 flex items-end">
               <p className="text-sand-50/50 text-lg leading-relaxed max-w-lg">
                 Every dentist on staff is chosen as much for their bedside
-                manner as their clinical skill. You're in expert hands.
+                manner as their clinical skill. You&apos;re in expert hands.
               </p>
             </div>
           </div>
@@ -44,9 +44,6 @@ export default async function TeamSection() {
                     DR. {d.person.firstName} {d.person.lastName}
                   </h3>
                 </div>
-                <span className="text-sand-50/40 text-xs tracking-[0.2em] uppercase flex-shrink-0 ml-6 transition-all group-hover:text-turq-300">
-                  ROOM {d.roomNumber}
-                </span>
               </div>
             </Reveal>
           ))}
