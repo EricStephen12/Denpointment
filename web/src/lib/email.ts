@@ -357,4 +357,250 @@ export async function sendBroadcastEmail(params: {
   return { sent: Boolean(res?.success), simulated: false };
 }
 
+/**
+ * 1. Clinical Alert: Notify assigned dentist immediately when a patient schedules an appointment.
+ */
+export async function sendDentistNewAppointmentEmail(params: {
+  to: string;
+  dentistName: string;
+  patientName: string;
+  patientEmail: string;
+  room: string;
+  date: CalendarDay;
+  hour: number;
+  serviceName?: string;
+}) {
+  const { to, dentistName, patientName, patientEmail, room, date, hour, serviceName } = params;
+  const dateLabel = formatAppointmentDate(date);
+  const name = await clinicName();
+
+  await sendEmail(
+    to,
+    `New Appointment: ${patientName} (${dateLabel} at ${hour}:00) — ${name}`,
+    `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a; line-height: 1.5; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="border-bottom: 2px solid #248473; padding-bottom: 12px; margin-bottom: 20px;">
+          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0;">${name} · Clinical Desk</p>
+          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">New Patient Appointment</h2>
+        </div>
+        <p style="margin: 0 0 16px 0; color: #475569;">Hello <strong>Dr. ${dentistName}</strong>,</p>
+        <p style="margin: 0 0 16px 0; color: #475569;">A new appointment has been scheduled for your operatory:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 16px 0; background: #f8fafc; border-radius: 12px; border: 1px solid #edf2f7;">
+          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Patient</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">${patientName} &lt;${patientEmail}&gt;</td></tr>
+          ${serviceName ? `<tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Procedure</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px; color: #248473;">${serviceName}</td></tr>` : ""}
+          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Date &amp; Time</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">${dateLabel} at ${hour}:00</td></tr>
+          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Operatory</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">Room ${room}</td></tr>
+        </table>
+        <p style="font-size: 13px; color: #64748b; margin-top: 20px;">You can view and manage your full patient schedule directly in your clinical dashboard.</p>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Practice Management</p>
+      </div>
+    `
+  );
+}
+
+/**
+ * 2. Cancellation Notice: Notify patient and dentist when an appointment is cancelled.
+ */
+export async function sendAppointmentCancellationEmail(params: {
+  to: string;
+  recipientName: string;
+  otherPartyName: string;
+  isDentist: boolean;
+  room: string;
+  date: CalendarDay;
+  hour: number;
+  serviceName?: string;
+}) {
+  const { to, recipientName, otherPartyName, isDentist, room, date, hour, serviceName } = params;
+  const dateLabel = formatAppointmentDate(date);
+  const name = await clinicName();
+
+  const subject = isDentist
+    ? `Schedule Notice: Appointment Cancelled (${otherPartyName}) — ${name}`
+    : `Appointment Cancellation Confirmed — ${name}`;
+
+  await sendEmail(
+    to,
+    subject,
+    `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a; line-height: 1.5; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="border-bottom: 2px solid #ef4444; padding-bottom: 12px; margin-bottom: 20px;">
+          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #ef4444; margin: 0;">${name}</p>
+          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">Appointment Cancelled</h2>
+        </div>
+        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${recipientName},</p>
+        <p style="margin: 0 0 16px 0; color: #475569;">
+          ${
+            isDentist
+              ? `The appointment with <strong>${otherPartyName}</strong> on <strong>${dateLabel} at ${hour}:00</strong> (Room ${room}) has been cancelled. This slot is now open in your schedule.`
+              : `Your appointment with <strong>Dr. ${otherPartyName}</strong> on <strong>${dateLabel} at ${hour}:00</strong> has been cancelled.`
+          }
+        </p>
+        ${serviceName ? `<p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Procedure: <strong>${serviceName}</strong></p>` : ""}
+        ${
+          !isDentist
+            ? `<p style="font-size: 13px; color: #64748b; margin-top: 16px;">If you would like to reschedule for another date, you can sign in to your portal anytime to choose a new slot.</p>`
+            : ""
+        }
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name}</p>
+      </div>
+    `
+  );
+}
+
+/**
+ * 3. Digital Visit & Prescription Summary: Sent to patient upon clinical treatment logging.
+ */
+export async function sendTreatmentSummaryEmail(params: {
+  to: string;
+  patientName: string;
+  dentistName: string;
+  action: string;
+  description?: string | null;
+  toothNumber?: number | null;
+  medicines?: Array<{
+    name: string;
+    dose?: string | null;
+    frequency?: string | null;
+    duration?: string | null;
+    instructions?: string | null;
+  }>;
+}) {
+  const { to, patientName, dentistName, action, description, toothNumber, medicines } = params;
+  const name = await clinicName();
+
+  const rxHtml =
+    medicines && medicines.length > 0
+      ? `
+      <div style="margin-top: 20px;">
+        <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Prescriptions &amp; Medications:</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #f8fafc; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+          <thead>
+            <tr style="background: #edf2f7; text-align: left; color: #475569;">
+              <th style="padding: 8px 12px;">Medication</th>
+              <th style="padding: 8px 12px;">Dosage</th>
+              <th style="padding: 8px 12px;">Frequency</th>
+              <th style="padding: 8px 12px;">Duration</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${medicines
+              .map(
+                (m) => `
+              <tr style="border-top: 1px solid #e2e8f0;">
+                <td style="padding: 8px 12px; font-weight: 600;">${m.name}</td>
+                <td style="padding: 8px 12px; color: #64748b;">${m.dose || "—"}</td>
+                <td style="padding: 8px 12px; color: #64748b;">${m.frequency || "—"}</td>
+                <td style="padding: 8px 12px; color: #64748b;">${m.duration || "—"}</td>
+              </tr>
+              ${m.instructions ? `<tr><td colspan="4" style="padding: 4px 12px 8px 12px; font-size: 12px; color: #0d9488;">Instructions: ${m.instructions}</td></tr>` : ""}
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+      : "";
+
+  await sendEmail(
+    to,
+    `Your Visit & Care Summary — ${name}`,
+    `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 20px;">
+          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 4px 0;">${name}</p>
+          <h2 style="font-size: 22px; margin: 0; color: #0f172a;">Clinical Visit Summary</h2>
+        </div>
+        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${patientName},</p>
+        <p style="margin: 0 0 16px 0; color: #475569;">
+          Thank you for visiting ${name}. Here is the official clinical summary from your appointment today with <strong>Dr. ${dentistName}</strong>:
+        </p>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
+          <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Procedure Performed:</div>
+          <div style="font-size: 16px; color: #248473; font-weight: 700;">${action} ${toothNumber ? `<span style="font-size: 13px; color: #64748b; font-weight: normal;">(Tooth #${toothNumber})</span>` : ""}</div>
+          ${
+            description
+              ? `
+            <div style="margin-top: 12px; font-size: 13px; color: #475569; border-top: 1px solid #edf2f7; padding-top: 10px;">
+              <strong>Doctor's Notes &amp; Care Guidance:</strong><br />
+              <span style="white-space: pre-wrap;">${description}</span>
+            </div>
+          `
+              : ""
+          }
+        </div>
+
+        ${rxHtml}
+
+        <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
+          Please follow all prescribed dosages. If you experience unexpected discomfort or have any questions about your recovery, contact our clinic care team.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Patient Care Team</p>
+      </div>
+    `
+  );
+}
+
+/**
+ * 4. Staff Welcome & Permission Granted: Sent to newly invited or upgraded staff members.
+ */
+export async function sendStaffInvitationEmail(params: {
+  to: string;
+  name: string;
+  role: "admin" | "dentist" | "receptionist";
+  roomNumber?: string | null;
+  isExistingAccount: boolean;
+}) {
+  const { to, name: staffName, role, roomNumber, isExistingAccount } = params;
+  const name = await clinicName();
+
+  const roleTitle =
+    role === "admin"
+      ? "Clinic Administrator"
+      : role === "dentist"
+      ? `Dentist / Clinical Provider${roomNumber ? ` (Room ${roomNumber})` : ""}`
+      : "Receptionist / Front Desk";
+
+  const subject = `Welcome to the Clinic Portal Team (${roleTitle}) — ${name}`;
+
+  await sendEmail(
+    to,
+    subject,
+    `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 20px;">
+          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 4px 0;">${name} · Staff Portal</p>
+          <h2 style="font-size: 22px; margin: 0; color: #0f172a;">Welcome to the Team</h2>
+        </div>
+        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${staffName},</p>
+        <p style="margin: 0 0 16px 0; color: #475569;">
+          You have been granted <strong>${roleTitle}</strong> privileges on the ${name} practice management portal.
+        </p>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0;">
+          <div style="font-size: 13px; color: #64748b;">Assigned Role:</div>
+          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 2px;">${roleTitle}</div>
+          <div style="font-size: 13px; color: #64748b; margin-top: 10px;">Account Email:</div>
+          <div style="font-size: 14px; font-weight: 600; color: #248473; margin-top: 2px;">${to}</div>
+        </div>
+        <p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
+          ${
+            isExistingAccount
+              ? "You can log in to your dashboard right away to access your new staff tools and clinical desk."
+              : "To get started, create a password or complete sign-up using this email address."
+          }
+        </p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="https://denpointment-theta.vercel.app/login" style="background-color: #248473; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 9999px; font-weight: 600; font-size: 14px; display: inline-block;">
+            Sign In to Practice Portal
+          </a>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Administration</p>
+      </div>
+    `
+  );
+}
+
+
 

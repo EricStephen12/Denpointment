@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist } from "@/lib/auth";
-import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import {
+  sendAppointmentConfirmationEmail,
+  sendDentistNewAppointmentEmail,
+  sendAppointmentCancellationEmail,
+} from "@/lib/email";
 import { compareCalendarDays, getClinicDay, toDateKey } from "@/lib/clinic-date";
 
 // Action to book a new appointment.
@@ -155,8 +159,9 @@ export async function bookAppointment(formData: FormData) {
 
   if (patient) {
     const dentistName = `${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`;
+    const patientName = `${patient.person.firstName} ${patient.person.lastName}`;
 
-    // Best-effort — a failed email should never block a successful booking.
+    // 1. Patient booking confirmation email
     sendAppointmentConfirmationEmail({
       to: patient.person.email,
       patientName: patient.person.firstName,
@@ -165,7 +170,21 @@ export async function bookAppointment(formData: FormData) {
       date: bookedDay,
       hour,
       serviceName: service?.name,
-    }).catch((err) => console.error("[email] confirmation failed:", err));
+    }).catch((err) => console.error("[email] patient confirmation failed:", err));
+
+    // 2. Dentist clinical alert notification
+    if (assignedDentist.person?.email) {
+      sendDentistNewAppointmentEmail({
+        to: assignedDentist.person.email,
+        dentistName: assignedDentist.person.firstName,
+        patientName,
+        patientEmail: patient.person.email,
+        room: assignedDentist.roomNumber,
+        date: bookedDay,
+        hour,
+        serviceName: service?.name,
+      }).catch((err) => console.error("[email] dentist booking alert failed:", err));
+    }
   }
 
   revalidatePath('/dashboard');
@@ -189,7 +208,14 @@ export async function cancelAppointment(formData: FormData) {
   const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
   if (!appointmentId) throw new Error("Missing appointment.");
 
-  const appointment = await prisma.appointment.findUnique({ where: { appointmentId } });
+  const appointment = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: {
+      patient: { include: { person: true } },
+      dentist: { include: { person: true } },
+      treatments: { include: { service: true } },
+    },
+  });
   if (!appointment) throw new Error("Appointment not found.");
 
   const isOwner = dbPerson.patients.some((p) => p.patientId === appointment.pId);
@@ -200,6 +226,39 @@ export async function cancelAppointment(formData: FormData) {
   }
 
   await prisma.appointment.delete({ where: { appointmentId } });
+
+  // Dual-sided cancellation notices (best-effort)
+  const dateObj = { year: appointment.year, month: appointment.month, day: appointment.day };
+  const firstTreatment = appointment.treatments?.[0];
+  const serviceName = firstTreatment?.service?.name || firstTreatment?.action;
+  const patientPerson = appointment.patient?.person;
+  const dentistPerson = appointment.dentist?.person;
+
+  if (patientPerson) {
+    sendAppointmentCancellationEmail({
+      to: patientPerson.email,
+      recipientName: patientPerson.firstName,
+      otherPartyName: dentistPerson ? `${dentistPerson.firstName} ${dentistPerson.lastName}` : "your provider",
+      isDentist: false,
+      room: appointment.room,
+      date: dateObj,
+      hour: appointment.hour,
+      serviceName,
+    }).catch((err) => console.error("[email] patient cancellation failed:", err));
+  }
+
+  if (dentistPerson) {
+    sendAppointmentCancellationEmail({
+      to: dentistPerson.email,
+      recipientName: dentistPerson.firstName,
+      otherPartyName: patientPerson ? `${patientPerson.firstName} ${patientPerson.lastName}` : "A patient",
+      isDentist: true,
+      room: appointment.room,
+      date: dateObj,
+      hour: appointment.hour,
+      serviceName,
+    }).catch((err) => console.error("[email] dentist cancellation failed:", err));
+  }
 
   revalidatePath('/dashboard/appointments');
   revalidatePath('/dashboard');

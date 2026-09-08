@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma, Gender } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
+import { sendStaffInvitationEmail } from "@/lib/email";
 
 async function requireAdmin() {
   const person = await getCurrentPerson();
@@ -59,6 +60,15 @@ export async function assignOrPromoteMember(formData: FormData) {
         }
       }
 
+      // Send staff promotion notice (best-effort)
+      sendStaffInvitationEmail({
+        to: email,
+        name: `${existing.firstName} ${existing.lastName}`,
+        role: role as "admin" | "dentist" | "receptionist",
+        roomNumber: role === "dentist" ? roomNumber : null,
+        isExistingAccount: true,
+      }).catch((err) => console.error("[email] staff promotion notification failed:", err));
+
       revalidatePath("/dashboard/admin/staff");
       return {
         success: true,
@@ -89,6 +99,15 @@ export async function assignOrPromoteMember(formData: FormData) {
     } else {
       await prisma.admin.create({ data: { personId: person.personId } });
     }
+
+    // Send new staff invitation email (best-effort)
+    sendStaffInvitationEmail({
+      to: email,
+      name: `${firstName} ${lastName}`.trim(),
+      role: role as "admin" | "dentist" | "receptionist",
+      roomNumber: role === "dentist" ? roomNumber : null,
+      isExistingAccount: false,
+    }).catch((err) => console.error("[email] new staff invitation failed:", err));
 
     revalidatePath("/dashboard/admin/staff");
     return {

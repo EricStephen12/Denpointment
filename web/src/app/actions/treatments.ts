@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
 import { isAppointmentToday } from "@/lib/clinic-date";
 import { isValidFdiTooth, parseToothCondition } from "@/lib/odontogram";
+import { sendTreatmentSummaryEmail } from "@/lib/email";
 
 type RxInput = {
   name: string;
@@ -93,6 +94,12 @@ export async function addTreatment(formData: FormData) {
       month: true,
       day: true,
       hour: true,
+      patient: {
+        include: { person: true },
+      },
+      dentist: {
+        include: { person: true },
+      },
     },
   });
   if (!appointment || appointment.dId !== dentistId) {
@@ -143,6 +150,23 @@ export async function addTreatment(formData: FormData) {
         },
       }),
     ]);
+  }
+
+  // Send treatment summary & digital prescription email to patient (best-effort)
+  if (appointment.patient?.person?.email) {
+    const dentistName = appointment.dentist?.person
+      ? `${appointment.dentist.person.firstName} ${appointment.dentist.person.lastName}`
+      : "Your Dentist";
+
+    sendTreatmentSummaryEmail({
+      to: appointment.patient.person.email,
+      patientName: appointment.patient.person.firstName,
+      dentistName,
+      action,
+      description,
+      toothNumber,
+      medicines: prescriptions,
+    }).catch((err) => console.error("[email] treatment summary failed:", err));
   }
 
   revalidatePath("/dashboard/treatments/today");
