@@ -15,7 +15,7 @@ import {
   X,
   DoorOpen,
   Settings2,
-  Sparkles,
+  Zap,
   ChevronRight,
   ShieldAlert,
   SlidersHorizontal,

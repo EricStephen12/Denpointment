@@ -8,7 +8,7 @@ import {
 } from "@/app/actions/automations";
 import type { AutomationSettingsData } from "@/lib/automations";
 import {
-  Sparkles,
+  Zap,
   Cake,
   HeartHandshake,
   Send,
@@ -56,14 +56,14 @@ export default function AutomationsManager({
   const [birthdaySubject, setBirthdaySubject] = useState(initialSettings.birthdaySubject);
   const [birthdayMessage, setBirthdayMessage] = useState(
     initialSettings.birthdayMessage ||
-      `The entire dental care team at ${clinicName} wishes you a wonderful birthday filled with health, joy, and plenty of reasons to smile bright!`
+      `Wishing you a wonderful birthday. We are glad to be your dental care provider and hope this year brings you good health.`
   );
 
   const [anniversaryEnabled, setAnniversaryEnabled] = useState(initialSettings.anniversaryEnabled);
   const [anniversarySubject, setAnniversarySubject] = useState(initialSettings.anniversarySubject);
   const [anniversaryMessage, setAnniversaryMessage] = useState(
     initialSettings.anniversaryMessage ||
-      `Thank you for trusting our doctors with your dental wellness over the years. We are honored to be part of your smile story!`
+      `Thank you for continuing to choose us for your dental care. It means a lot to the whole team.`
   );
 
   // Broadcast state
@@ -203,7 +203,7 @@ export default function AutomationsManager({
               : "text-sand-50/60 hover:text-sand-50 hover:bg-sand-50/5"
           }`}
         >
-          <Sparkles className="w-4 h-4" />
+          <Zap className="w-4 h-4" />
           <span>Automations (Birthdays & Milestones)</span>
         </button>
 

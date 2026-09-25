@@ -5,15 +5,13 @@ import { formatAppointmentDate, type CalendarDay } from "@/lib/clinic-date";
 import { getSiteContent } from "@/lib/site";
 
 const rawApiKey = (process.env.RESEND_API_KEY || "").trim();
-const isKeyConfigured = rawApiKey.startsWith("re_") && rawApiKey.length > 10 && !rawApiKey.includes("...");
+const isKeyConfigured =
+  rawApiKey.startsWith("re_") && rawApiKey.length > 10 && !rawApiKey.includes("...");
 const resend = isKeyConfigured ? new Resend(rawApiKey) : null;
+
 export function getFromEmail(): string {
   const env = (process.env.EMAIL_FROM || "").trim();
-  // If explicitly set and not using the restricted sandbox testing address, use it
-  if (env && !env.includes("onboarding@resend.dev")) {
-    return env;
-  }
-  // Default to the clinic's verified Resend domain
+  if (env && !env.includes("onboarding@resend.dev")) return env;
   return "Glow Dental Clinic <care@glowdentalklinic.com>";
 }
 
@@ -30,21 +28,115 @@ async function clinicName(): Promise<string> {
   }
 }
 
-/**
- * Sends an email via Resend. Silently no-ops (with a console warning) if
- * RESEND_API_KEY isn't configured, so booking/other flows never fail just
- * because email isn't set up yet in this environment.
- */
+// ─── Shared base layout ───────────────────────────────────────────────────────
+// Every email uses this. Dark teal header with clinic name, white body, clean
+// footer. Consistent, professional, not generic.
+
+function baseLayout(
+  clinicNameVal: string,
+  accentColor: string = "#1a7a6a",
+  content: string,
+  footerNote?: string,
+): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${clinicNameVal}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f8;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:${accentColor};border-radius:12px 12px 0 0;padding:28px 32px;">
+              <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:rgba(255,255,255,0.6);">Dental Clinic</p>
+              <p style="margin:6px 0 0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">${clinicNameVal}</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="background-color:#ffffff;padding:32px 32px 24px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
+              ${content}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f9fafb;border:1px solid #e5e7eb;border-top:0;border-radius:0 0 12px 12px;padding:18px 32px;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;line-height:1.6;">
+                ${footerNote || `This email was sent by <strong>${clinicNameVal}</strong>. Please do not reply directly to this email.`}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+// ─── Detail table helper ──────────────────────────────────────────────────────
+function detailTable(rows: { label: string; value: string; highlight?: boolean }[]): string {
+  const rowsHtml = rows
+    .map(
+      (r) => `
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280;border-bottom:1px solid #f3f4f6;white-space:nowrap;width:36%;">${r.label}</td>
+        <td style="padding:10px 16px;font-size:14px;font-weight:600;color:${r.highlight ? "#1a7a6a" : "#111827"};border-bottom:1px solid #f3f4f6;">${r.value}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:20px 0;">
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+}
+
+// ─── Button helper ────────────────────────────────────────────────────────────
+function ctaButton(label: string, url: string, color = "#1a7a6a"): string {
+  return `
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${url}" style="background-color:${color};color:#ffffff;text-decoration:none;padding:13px 32px;border-radius:9999px;font-weight:600;font-size:14px;display:inline-block;letter-spacing:0.01em;">
+        ${label}
+      </a>
+    </div>`;
+}
+
+// ─── Greeting + paragraph helpers ────────────────────────────────────────────
+function greeting(name: string): string {
+  return `<p style="margin:0 0 16px;font-size:15px;color:#374151;">Hi <strong>${name}</strong>,</p>`;
+}
+
+function para(text: string): string {
+  return `<p style="margin:0 0 16px;font-size:15px;color:#374151;line-height:1.65;">${text}</p>`;
+}
+
+function divider(): string {
+  return `<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />`;
+}
+
+// ─── Send wrapper ─────────────────────────────────────────────────────────────
 async function sendEmail(to: string, subject: string, html: string) {
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY not set — skipped email "${subject}" to ${to}`);
+    console.warn(`[email] RESEND_API_KEY not set — skipped "${subject}" to ${to}`);
     return { success: false, error: "RESEND_API_KEY not configured" };
   }
   try {
     const from = getFromEmail();
     const { data, error } = await resend.emails.send({ from, to, subject, html });
     if (error) {
-      console.error("[email] Resend delivery error:", error);
+      console.error("[email] Resend error:", error);
       return { success: false, error };
     }
     return { success: true, data };
@@ -54,6 +146,11 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// EMAIL FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Appointment confirmation sent to patient after booking. */
 export async function sendAppointmentConfirmationEmail(params: {
   to: string;
   patientName: string;
@@ -64,30 +161,30 @@ export async function sendAppointmentConfirmationEmail(params: {
   serviceName?: string;
 }) {
   const { to, patientName, dentistName, room, date, hour, serviceName } = params;
-  const dateLabel = formatAppointmentDate(date);
+  const name  = await clinicName();
+  const label = formatAppointmentDate(date);
 
-  const name = await clinicName();
+  const content = `
+    ${greeting(patientName)}
+    ${para("Your appointment has been confirmed. Here are the details:")}
+    ${detailTable([
+      ...(serviceName ? [{ label: "Procedure", value: serviceName, highlight: true }] : []),
+      { label: "Date",    value: label },
+      { label: "Time",    value: `${hour}:00` },
+      { label: "Room",    value: `Room ${room}` },
+      { label: "Dentist", value: `Dr. ${dentistName}` },
+    ])}
+    ${para("Need to reschedule or cancel? Log in to your patient portal or call us.")}
+  `;
+
   await sendEmail(
     to,
     `Appointment Confirmed — ${name}`,
-    `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #0f172a;">Your appointment is confirmed</h2>
-        <p>Hi ${patientName},</p>
-        <p>Your appointment with <strong>Dr. ${dentistName}</strong> at ${name} has been booked:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-          ${serviceName ? `<tr><td style="padding: 8px 0; color: #64748b;">Procedure</td><td style="padding: 8px 0; font-weight: 600; color: #248473;">${serviceName}</td></tr>` : ""}
-          <tr><td style="padding: 8px 0; color: #64748b;">Date</td><td style="padding: 8px 0; font-weight: 600;">${dateLabel}</td></tr>
-          <tr><td style="padding: 8px 0; color: #64748b;">Time</td><td style="padding: 8px 0; font-weight: 600;">${hour}:00</td></tr>
-          <tr><td style="padding: 8px 0; color: #64748b;">Room</td><td style="padding: 8px 0; font-weight: 600;">${room}</td></tr>
-        </table>
-        <p>If you need to reschedule or cancel, please sign in to your patient portal or contact the clinic.</p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 32px;">${name}</p>
-      </div>
-    `
+    baseLayout(name, "#1a7a6a", content),
   );
 }
 
+/** Appointment reminder sent the day before. */
 export async function sendAppointmentReminderEmail(params: {
   to: string;
   patientName: string;
@@ -97,29 +194,29 @@ export async function sendAppointmentReminderEmail(params: {
   hour: number;
 }) {
   const { to, patientName, dentistName, room, date, hour } = params;
-  const dateLabel = formatAppointmentDate(date);
+  const name  = await clinicName();
+  const label = formatAppointmentDate(date);
 
-  const name = await clinicName();
+  const content = `
+    ${greeting(patientName)}
+    ${para("This is a reminder for your appointment tomorrow:")}
+    ${detailTable([
+      { label: "Date",    value: label },
+      { label: "Time",    value: `${hour}:00` },
+      { label: "Room",    value: `Room ${room}` },
+      { label: "Dentist", value: `Dr. ${dentistName}` },
+    ])}
+    ${para("If you can no longer make it, please cancel or reschedule as soon as possible so another patient can take your slot.")}
+  `;
+
   await sendEmail(
     to,
-    `Reminder: Your appointment is coming up — ${name}`,
-    `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #0f172a;">Appointment Reminder</h2>
-        <p>Hi ${patientName},</p>
-        <p>This is a reminder for your upcoming appointment with <strong>Dr. ${dentistName}</strong>:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-          <tr><td style="padding: 8px 0; color: #64748b;">Date</td><td style="padding: 8px 0; font-weight: 600;">${dateLabel}</td></tr>
-          <tr><td style="padding: 8px 0; color: #64748b;">Time</td><td style="padding: 8px 0; font-weight: 600;">${hour}:00</td></tr>
-          <tr><td style="padding: 8px 0; color: #64748b;">Room</td><td style="padding: 8px 0; font-weight: 600;">${room}</td></tr>
-        </table>
-        <p>See you soon! If you can no longer make it, please cancel or reschedule as early as possible.</p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 32px;">${name}</p>
-      </div>
-    `
+    `Reminder: Appointment Tomorrow — ${name}`,
+    baseLayout(name, "#1a7a6a", content),
   );
 }
 
+/** Payment receipt sent to patient after Paystack payment. */
 export async function sendPaymentReceiptEmail(params: {
   to: string;
   patientName: string;
@@ -127,22 +224,27 @@ export async function sendPaymentReceiptEmail(params: {
   serviceName: string;
 }) {
   const { to, patientName, amount, serviceName } = params;
-
   const name = await clinicName();
+
+  const content = `
+    ${greeting(patientName)}
+    ${para("We have received your payment. Thank you!")}
+    ${detailTable([
+      { label: "Procedure", value: serviceName },
+      { label: "Amount",    value: formatNaira(amount), highlight: true },
+      { label: "Status",    value: "Paid" },
+    ])}
+    ${para("A full invoice is available in your patient portal under Bills & Payments.")}
+  `;
+
   await sendEmail(
     to,
-    `Payment Received — ${name}`,
-    `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #0f172a;">Payment Received</h2>
-        <p>Hi ${patientName},</p>
-        <p>We've received your payment of <strong>${formatNaira(amount)}</strong> for <strong>${serviceName}</strong>. Thank you!</p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 32px;">${name}</p>
-      </div>
-    `
+    `Payment Confirmed — ${name}`,
+    baseLayout(name, "#1a7a6a", content),
   );
 }
 
+/** Contact form inquiry forwarded to the clinic. */
 export async function sendContactInquiryEmail(params: {
   to: string;
   fromName: string;
@@ -151,7 +253,7 @@ export async function sendContactInquiryEmail(params: {
   clinicName: string;
 }) {
   const { to, fromName, fromEmail, message, clinicName: name } = params;
-  const safeMessage = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeMsg  = message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const safeName = fromName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   if (!resend) {
@@ -160,20 +262,21 @@ export async function sendContactInquiryEmail(params: {
     return { sent: false as const };
   }
 
+  const content = `
+    ${para(`<strong>From:</strong> ${safeName} &lt;${fromEmail}&gt;`)}
+    ${divider()}
+    <p style="margin:0;font-size:15px;color:#374151;line-height:1.65;white-space:pre-wrap;">${safeMsg}</p>
+  `;
+
   await sendEmail(
     to,
-    `Website inquiry — ${name}`,
-    `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #0f172a;">New website inquiry</h2>
-        <p><strong>From:</strong> ${safeName} &lt;${fromEmail}&gt;</p>
-        <p style="white-space: pre-wrap; margin-top: 16px;">${safeMessage}</p>
-      </div>
-    `
+    `Website Inquiry from ${safeName} — ${name}`,
+    baseLayout(name, "#374151", content, "Forwarded from the website contact form."),
   );
   return { sent: true as const };
 }
 
+/** Password reset link. */
 export async function sendPasswordResetEmail(params: {
   to: string;
   resetUrl: string;
@@ -183,37 +286,28 @@ export async function sendPasswordResetEmail(params: {
   const clinic = await clinicName();
 
   if (!resend) {
-    console.warn(`[email] RESEND_API_KEY not set — password reset link for ${to}: ${resetUrl}`);
+    console.warn(`[email] RESEND_API_KEY not set — reset link for ${to}: ${resetUrl}`);
     return { sent: false as const };
   }
+
+  const content = `
+    ${greeting(patientName)}
+    ${para("We received a request to reset the password on your account. Click the button below to set a new one.")}
+    ${ctaButton("Reset Password", resetUrl)}
+    ${divider()}
+    <p style="margin:0;font-size:12px;color:#9ca3af;">This link expires in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+    <p style="margin:8px 0 0;font-size:11px;color:#d1d5db;word-break:break-all;">${resetUrl}</p>
+  `;
 
   const res = await sendEmail(
     to,
     `Reset Your Password — ${clinic}`,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a; line-height: 1.5;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 24px;">
-          <h2 style="margin: 0; color: #0f172a; font-size: 20px; letter-spacing: -0.02em;">${clinic}</h2>
-        </div>
-        <h3 style="font-size: 18px; margin: 0 0 12px 0;">Reset your password</h3>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${patientName},</p>
-        <p style="margin: 0 0 24px 0; color: #475569;">We received a request to reset the password for your ${clinic} account. Click the button below to choose a new password:</p>
-        <div style="text-align: center; margin: 28px 0;">
-          <a href="${resetUrl}" style="background-color: #248473; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 9999px; font-weight: 600; font-size: 14px; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        <p style="font-size: 13px; color: #94a3b8; margin: 24px 0 8px 0;">This password reset link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
-        <p style="font-size: 12px; color: #cbd5e1; word-break: break-all; margin: 0;">Link: ${resetUrl}</p>
-      </div>
-    `
+    baseLayout(clinic, "#1a7a6a", content),
   );
   return { sent: Boolean(res?.success) };
 }
 
-/**
- * Birthday Automation: Send warm, personal birthday greetings to a patient.
- */
+/** Birthday greeting automation. */
 export async function sendBirthdayEmail(params: {
   to: string;
   patientName: string;
@@ -222,43 +316,29 @@ export async function sendBirthdayEmail(params: {
 }) {
   const { to, patientName, subject, customMessage } = params;
   const clinic = await clinicName();
-  const emailSubject = subject || `Happy Birthday from ${clinic}! 🎂`;
+  const emailSubject = subject || `Happy Birthday from ${clinic}`;
 
-  const defaultMsg =
-    `The entire dental care team at ${clinic} wishes you a wonderful birthday filled with health, joy, and plenty of reasons to smile bright! Thank you for trusting us with your dental care.`;
-  const messageBody = (customMessage || defaultMsg).replace(/\n/g, "<br />");
+  const defaultMsg = `Wishing you a wonderful birthday. We are glad to be your dental care provider and hope this year brings you good health.`;
+  const body = (customMessage || defaultMsg).replace(/\n/g, "<br/>");
 
   if (!resend) {
-    console.info(`[automations:birthday] (Simulated) Sent to ${patientName} <${to}>: "${emailSubject}"`);
+    console.info(`[birthday] Simulated send to ${patientName} <${to}>`);
     return { sent: true as const, simulated: true };
   }
 
-  const res = await sendEmail(
-    to,
-    emailSubject,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; color: #0f172a; line-height: 1.6; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <p style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 6px 0;">${clinic}</p>
-          <h1 style="font-size: 26px; margin: 0; color: #0f172a; font-weight: 700; letter-spacing: -0.02em;">Happy Birthday, ${patientName}! 🎉</h1>
-        </div>
-        <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #edf2f7; text-align: center;">
-          <span style="font-size: 40px; display: block; margin-bottom: 12px;">🎂</span>
-          <p style="font-size: 16px; color: #334155; margin: 0; line-height: 1.6;">${messageBody}</p>
-        </div>
-        <p style="font-size: 14px; color: #64748b; text-align: center; margin: 0 0 24px 0;">Here's to celebrating you and keeping your smile vibrant for years to come.</p>
-        <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-          <p style="font-size: 12px; color: #94a3b8; margin: 0;">Warm regards,<br /><strong>Your Dental Team at ${clinic}</strong></p>
-        </div>
-      </div>
-    `
-  );
+  const content = `
+    ${greeting(patientName)}
+    <p style="margin:0 0 24px;font-size:22px;font-weight:700;color:#111827;">Happy Birthday!</p>
+    ${para(body)}
+    ${divider()}
+    ${para(`With warm regards from the team at ${clinic}.`)}
+  `;
+
+  const res = await sendEmail(to, emailSubject, baseLayout(clinic, "#1a7a6a", content));
   return { sent: Boolean(res?.success), simulated: false };
 }
 
-/**
- * Anniversary Automation: Celebrate a patient's smile milestone with the clinic.
- */
+/** Anniversary / milestone greeting automation. */
 export async function sendAnniversaryEmail(params: {
   to: string;
   patientName: string;
@@ -268,43 +348,29 @@ export async function sendAnniversaryEmail(params: {
 }) {
   const { to, patientName, years = 1, subject, customMessage } = params;
   const clinic = await clinicName();
-  const emailSubject = subject || `Happy Smile Anniversary with ${clinic}! ✨`;
+  const emailSubject = subject || `Thank you for choosing ${clinic}`;
 
-  const yearsLabel = years > 1 ? `${years} years` : "1 year";
-  const defaultMsg =
-    `It's been ${yearsLabel} since your journey with ${clinic} began! We want to express our heartfelt gratitude for trusting our doctors with your dental wellness. We're proud to be part of your smile story.`;
-  const messageBody = (customMessage || defaultMsg).replace(/\n/g, "<br />");
+  const yearsLabel = years > 1 ? `${years} years` : "one year";
+  const defaultMsg = `It has been ${yearsLabel} since your first visit with us. Thank you for your continued trust — it means a great deal to the whole team.`;
+  const body = (customMessage || defaultMsg).replace(/\n/g, "<br/>");
 
   if (!resend) {
-    console.info(`[automations:anniversary] (Simulated) Sent to ${patientName} <${to}>: "${emailSubject}"`);
+    console.info(`[anniversary] Simulated send to ${patientName} <${to}>`);
     return { sent: true as const, simulated: true };
   }
 
-  const res = await sendEmail(
-    to,
-    emailSubject,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 32px 24px; color: #0f172a; line-height: 1.6; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <p style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 6px 0;">${clinic}</p>
-          <h1 style="font-size: 26px; margin: 0; color: #0f172a; font-weight: 700; letter-spacing: -0.02em;">Happy Anniversary, ${patientName}! ✨</h1>
-        </div>
-        <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid #edf2f7; text-align: center;">
-          <span style="font-size: 40px; display: block; margin-bottom: 12px;">🌟</span>
-          <p style="font-size: 16px; color: #334155; margin: 0; line-height: 1.6;">${messageBody}</p>
-        </div>
-        <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 20px;">
-          <p style="font-size: 12px; color: #94a3b8; margin: 0;">With appreciation,<br /><strong>Your Team at ${clinic}</strong></p>
-        </div>
-      </div>
-    `
-  );
+  const content = `
+    ${greeting(patientName)}
+    ${para(body)}
+    ${divider()}
+    ${para(`From the team at ${clinic}.`)}
+  `;
+
+  const res = await sendEmail(to, emailSubject, baseLayout(clinic, "#1a7a6a", content));
   return { sent: Boolean(res?.success), simulated: false };
 }
 
-/**
- * Promo / Broadcast Announcement: Send targeted promotional or announcement emails.
- */
+/** Broadcast / promotional campaign. */
 export async function sendBroadcastEmail(params: {
   to: string;
   patientName: string;
@@ -315,51 +381,28 @@ export async function sendBroadcastEmail(params: {
   ctaLabel?: string;
   ctaUrl?: string;
 }) {
-  const { to, patientName, subject, headline, content, category = "broadcast", ctaLabel, ctaUrl } = params;
+  const { to, patientName, subject, headline, content: body, ctaLabel, ctaUrl } = params;
   const clinic = await clinicName();
-  const safeContent = content.replace(/\n/g, "<br />");
-  const isPromo = category === "promo";
 
   if (!resend) {
-    console.info(`[campaign:${category}] (Simulated) Sent to ${patientName} <${to}>: "${subject}"`);
+    console.info(`[broadcast] Simulated send to ${patientName} <${to}>`);
     return { sent: true as const, simulated: true };
   }
 
-  const res = await sendEmail(
-    to,
-    subject,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #0f172a; line-height: 1.6; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
-          <h2 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 700;">${clinic}</h2>
-          ${isPromo ? `<span style="font-size: 11px; font-weight: 700; text-transform: uppercase; background-color: #f0fdf4; color: #15803d; padding: 4px 10px; border-radius: 9999px; border: 1px solid #bbf7d0;">Special Offer</span>` : ""}
-        </div>
-        ${headline ? `<h1 style="font-size: 22px; color: #0f172a; margin: 0 0 16px 0; font-weight: 700;">${headline}</h1>` : ""}
-        <p style="font-size: 15px; color: #475569; margin: 0 0 16px 0;">Hello ${patientName},</p>
-        <div style="font-size: 15px; color: #334155; line-height: 1.7; margin-bottom: 28px;">${safeContent}</div>
-        ${
-          ctaLabel && ctaUrl
-            ? `
-          <div style="text-align: center; margin: 28px 0;">
-            <a href="${ctaUrl}" style="background-color: #248473; color: #ffffff; text-decoration: none; padding: 12px 32px; border-radius: 9999px; font-weight: 600; font-size: 14px; display: inline-block;">
-              ${ctaLabel}
-            </a>
-          </div>
-        `
-            : ""
-        }
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center;">
-          <p style="font-size: 12px; color: #94a3b8; margin: 0;">Best regards,<br /><strong>${clinic}</strong></p>
-        </div>
-      </div>
-    `
-  );
+  const safeBody = body.replace(/\n/g, "<br/>");
+
+  const contentHtml = `
+    ${greeting(patientName)}
+    ${headline ? `<p style="margin:0 0 20px;font-size:20px;font-weight:700;color:#111827;">${headline}</p>` : ""}
+    ${para(safeBody)}
+    ${ctaLabel && ctaUrl ? ctaButton(ctaLabel, ctaUrl) : ""}
+  `;
+
+  const res = await sendEmail(to, subject, baseLayout(clinic, "#1a7a6a", contentHtml));
   return { sent: Boolean(res?.success), simulated: false };
 }
 
-/**
- * 1. Clinical Alert: Notify assigned dentist immediately when a patient schedules an appointment.
- */
+/** New appointment alert sent to the dentist. */
 export async function sendDentistNewAppointmentEmail(params: {
   to: string;
   dentistName: string;
@@ -371,36 +414,28 @@ export async function sendDentistNewAppointmentEmail(params: {
   serviceName?: string;
 }) {
   const { to, dentistName, patientName, patientEmail, room, date, hour, serviceName } = params;
-  const dateLabel = formatAppointmentDate(date);
-  const name = await clinicName();
+  const name  = await clinicName();
+  const label = formatAppointmentDate(date);
+
+  const content = `
+    ${greeting(`Dr. ${dentistName}`)}
+    ${para("A new appointment has been added to your schedule:")}
+    ${detailTable([
+      { label: "Patient",    value: `${patientName} · ${patientEmail}` },
+      ...(serviceName ? [{ label: "Procedure", value: serviceName, highlight: true }] : []),
+      { label: "Date & Time", value: `${label} at ${hour}:00` },
+      { label: "Room",        value: `Room ${room}` },
+    ])}
+  `;
 
   await sendEmail(
     to,
-    `New Appointment: ${patientName} (${dateLabel} at ${hour}:00) — ${name}`,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a; line-height: 1.5; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 12px; margin-bottom: 20px;">
-          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0;">${name} · Clinical Desk</p>
-          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">New Patient Appointment</h2>
-        </div>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hello <strong>Dr. ${dentistName}</strong>,</p>
-        <p style="margin: 0 0 16px 0; color: #475569;">A new appointment has been scheduled for your operatory:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0; background: #f8fafc; border-radius: 12px; border: 1px solid #edf2f7;">
-          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Patient</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">${patientName} &lt;${patientEmail}&gt;</td></tr>
-          ${serviceName ? `<tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Procedure</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px; color: #248473;">${serviceName}</td></tr>` : ""}
-          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Date &amp; Time</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">${dateLabel} at ${hour}:00</td></tr>
-          <tr><td style="padding: 10px 14px; color: #64748b; font-size: 13px;">Operatory</td><td style="padding: 10px 14px; font-weight: 600; font-size: 14px;">Room ${room}</td></tr>
-        </table>
-        <p style="font-size: 13px; color: #64748b; margin-top: 20px;">You can view and manage your full patient schedule directly in your clinical dashboard.</p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Practice Management</p>
-      </div>
-    `
+    `New Appointment: ${patientName} — ${label} at ${hour}:00`,
+    baseLayout(name, "#1a7a6a", content, `${name} — automated schedule alert`),
   );
 }
 
-/**
- * 2. Cancellation Notice: Notify patient and dentist when an appointment is cancelled.
- */
+/** Appointment cancellation notice to patient or dentist. */
 export async function sendAppointmentCancellationEmail(params: {
   to: string;
   recipientName: string;
@@ -412,45 +447,32 @@ export async function sendAppointmentCancellationEmail(params: {
   serviceName?: string;
 }) {
   const { to, recipientName, otherPartyName, isDentist, room, date, hour, serviceName } = params;
-  const dateLabel = formatAppointmentDate(date);
-  const name = await clinicName();
+  const name  = await clinicName();
+  const label = formatAppointmentDate(date);
+
+  const bodyText = isDentist
+    ? `The appointment with <strong>${otherPartyName}</strong> on <strong>${label} at ${hour}:00</strong> (Room ${room}) has been cancelled. The slot is now open.`
+    : `Your appointment with <strong>Dr. ${otherPartyName}</strong> on <strong>${label} at ${hour}:00</strong> has been cancelled.`;
+
+  const rescheduleNote = isDentist
+    ? ""
+    : para("To book a new appointment, log in to your patient portal and pick a date that works for you.");
+
+  const content = `
+    ${greeting(recipientName)}
+    ${para(bodyText)}
+    ${serviceName ? para(`Procedure: <strong>${serviceName}</strong>`) : ""}
+    ${rescheduleNote}
+  `;
 
   const subject = isDentist
-    ? `Schedule Notice: Appointment Cancelled (${otherPartyName}) — ${name}`
-    : `Appointment Cancellation Confirmed — ${name}`;
+    ? `Cancellation: ${otherPartyName} — ${label}`
+    : `Appointment Cancelled — ${name}`;
 
-  await sendEmail(
-    to,
-    subject,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; color: #0f172a; line-height: 1.5; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="border-bottom: 2px solid #ef4444; padding-bottom: 12px; margin-bottom: 20px;">
-          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #ef4444; margin: 0;">${name}</p>
-          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">Appointment Cancelled</h2>
-        </div>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${recipientName},</p>
-        <p style="margin: 0 0 16px 0; color: #475569;">
-          ${
-            isDentist
-              ? `The appointment with <strong>${otherPartyName}</strong> on <strong>${dateLabel} at ${hour}:00</strong> (Room ${room}) has been cancelled. This slot is now open in your schedule.`
-              : `Your appointment with <strong>Dr. ${otherPartyName}</strong> on <strong>${dateLabel} at ${hour}:00</strong> has been cancelled.`
-          }
-        </p>
-        ${serviceName ? `<p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">Procedure: <strong>${serviceName}</strong></p>` : ""}
-        ${
-          !isDentist
-            ? `<p style="font-size: 13px; color: #64748b; margin-top: 16px;">If you would like to reschedule for another date, you can sign in to your portal anytime to choose a new slot.</p>`
-            : ""
-        }
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name}</p>
-      </div>
-    `
-  );
+  await sendEmail(to, subject, baseLayout(name, isDentist ? "#374151" : "#1a7a6a", content));
 }
 
-/**
- * 3. Digital Visit & Prescription Summary: Sent to patient upon clinical treatment logging.
- */
+/** Visit & prescription summary sent to patient after treatment. */
 export async function sendTreatmentSummaryEmail(params: {
   to: string;
   patientName: string;
@@ -472,80 +494,52 @@ export async function sendTreatmentSummaryEmail(params: {
   const rxHtml =
     medicines && medicines.length > 0
       ? `
-      <div style="margin-top: 20px;">
-        <h3 style="font-size: 14px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">Prescriptions &amp; Medications:</h3>
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #f8fafc; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0;">
+        ${divider()}
+        <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#111827;">Prescribed Medication</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;font-size:13px;">
           <thead>
-            <tr style="background: #edf2f7; text-align: left; color: #475569;">
-              <th style="padding: 8px 12px;">Medication</th>
-              <th style="padding: 8px 12px;">Dosage</th>
-              <th style="padding: 8px 12px;">Frequency</th>
-              <th style="padding: 8px 12px;">Duration</th>
+            <tr style="background-color:#f9fafb;">
+              <th style="padding:10px 14px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">Medicine</th>
+              <th style="padding:10px 14px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">Dose</th>
+              <th style="padding:10px 14px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">Frequency</th>
+              <th style="padding:10px 14px;text-align:left;color:#6b7280;font-weight:600;border-bottom:1px solid #e5e7eb;">Duration</th>
             </tr>
           </thead>
           <tbody>
-            ${medicines
-              .map(
-                (m) => `
-              <tr style="border-top: 1px solid #e2e8f0;">
-                <td style="padding: 8px 12px; font-weight: 600;">${m.name}</td>
-                <td style="padding: 8px 12px; color: #64748b;">${m.dose || "—"}</td>
-                <td style="padding: 8px 12px; color: #64748b;">${m.frequency || "—"}</td>
-                <td style="padding: 8px 12px; color: #64748b;">${m.duration || "—"}</td>
+            ${medicines.map((m) => `
+              <tr>
+                <td style="padding:10px 14px;font-weight:600;color:#111827;border-bottom:1px solid #f3f4f6;">${m.name}</td>
+                <td style="padding:10px 14px;color:#6b7280;border-bottom:1px solid #f3f4f6;">${m.dose || "—"}</td>
+                <td style="padding:10px 14px;color:#6b7280;border-bottom:1px solid #f3f4f6;">${m.frequency || "—"}</td>
+                <td style="padding:10px 14px;color:#6b7280;border-bottom:1px solid #f3f4f6;">${m.duration || "—"}</td>
               </tr>
-              ${m.instructions ? `<tr><td colspan="4" style="padding: 4px 12px 8px 12px; font-size: 12px; color: #0d9488;">Instructions: ${m.instructions}</td></tr>` : ""}
-            `
-              )
-              .join("")}
+              ${m.instructions ? `<tr><td colspan="4" style="padding:4px 14px 10px;font-size:12px;color:#1a7a6a;border-bottom:1px solid #f3f4f6;">Note: ${m.instructions}</td></tr>` : ""}
+            `).join("")}
           </tbody>
         </table>
-      </div>
-    `
+        `
       : "";
+
+  const content = `
+    ${greeting(patientName)}
+    ${para(`Thank you for your visit today with <strong>Dr. ${dentistName}</strong>. Here is your treatment summary:`)}
+    ${detailTable([
+      { label: "Procedure",    value: action + (toothNumber ? ` (Tooth #${toothNumber})` : ""), highlight: true },
+      ...(description ? [{ label: "Clinical notes", value: description }] : []),
+    ])}
+    ${rxHtml}
+    ${divider()}
+    ${para("If you have any questions or experience unexpected discomfort, contact us right away.")}
+  `;
 
   await sendEmail(
     to,
-    `Your Visit & Care Summary — ${name}`,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 540px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 20px;">
-          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 4px 0;">${name}</p>
-          <h2 style="font-size: 22px; margin: 0; color: #0f172a;">Clinical Visit Summary</h2>
-        </div>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${patientName},</p>
-        <p style="margin: 0 0 16px 0; color: #475569;">
-          Thank you for visiting ${name}. Here is the official clinical summary from your appointment today with <strong>Dr. ${dentistName}</strong>:
-        </p>
-
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 16px 0;">
-          <div style="font-size: 13px; font-weight: 600; color: #64748b; margin-bottom: 4px;">Procedure Performed:</div>
-          <div style="font-size: 16px; color: #248473; font-weight: 700;">${action} ${toothNumber ? `<span style="font-size: 13px; color: #64748b; font-weight: normal;">(Tooth #${toothNumber})</span>` : ""}</div>
-          ${
-            description
-              ? `
-            <div style="margin-top: 12px; font-size: 13px; color: #475569; border-top: 1px solid #edf2f7; padding-top: 10px;">
-              <strong>Doctor's Notes &amp; Care Guidance:</strong><br />
-              <span style="white-space: pre-wrap;">${description}</span>
-            </div>
-          `
-              : ""
-          }
-        </div>
-
-        ${rxHtml}
-
-        <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
-          Please follow all prescribed dosages. If you experience unexpected discomfort or have any questions about your recovery, contact our clinic care team.
-        </p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Patient Care Team</p>
-      </div>
-    `
+    `Your Visit Summary — ${name}`,
+    baseLayout(name, "#1a7a6a", content),
   );
 }
 
-/**
- * 4. Staff Welcome & Permission Granted: Sent to newly invited or upgraded staff members.
- */
+/** Staff invitation / access granted. */
 export async function sendStaffInvitationEmail(params: {
   to: string;
   name: string;
@@ -554,60 +548,37 @@ export async function sendStaffInvitationEmail(params: {
   isExistingAccount: boolean;
 }) {
   const { to, name: staffName, role, roomNumber, isExistingAccount } = params;
-  const name = await clinicName();
+  const clinic = await clinicName();
 
   const roleTitle =
     role === "admin"
       ? "Clinic Administrator"
       : role === "dentist"
-      ? `Dentist / Clinical Provider${roomNumber ? ` (Room ${roomNumber})` : ""}`
-      : "Receptionist / Front Desk";
+      ? `Dentist${roomNumber ? ` — Room ${roomNumber}` : ""}`
+      : "Receptionist";
 
-  const subject = `Welcome to the Clinic Portal Team (${roleTitle}) — ${name}`;
+  const content = `
+    ${greeting(staffName)}
+    ${para(`You have been added to the <strong>${clinic}</strong> practice portal as <strong>${roleTitle}</strong>.`)}
+    ${detailTable([
+      { label: "Role",  value: roleTitle, highlight: true },
+      { label: "Email", value: to },
+    ])}
+    ${para(isExistingAccount
+      ? "You can log in now using your existing account."
+      : "Sign in with this email address to complete your account setup."
+    )}
+    ${ctaButton("Sign In to Portal", "https://denpointment-theta.vercel.app/login")}
+  `;
 
   await sendEmail(
     to,
-    subject,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 16px; margin-bottom: 20px;">
-          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0 0 4px 0;">${name} · Staff Portal</p>
-          <h2 style="font-size: 22px; margin: 0; color: #0f172a;">Welcome to the Team</h2>
-        </div>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hello ${staffName},</p>
-        <p style="margin: 0 0 16px 0; color: #475569;">
-          You have been granted <strong>${roleTitle}</strong> privileges on the ${name} practice management portal.
-        </p>
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0;">
-          <div style="font-size: 13px; color: #64748b;">Assigned Role:</div>
-          <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 2px;">${roleTitle}</div>
-          <div style="font-size: 13px; color: #64748b; margin-top: 10px;">Account Email:</div>
-          <div style="font-size: 14px; font-weight: 600; color: #248473; margin-top: 2px;">${to}</div>
-        </div>
-        <p style="font-size: 14px; color: #475569; margin-bottom: 24px;">
-          ${
-            isExistingAccount
-              ? "You can log in to your dashboard right away to access your new staff tools and clinical desk."
-              : "To get started, create a password or complete sign-up using this email address."
-          }
-        </p>
-        <div style="text-align: center; margin: 28px 0;">
-          <a href="https://denpointment-theta.vercel.app/login" style="background-color: #248473; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 9999px; font-weight: 600; font-size: 14px; display: inline-block;">
-            Sign In to Practice Portal
-          </a>
-        </div>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 28px; border-top: 1px solid #f1f5f9; padding-top: 12px;">${name} Administration</p>
-      </div>
-    `
+    `You have been added to ${clinic} — ${roleTitle}`,
+    baseLayout(clinic, "#1a7a6a", content, `${clinic} administration`),
   );
 }
 
-
-
-
-/**
- * Post-visit follow-up: sent ~24h after appointment is marked completed.
- */
+/** Post-visit follow-up sent ~24h after appointment completed. */
 export async function sendPostVisitFollowUpEmail(params: {
   to: string;
   patientName: string;
@@ -618,38 +589,23 @@ export async function sendPostVisitFollowUpEmail(params: {
   const name = await clinicName();
 
   if (!resend) {
-    console.info(`[followup] (Simulated) Sent to ${patientName} <${to}>`);
+    console.info(`[followup] Simulated send to ${patientName} <${to}>`);
     return { sent: true as const, simulated: true };
   }
 
+  const content = `
+    ${greeting(patientName)}
+    ${para(`It has been a day since your visit with <strong>Dr. ${dentistName}</strong>. We just wanted to check in — how are you feeling?`)}
+    ${para("If you have any discomfort, questions about your medication, or anything else on your mind, please reach out.")}
+    ${detailTable([
+      { label: "Call or WhatsApp", value: clinicPhone, highlight: true },
+    ])}
+  `;
+
   const res = await sendEmail(
     to,
-    `How are you feeling? — ${name}`,
-    `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
-        <div style="border-bottom: 2px solid #248473; padding-bottom: 12px; margin-bottom: 20px;">
-          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0;">${name}</p>
-          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">Checking in on you 😊</h2>
-        </div>
-        <p style="margin: 0 0 16px 0; color: #475569;">Hi ${patientName},</p>
-        <p style="margin: 0 0 16px 0; color: #475569;">
-          It's been a day since your visit with <strong>Dr. ${dentistName}</strong> and we just wanted to check in — how are you feeling?
-        </p>
-        <p style="margin: 0 0 16px 0; color: #475569;">
-          If you have any discomfort, questions about your prescription, or anything on your mind, don't hesitate to reach out. We're always here.
-        </p>
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; text-align: center;">
-          <p style="font-size: 13px; color: #64748b; margin: 0 0 8px 0;">Call or WhatsApp us anytime</p>
-          <a href="tel:${clinicPhone.replace(/\s/g, '')}" style="font-size: 18px; font-weight: 700; color: #248473; text-decoration: none;">${clinicPhone}</a>
-        </div>
-        <p style="font-size: 13px; color: #94a3b8; margin-top: 24px;">
-          Wishing you a speedy recovery and a healthy smile.
-        </p>
-        <p style="color: #94a3b8; font-size: 12px; margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
-          With care, <strong>${name}</strong>
-        </p>
-      </div>
-    `
+    `Checking in on you — ${name}`,
+    baseLayout(name, "#1a7a6a", content),
   );
   return { sent: Boolean(res?.success), simulated: false };
 }

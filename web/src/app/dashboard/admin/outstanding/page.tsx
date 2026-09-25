@@ -104,7 +104,7 @@ export default async function OutstandingPage({
 
       {balances.length === 0 ? (
         <div className="text-center py-16 text-sand-50/30 border border-dashed border-sand-50/10 rounded-2xl">
-          No outstanding balances — everyone is settled up.
+          No outstanding balances.
         </div>
       ) : (
         <div className="dash-table-wrap">

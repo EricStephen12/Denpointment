@@ -6,7 +6,7 @@ import { getAutomationSettings } from "@/lib/automations";
 import { isEmailConfigured } from "@/lib/email";
 import { getSiteContent } from "@/lib/site";
 import AutomationsManager from "@/components/automations/AutomationsManager";
-import { Sparkles } from "lucide-react";
+import { Zap } from "lucide-react";
 
 export const metadata = {
   title: "Automations & Broadcasts | Admin Dashboard",
@@ -32,7 +32,7 @@ export default async function AdminAutomationsPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-xl bg-turq-500/20 text-turq-400">
-          <Sparkles className="h-6 w-6" />
+          <Zap className="h-6 w-6" />
         </div>
         <div>
           <h1 className="dash-title font-display text-2xl text-sand-50">Automations & Marketing</h1>

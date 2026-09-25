@@ -59,7 +59,7 @@ export default function WhatsAppWidget({
               <p className="font-medium text-turq-300 mb-1 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Clinic Reception
               </p>
-              Hello! 👋 Welcome to {clinicName}. How can our dental specialists help you today?
+              Hello! How can we help you today?
             </div>
             <p className="text-[10px] text-sand-50/40 text-center tracking-wider uppercase">
               Usually replies in a few minutes

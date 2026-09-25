@@ -249,7 +249,7 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
           <div>
             <p className="font-display text-4xl text-sand-50 uppercase mb-2">No Upcoming <br className="hidden md:block"/> Appointments</p>
             <p className="text-sand-50/50 text-sm tracking-wide">
-              Your next smile session is just a few clicks away.
+              Your next appointment is one click away.
             </p>
           </div>
           <Link

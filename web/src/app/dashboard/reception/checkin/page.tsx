@@ -8,7 +8,8 @@ import { checkInAppointment, markNoShow, confirmAppointment } from "@/app/action
 import { statusMeta } from "@/lib/appointment-status";
 import RescheduleModal from "@/components/reception/RescheduleModal";
 import SendReminderButton from "@/components/reception/SendReminderButton";
-import { CalendarCheck, Clock, UserCheck, UserX, Phone, CheckCheck, Download } from "lucide-react";
+import CheckInActions from "@/components/reception/CheckInActions";
+import { CalendarCheck, Clock, Phone, Download } from "lucide-react";
 import PrintScheduleButton from "@/components/common/PrintScheduleButton";
 
 export default async function CheckInPage() {
@@ -147,33 +148,11 @@ export default async function CheckInPage() {
 
                 {/* Actions */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {app.status === "scheduled" && !app.confirmedAt && (
-                    <form action={confirmAppointment}>
-                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                      <button type="submit" className="inline-flex items-center gap-1.5 text-xs border border-sand-50/20 hover:border-turq-400/40 text-sand-50/60 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors">
-                        <CheckCheck className="h-3.5 w-3.5" /> Confirm
-                      </button>
-                    </form>
-                  )}
-
-                  {(app.status === "scheduled" || app.status === "checked_in") && (
-                    <form action={checkInAppointment}>
-                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                      <button type="submit" className="inline-flex items-center gap-1.5 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 px-3 py-1.5 rounded-lg font-semibold transition-colors">
-                        <UserCheck className="h-3.5 w-3.5" />
-                        {app.status === "checked_in" ? "Re-check In" : "Check In"}
-                      </button>
-                    </form>
-                  )}
-
-                  {app.status === "scheduled" && (
-                    <form action={markNoShow}>
-                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                      <button type="submit" className="inline-flex items-center gap-1.5 text-xs border border-red-500/20 text-red-400/70 hover:text-red-400 hover:border-red-400/40 px-3 py-1.5 rounded-lg transition-colors">
-                        <UserX className="h-3.5 w-3.5" /> No-show
-                      </button>
-                    </form>
-                  )}
+                  <CheckInActions
+                    appointmentId={app.appointmentId}
+                    status={app.status}
+                    confirmedAt={app.confirmedAt?.toISOString() ?? null}
+                  />
 
                   <RescheduleModal
                     appointmentId={app.appointmentId}

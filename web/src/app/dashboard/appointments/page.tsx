@@ -48,14 +48,20 @@ export default async function AppointmentsPage() {
 
   const upcoming = allAppointments.filter((app) => isAppointmentUpcoming(app, now));
 
+  // Past = only appointments no longer upcoming that have treatments recorded,
+  // or are explicitly completed/no_show. Prevents future bookings with no
+  // treatments yet from appearing in the past section.
   const past = allAppointments
-    .filter((app) => !isAppointmentUpcoming(app, now))
+    .filter((app) => {
+      if (isAppointmentUpcoming(app, now)) return false;
+      return app.treatments.length > 0 || app.status === "completed" || app.status === "no_show";
+    })
     .reverse();
 
-  // Calculate total outstanding balance across all visits
-  const totalCharge   = allAppointments.flatMap((a) => a.treatments).reduce((s, t) => s + t.charge, 0);
-  const totalPaid     = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "payment").reduce((s, p) => s + p.amount, 0);
-  const totalDisc     = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "discount" || p.type === "waiver").reduce((s, p) => s + p.amount, 0);
+  // Outstanding balance across all visits
+  const totalCharge      = allAppointments.flatMap((a) => a.treatments).reduce((s, t) => s + t.charge, 0);
+  const totalPaid        = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "payment").reduce((s, p) => s + p.amount, 0);
+  const totalDisc        = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "discount" || p.type === "waiver").reduce((s, p) => s + p.amount, 0);
   const totalOutstanding = Math.max(totalCharge - totalPaid - totalDisc, 0);
 
   return (
@@ -182,7 +188,7 @@ export default async function AppointmentsPage() {
               <Calendar className="h-6 w-6 text-turq-400" />
             </div>
             <p className="font-display text-lg text-sand-50 mb-1">No upcoming visits</p>
-            <p className="text-sm text-sand-50/40 mb-5">Your next smile session is just a click away.</p>
+            <p className="text-sm text-sand-50/40 mb-5">Book a time and we'll confirm it.</p>
             <Link
               href="/dashboard/book"
               className="inline-flex items-center gap-2 bg-turq-600 text-ink-950 px-5 py-2.5 rounded-full text-sm font-medium hover:bg-turq-500 transition-colors"
@@ -289,7 +295,7 @@ export default async function AppointmentsPage() {
           </div>
         ) : (
           <div className="dash-card p-8 text-center">
-            <p className="text-sm text-sand-50/40">No past visits yet — your journey begins here.</p>
+            <p className="text-sm text-sand-50/40">No past visits recorded yet.</p>
           </div>
         )}
       </section>
