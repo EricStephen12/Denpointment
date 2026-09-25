@@ -188,6 +188,42 @@ export async function recordRefund(formData: FormData) {
   revalidatePath(`/dashboard/patients/${appt.pId}`);
 }
 
+/** Void a payment entry (marks it inactive with a reason, preserves audit trail) */
+export async function voidPayment(formData: FormData) {
+  const person = await requireBillingStaff();
+
+  const paymentId = parseInt(formData.get("paymentId") as string, 10);
+  const reason    = ((formData.get("reason") as string) || "").trim().slice(0, 200);
+  if (!paymentId) throw new Error("Payment ID required.");
+
+  const pay = await prisma.payment.findUnique({ where: { paymentId } });
+  if (!pay) throw new Error("Payment not found.");
+
+  // Record a counter-entry refund of same amount to neutralise the payment
+  await prisma.payment.create({
+    data: {
+      patientId: pay.patientId,
+      appointmentId: pay.appointmentId,
+      amount: pay.amount,
+      method: pay.method,
+      type: "refund",
+      notes: `VOID of payment #${paymentId}${reason ? `: ${reason}` : ""}`,
+      recordedById: person.personId,
+    },
+  });
+
+  // Reopen treatments if over-payment was voided
+  if (pay.appointmentId) {
+    await prisma.treatment.updateMany({
+      where: { aId: pay.appointmentId, paid: true },
+      data: { paid: false },
+    });
+  }
+
+  revalidatePath("/dashboard/admin/billing");
+  if (pay.patientId) revalidatePath(`/dashboard/patients/${pay.patientId}`);
+}
+
 /** Submit an insurance claim for an appointment */
 export async function submitInsuranceClaim(formData: FormData) {
   await requireBillingStaff();

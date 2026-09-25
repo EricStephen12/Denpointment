@@ -229,7 +229,10 @@ export async function cancelAppointment(formData: FormData) {
     throw new Error("You're not authorized to cancel this appointment.");
   }
 
-  await prisma.appointment.delete({ where: { appointmentId } });
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: { status: "cancelled" },
+  });
 
   // Dual-sided cancellation notices (best-effort)
   const dateObj = { year: appointment.year, month: appointment.month, day: appointment.day };
@@ -436,3 +439,101 @@ export async function sendManualReminder(formData: FormData) {
   revalidatePath("/dashboard/reception/checkin");
   revalidatePath("/dashboard/treatments/upcoming");
 }
+
+/** Update notes and type on an existing appointment (receptionist/admin only) */
+export async function updateAppointmentNotes(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 500);
+  const type  = (formData.get("type") as string) || "";
+  const VALID_TYPES = ["checkup","cleaning","emergency","follow_up","consultation","extraction","other"];
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: {
+      notes: notes || null,
+      ...(VALID_TYPES.includes(type) ? { type: type as any } : {}),
+    },
+  });
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath("/dashboard/reception/checkin");
+}
+
+/**
+ * Permanently deletes an appointment and its associated treatments, medicines, payments, and insurance claims.
+ * Allowed for practice admins and reception staff.
+ */
+export async function deleteAppointment(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  const appt = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: { treatments: { select: { treatmentId: true } } },
+  });
+  if (!appt) throw new Error("Appointment not found.");
+
+  const treatmentIds = appt.treatments.map((t) => t.treatmentId);
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete medicines under treatments
+    if (treatmentIds.length > 0) {
+      await tx.medicine.deleteMany({
+        where: { tId: { in: treatmentIds } },
+      });
+    }
+
+    // 2. Delete payments linked to this appointment or treatments
+    await tx.payment.deleteMany({
+      where: {
+        OR: [
+          { appointmentId },
+          ...(treatmentIds.length > 0 ? [{ treatmentId: { in: treatmentIds } }] : []),
+        ],
+      },
+    });
+
+    // 3. Delete insurance claims
+    await tx.insuranceClaim.deleteMany({
+      where: { appointmentId },
+    });
+
+    // 4. Delete treatments
+    if (treatmentIds.length > 0) {
+      await tx.treatment.deleteMany({
+        where: { treatmentId: { in: treatmentIds } },
+      });
+    }
+
+    // 5. Delete appointment
+    await tx.appointment.delete({
+      where: { appointmentId },
+    });
+  });
+
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath("/dashboard/reception/calendar");
+  revalidatePath("/dashboard/reception/checkin");
+  revalidatePath(`/dashboard/patients/${appt.pId}`);
+}
+
+/**
+ * Permanently deletes a waitlist entry.
+ */
+export async function deleteWaitlistEntry(formData: FormData) {
+  await requireStaff();
+  const waitlistId = parseInt(formData.get("waitlistId") as string, 10);
+  if (!waitlistId) throw new Error("Missing waitlist ID.");
+
+  await prisma.waitlistEntry.delete({
+    where: { waitlistId },
+  });
+
+  revalidatePath("/dashboard/reception/waitlist");
+}
+

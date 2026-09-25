@@ -12,16 +12,26 @@ import type {
 import { formatNaira } from "@/lib/currency";
 import {
   addAllergy,
-  addConsent,
-  addInsurance,
-  addLabCase,
+  updateAllergy,
+  deleteAllergy,
   addMedicalNote,
+  updateMedicalNote,
+  deleteMedicalNote,
+  addConsent,
+  deleteConsent,
+  addInsurance,
+  updateInsurance,
+  deactivateInsurance,
+  addLabCase,
   addPlanItem,
+  updatePlanItem,
+  deletePlanItem,
   addRecall,
+  updateRecall,
   addReferral,
   createTreatmentPlan,
-  deactivateInsurance,
-  deleteAllergy,
+  updateTreatmentPlan,
+  deleteTreatmentPlan,
   updateConsentStatus,
   updateLabCaseStatus,
   updatePlanItemStatus,
@@ -29,6 +39,7 @@ import {
   updateReferralStatus,
   upsertPerioReading,
 } from "@/app/actions/clinical-care";
+import { Pencil, Trash2, X, Check } from "lucide-react";
 
 export type ClinicalCareData = {
   allergies: {
@@ -145,6 +156,14 @@ export default function ClinicalCarePanel({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Inline-edit state
+  const [editingAllergyId, setEditingAllergyId] = useState<number | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [editingPlanItemId, setEditingPlanItemId] = useState<number | null>(null);
+  const [editingRecallId, setEditingRecallId] = useState<number | null>(null);
+  const [editingInsuranceId, setEditingInsuranceId] = useState<number | null>(null);
+
   function run(
     action: (fd: FormData) => Promise<void>,
     form: HTMLFormElement,
@@ -166,15 +185,31 @@ export default function ClinicalCarePanel({
     });
   }
 
-  function runFd(action: (fd: FormData) => Promise<void>, fields: Record<string, string>) {
+  function runFd(action: (fd: FormData) => Promise<void>, fields: Record<string, string>, onSuccess?: () => void) {
     const fd = new FormData();
     for (const [k, v] of Object.entries(fields)) fd.set(k, v);
     setError(null);
     startTransition(async () => {
       try {
         await action(fd);
+        onSuccess?.();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not update.");
+      }
+    });
+  }
+
+  function runForm(action: (fd: FormData) => Promise<void>, form: HTMLFormElement, extra?: Record<string, string>, onSuccess?: () => void) {
+    const fd = new FormData(form);
+    if (extra) for (const [k, v] of Object.entries(extra)) fd.set(k, v);
+    setError(null);
+    startTransition(async () => {
+      try {
+        await action(fd);
+        form.reset();
+        onSuccess?.();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save.");
       }
     });
   }
@@ -210,8 +245,10 @@ export default function ClinicalCarePanel({
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
+      {/* ── History tab ── */}
       {tab === "history" && (
         <div className="space-y-6">
+          {/* Allergies */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-sand-50/40">
               Allergies
@@ -221,26 +258,53 @@ export default function ClinicalCarePanel({
             ) : (
               <ul className="space-y-2">
                 {data.allergies.map((a) => (
-                  <li
-                    key={a.allergyId}
-                    className="flex flex-wrap items-start justify-between gap-2 text-sm text-sand-50/80"
-                  >
-                    <span>
-                      <span className="text-sand-50">{a.name}</span>
-                      {a.severity ? ` · ${a.severity}` : ""}
-                      {a.notes ? ` — ${a.notes}` : ""}
-                    </span>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          runFd(deleteAllergy, { allergyId: String(a.allergyId) })
-                        }
-                        className="text-xs text-red-400/80 hover:text-red-300"
+                  <li key={a.allergyId} className="space-y-1">
+                    {editingAllergyId === a.allergyId ? (
+                      <form
+                        className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 border border-sand-50/10 rounded-lg"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          runForm(updateAllergy, e.currentTarget, { allergyId: String(a.allergyId) }, () => setEditingAllergyId(null));
+                        }}
                       >
-                        Remove
-                      </button>
+                        <input name="name" required maxLength={80} defaultValue={a.name} placeholder="Allergy" className="dash-input" />
+                        <input name="severity" maxLength={20} defaultValue={a.severity ?? ""} placeholder="Severity" className="dash-input" />
+                        <input name="notes" maxLength={200} defaultValue={a.notes ?? ""} placeholder="Notes" className="dash-input" />
+                        <div className="sm:col-span-3 flex gap-2">
+                          <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                            <Check className="h-3 w-3" /> Save
+                          </button>
+                          <button type="button" onClick={() => setEditingAllergyId(null)} className="flex items-center gap-1 text-xs text-sand-50/50 hover:text-sand-50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                            <X className="h-3 w-3" /> Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-sand-50/80">
+                        <span>
+                          <span className="text-sand-50">{a.name}</span>
+                          {a.severity ? ` · ${a.severity}` : ""}
+                          {a.notes ? ` — ${a.notes}` : ""}
+                        </span>
+                        {canEdit && (
+                          <div className="flex gap-2 shrink-0">
+                            <button type="button" onClick={() => setEditingAllergyId(a.allergyId)} className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300">
+                              <Pencil className="h-3 w-3" /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => {
+                                if (confirm("Remove this allergy?"))
+                                  runFd(deleteAllergy, { allergyId: String(a.allergyId) });
+                              }}
+                              className="flex items-center gap-1 text-xs text-red-400/80 hover:text-red-300"
+                            >
+                              <Trash2 className="h-3 w-3" /> Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}
@@ -268,6 +332,7 @@ export default function ClinicalCarePanel({
             )}
           </section>
 
+          {/* Medical notes */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-sand-50/40">
               Medical history notes
@@ -278,10 +343,56 @@ export default function ClinicalCarePanel({
               <ul className="space-y-3">
                 {data.medicalNotes.map((n) => (
                   <li key={n.noteId} className="text-sm text-sand-50/75">
-                    <p className="text-[10px] text-sand-50/35 mb-0.5">
-                      {new Date(n.recordedAt).toLocaleString()}
-                    </p>
-                    <p className="whitespace-pre-wrap">{n.body}</p>
+                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                      <p className="text-[10px] text-sand-50/35">
+                        {new Date(n.recordedAt).toLocaleString()}
+                      </p>
+                      {canEdit && (
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setEditingNoteId(editingNoteId === n.noteId ? null : n.noteId)}
+                            className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300"
+                          >
+                            <Pencil className="h-3 w-3" /> {editingNoteId === n.noteId ? "Cancel" : "Edit"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => {
+                              if (confirm("Delete this note?"))
+                                runFd(deleteMedicalNote, { noteId: String(n.noteId) });
+                            }}
+                            className="flex items-center gap-1 text-xs text-red-400/80 hover:text-red-300"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {editingNoteId === n.noteId ? (
+                      <form
+                        className="space-y-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          runForm(updateMedicalNote, e.currentTarget, { noteId: String(n.noteId) }, () => setEditingNoteId(null));
+                        }}
+                      >
+                        <textarea
+                          name="body"
+                          required
+                          rows={3}
+                          maxLength={4000}
+                          defaultValue={n.body}
+                          className="dash-input resize-y w-full"
+                        />
+                        <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                          <Check className="h-3 w-3" /> Save
+                        </button>
+                      </form>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{n.body}</p>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -315,6 +426,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Treatment Plans tab ── */}
       {tab === "plans" && (
         <div className="space-y-5">
           {data.treatmentPlans.length === 0 ? (
@@ -323,57 +435,141 @@ export default function ClinicalCarePanel({
             </p>
           ) : (
             data.treatmentPlans.map((plan) => (
-              <div key={plan.planId} className="space-y-2 border-b border-sand-50/8 pb-4 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-sand-50">{plan.title}</p>
-                  {plan.notes && (
-                    <p className="text-xs text-sand-50/45 mt-0.5 whitespace-pre-wrap">{plan.notes}</p>
-                  )}
-                </div>
+              <div key={plan.planId} className="space-y-3 border border-sand-50/8 rounded-xl p-4 last:mb-0">
+                {/* Plan header */}
+                {editingPlanId === plan.planId ? (
+                  <form
+                    className="space-y-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      runForm(updateTreatmentPlan, e.currentTarget, { planId: String(plan.planId) }, () => setEditingPlanId(null));
+                    }}
+                  >
+                    <input name="title" required maxLength={120} defaultValue={plan.title} className="dash-input w-full" />
+                    <textarea name="notes" rows={2} maxLength={4000} defaultValue={plan.notes ?? ""} placeholder="Clinical notes" className="dash-input resize-y w-full" />
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                        <Check className="h-3 w-3" /> Save Plan
+                      </button>
+                      <button type="button" onClick={() => setEditingPlanId(null)} className="text-xs text-sand-50/50 hover:text-sand-50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-sand-50">{plan.title}</p>
+                      {plan.notes && (
+                        <p className="text-xs text-sand-50/45 mt-0.5 whitespace-pre-wrap">{plan.notes}</p>
+                      )}
+                    </div>
+                    {isDentist && (
+                      <div className="flex gap-2 shrink-0">
+                        <button type="button" onClick={() => setEditingPlanId(plan.planId)} className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300">
+                          <Pencil className="h-3 w-3" /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => {
+                            if (confirm(`Delete the entire plan "${plan.title}" and all its items?`))
+                              runFd(deleteTreatmentPlan, { planId: String(plan.planId) });
+                          }}
+                          className="flex items-center gap-1 text-xs text-red-400/70 hover:text-red-300"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Plan items */}
                 <ul className="space-y-1.5">
                   {plan.items.map((item) => (
-                    <li
-                      key={item.itemId}
-                      className="flex flex-wrap items-center gap-2 text-sm text-sand-50/75"
-                    >
-                      <span>
-                        {item.toothNumber != null && (
-                          <span className="text-turq-300 mr-1">#{item.toothNumber}</span>
-                        )}
-                        {item.description}
-                        {item.surfaces ? ` (${item.surfaces})` : ""}
-                        {item.estimatedCharge != null
-                          ? ` · ${formatNaira(item.estimatedCharge)}`
-                          : ""}
-                      </span>
-                      {isDentist ? (
-                        <select
-                          value={item.status}
-                          disabled={pending}
-                          onChange={(e) =>
-                            runFd(updatePlanItemStatus, {
-                              itemId: String(item.itemId),
-                              status: e.target.value,
-                            })
-                          }
-                          className="dash-input w-auto text-xs py-1"
+                    <li key={item.itemId} className="space-y-1">
+                      {editingPlanItemId === item.itemId ? (
+                        <form
+                          className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 border border-sand-50/10 rounded-lg"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            runForm(updatePlanItem, e.currentTarget, { itemId: String(item.itemId) }, () => setEditingPlanItemId(null));
+                          }}
                         >
-                          <option value="planned">Planned</option>
-                          <option value="in_progress">In progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
+                          <input name="description" required maxLength={200} defaultValue={item.description} placeholder="Procedure" className="dash-input sm:col-span-2" />
+                          <input name="toothNumber" type="number" min={11} max={85} defaultValue={item.toothNumber ?? ""} placeholder="Tooth" className="dash-input" />
+                          <input name="estimatedCharge" type="number" min={0} defaultValue={item.estimatedCharge ?? ""} placeholder="Est. ₦" className="dash-input" />
+                          <div className="sm:col-span-2 flex gap-2">
+                            <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                              <Check className="h-3 w-3" /> Save
+                            </button>
+                            <button type="button" onClick={() => setEditingPlanItemId(null)} className="text-xs text-sand-50/50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
                       ) : (
-                        <span className="text-xs text-sand-50/40 capitalize">
-                          {item.status.replace("_", " ")}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-sand-50/75">
+                          <span className="flex-1">
+                            {item.toothNumber != null && (
+                              <span className="text-turq-300 mr-1">#{item.toothNumber}</span>
+                            )}
+                            {item.description}
+                            {item.surfaces ? ` (${item.surfaces})` : ""}
+                            {item.estimatedCharge != null
+                              ? ` · ${formatNaira(item.estimatedCharge)}`
+                              : ""}
+                          </span>
+                          {isDentist ? (
+                            <select
+                              value={item.status}
+                              disabled={pending}
+                              onChange={(e) =>
+                                runFd(updatePlanItemStatus, {
+                                  itemId: String(item.itemId),
+                                  status: e.target.value,
+                                })
+                              }
+                              className="dash-input w-auto text-xs py-1"
+                            >
+                              <option value="planned">Planned</option>
+                              <option value="in_progress">In progress</option>
+                              <option value="completed">Completed</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs text-sand-50/40 capitalize">
+                              {item.status.replace("_", " ")}
+                            </span>
+                          )}
+                          {isDentist && (
+                            <div className="flex gap-1">
+                              <button type="button" onClick={() => setEditingPlanItemId(item.itemId)} className="text-xs text-turq-400 hover:text-turq-300">
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pending}
+                                onClick={() => {
+                                  if (confirm("Delete this plan item?"))
+                                    runFd(deletePlanItem, { itemId: String(item.itemId) });
+                                }}
+                                className="text-xs text-red-400/70 hover:text-red-300"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </li>
                   ))}
                 </ul>
+
                 {isDentist && (
                   <form
-                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1"
+                    className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 border-t border-sand-50/8"
                     onSubmit={(e) => {
                       e.preventDefault();
                       run(addPlanItem, e.currentTarget, {
@@ -456,6 +652,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Perio tab ── */}
       {tab === "perio" && (
         <div className="space-y-4">
           {data.perioReadings.length === 0 ? (
@@ -523,6 +720,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Consents tab ── */}
       {tab === "consents" && (
         <div className="space-y-4">
           {data.consents.length === 0 ? (
@@ -530,10 +728,29 @@ export default function ClinicalCarePanel({
           ) : (
             <ul className="space-y-3">
               {data.consents.map((c) => (
-                <li key={c.consentId} className="text-sm space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sand-50 font-medium">{c.title}</span>
-                    <span className="text-xs text-sand-50/40 capitalize">{c.status}</span>
+                <li key={c.consentId} className="text-sm space-y-1 border border-sand-50/8 rounded-xl p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sand-50 font-medium">{c.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
+                        c.status === "signed"   ? "bg-turq-600/20 text-turq-300" :
+                        c.status === "declined" ? "bg-red-900/30 text-red-300" :
+                                                  "bg-amber-900/30 text-amber-300"
+                      }`}>{c.status}</span>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => {
+                          if (confirm("Delete this consent record?"))
+                            runFd(deleteConsent, { consentId: String(c.consentId) });
+                        }}
+                        className="flex items-center gap-1 text-xs text-red-400/70 hover:text-red-300"
+                      >
+                        <Trash2 className="h-3 w-3" /> Delete
+                      </button>
+                    )}
                   </div>
                   {c.summary && <p className="text-sand-50/60 text-xs whitespace-pre-wrap">{c.summary}</p>}
                   {c.signedByName && (
@@ -614,6 +831,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Recalls tab ── */}
       {tab === "recalls" && (
         <div className="space-y-4">
           {data.recalls.length === 0 ? (
@@ -621,33 +839,61 @@ export default function ClinicalCarePanel({
           ) : (
             <ul className="space-y-2">
               {data.recalls.map((r) => (
-                <li
-                  key={r.recallId}
-                  className="flex flex-wrap items-center gap-2 text-sm text-sand-50/75"
-                >
-                  <span>
-                    {r.reason} · due {r.dueDate.slice(0, 10)}
-                    {r.notes ? ` — ${r.notes}` : ""}
-                  </span>
-                  {canEdit ? (
-                    <select
-                      value={r.status}
-                      disabled={pending}
-                      onChange={(e) =>
-                        runFd(updateRecallStatus, {
-                          recallId: String(r.recallId),
-                          status: e.target.value,
-                        })
-                      }
-                      className="dash-input w-auto text-xs py-1"
+                <li key={r.recallId} className="space-y-1 border border-sand-50/8 rounded-xl p-3">
+                  {editingRecallId === r.recallId ? (
+                    <form
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        runForm(updateRecall, e.currentTarget, { recallId: String(r.recallId) }, () => setEditingRecallId(null));
+                      }}
                     >
-                      <option value="due">Due</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
+                      <input name="reason" required maxLength={120} defaultValue={r.reason} placeholder="Reason" className="dash-input" />
+                      <input name="dueDate" type="date" required defaultValue={r.dueDate.slice(0, 10)} className="dash-input" />
+                      <input name="notes" maxLength={200} defaultValue={r.notes ?? ""} placeholder="Notes" className="dash-input" />
+                      <div className="sm:col-span-3 flex gap-2">
+                        <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                          <Check className="h-3 w-3" /> Save
+                        </button>
+                        <button type="button" onClick={() => setEditingRecallId(null)} className="text-xs text-sand-50/50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
                   ) : (
-                    <span className="text-xs text-sand-50/40 capitalize">{r.status}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-sm text-sand-50/75">
+                        {r.reason} · due {r.dueDate.slice(0, 10)}
+                        {r.notes ? ` — ${r.notes}` : ""}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {canEdit ? (
+                          <select
+                            value={r.status}
+                            disabled={pending}
+                            onChange={(e) =>
+                              runFd(updateRecallStatus, {
+                                recallId: String(r.recallId),
+                                status: e.target.value,
+                              })
+                            }
+                            className="dash-input w-auto text-xs py-1"
+                          >
+                            <option value="due">Due</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        ) : (
+                          <span className="text-xs text-sand-50/40 capitalize">{r.status}</span>
+                        )}
+                        {canEdit && (
+                          <button type="button" onClick={() => setEditingRecallId(r.recallId)} className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300">
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </li>
               ))}
@@ -676,6 +922,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Insurance tab ── */}
       {tab === "insurance" && (
         <div className="space-y-4">
           {data.insurancePolicies.filter((p) => p.active).length === 0 ? (
@@ -685,31 +932,59 @@ export default function ClinicalCarePanel({
               {data.insurancePolicies
                 .filter((p) => p.active)
                 .map((p) => (
-                  <li
-                    key={p.insuranceId}
-                    className="flex flex-wrap items-start justify-between gap-2 text-sm text-sand-50/75"
-                  >
-                    <span>
-                      <span className="text-sand-50">{p.provider}</span>
-                      {" · "}
-                      {p.policyNumber}
-                      {p.memberId ? ` · member ${p.memberId}` : ""}
-                      {p.groupNumber ? ` · group ${p.groupNumber}` : ""}
-                      {p.notes ? ` — ${p.notes}` : ""}
-                    </span>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() =>
-                          runFd(deactivateInsurance, {
-                            insuranceId: String(p.insuranceId),
-                          })
-                        }
-                        className="text-xs text-sand-50/40 hover:text-red-300"
+                  <li key={p.insuranceId} className="border border-sand-50/8 rounded-xl p-3 space-y-2">
+                    {editingInsuranceId === p.insuranceId ? (
+                      <form
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          runForm(updateInsurance, e.currentTarget, { insuranceId: String(p.insuranceId) }, () => setEditingInsuranceId(null));
+                        }}
                       >
-                        Deactivate
-                      </button>
+                        <input name="provider" required maxLength={80} defaultValue={p.provider} placeholder="Provider" className="dash-input" />
+                        <input name="policyNumber" required maxLength={60} defaultValue={p.policyNumber} placeholder="Policy number" className="dash-input" />
+                        <input name="memberId" maxLength={60} defaultValue={p.memberId ?? ""} placeholder="Member ID" className="dash-input" />
+                        <input name="groupNumber" maxLength={60} defaultValue={p.groupNumber ?? ""} placeholder="Group number" className="dash-input" />
+                        <input name="notes" maxLength={200} defaultValue={p.notes ?? ""} placeholder="Notes" className="dash-input sm:col-span-2" />
+                        <div className="sm:col-span-2 flex gap-2">
+                          <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                            <Check className="h-3 w-3" /> Save
+                          </button>
+                          <button type="button" onClick={() => setEditingInsuranceId(null)} className="text-xs text-sand-50/50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap items-start justify-between gap-2 text-sm text-sand-50/75">
+                        <span>
+                          <span className="text-sand-50">{p.provider}</span>
+                          {" · "}
+                          {p.policyNumber}
+                          {p.memberId ? ` · member ${p.memberId}` : ""}
+                          {p.groupNumber ? ` · group ${p.groupNumber}` : ""}
+                          {p.notes ? ` — ${p.notes}` : ""}
+                        </span>
+                        {canEdit && (
+                          <div className="flex gap-2 shrink-0">
+                            <button type="button" onClick={() => setEditingInsuranceId(p.insuranceId)} className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300">
+                              <Pencil className="h-3 w-3" /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() =>
+                                runFd(deactivateInsurance, {
+                                  insuranceId: String(p.insuranceId),
+                                })
+                              }
+                              className="text-xs text-sand-50/40 hover:text-red-300"
+                            >
+                              Deactivate
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </li>
                 ))}
@@ -746,6 +1021,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Labs tab ── */}
       {tab === "labs" && (
         <div className="space-y-4">
           {data.labCases.length === 0 ? (
@@ -828,6 +1104,7 @@ export default function ClinicalCarePanel({
         </div>
       )}
 
+      {/* ── Referrals tab ── */}
       {tab === "referrals" && (
         <div className="space-y-4">
           {data.referrals.length === 0 ? (
@@ -835,7 +1112,7 @@ export default function ClinicalCarePanel({
           ) : (
             <ul className="space-y-3">
               {data.referrals.map((r) => (
-                <li key={r.referralId} className="text-sm space-y-1 border-b border-sand-50/8 pb-3 last:border-0">
+                <li key={r.referralId} className="text-sm space-y-1 border border-sand-50/8 rounded-xl p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sand-50 font-medium">{r.specialistType}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -843,7 +1120,7 @@ export default function ClinicalCarePanel({
                       r.urgency === "urgent"    ? "bg-amber-900/40 text-amber-300" :
                                                   "bg-sand-50/8 text-sand-50/50"
                     }`}>{r.urgency}</span>
-                    {isDentist ? (
+                    {canEdit ? (
                       <select
                         value={r.status}
                         disabled={pending}

@@ -132,3 +132,21 @@ export async function getCampaignHistoryAction() {
     take: 30,
   });
 }
+
+/**
+ * Delete a campaign log from history.
+ */
+export async function deleteCampaignAction(formData: FormData) {
+  await requireAdmin();
+  const id = parseInt(formData.get("id") as string, 10);
+  if (!id) return { error: "Campaign ID required." };
+
+  try {
+    await prisma.broadcastCampaign.delete({ where: { id } });
+    revalidatePath("/dashboard/admin/automations");
+    return { success: true };
+  } catch (err: any) {
+    return { error: err?.message || "Failed to delete campaign log." };
+  }
+}
+

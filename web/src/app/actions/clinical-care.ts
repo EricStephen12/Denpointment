@@ -52,6 +52,20 @@ export async function deleteAllergy(formData: FormData) {
   revalidatePatient(row.patientId);
 }
 
+export async function updateAllergy(formData: FormData) {
+  await requireClinicalEditor();
+  const allergyId = parseInt(formData.get("allergyId") as string, 10);
+  const name     = ((formData.get("name")     as string) || "").trim().slice(0, 80);
+  const severity = ((formData.get("severity") as string) || "").trim().slice(0, 20);
+  const notes    = ((formData.get("notes")    as string) || "").trim().slice(0, 200);
+  if (!allergyId || !name) throw new Error("Allergy name is required.");
+  const row = await prisma.allergy.update({
+    where: { allergyId },
+    data: { name, severity: severity || null, notes: notes || null },
+  });
+  revalidatePatient(row.patientId);
+}
+
 export async function addMedicalNote(formData: FormData) {
   const person = await requireClinicalEditor();
   const patientId = parseInt(formData.get("patientId") as string, 10);
@@ -65,6 +79,27 @@ export async function addMedicalNote(formData: FormData) {
     },
   });
   revalidatePatient(patientId);
+}
+
+export async function deleteMedicalNote(formData: FormData) {
+  await requireClinicalEditor();
+  const noteId = parseInt(formData.get("noteId") as string, 10);
+  const row = await prisma.medicalHistoryNote.findUnique({ where: { noteId } });
+  if (!row) throw new Error("Note not found.");
+  await prisma.medicalHistoryNote.delete({ where: { noteId } });
+  revalidatePatient(row.patientId);
+}
+
+export async function updateMedicalNote(formData: FormData) {
+  await requireClinicalEditor();
+  const noteId = parseInt(formData.get("noteId") as string, 10);
+  const body   = ((formData.get("body") as string) || "").trim().slice(0, 4000);
+  if (!noteId || !body) throw new Error("Note text is required.");
+  const row = await prisma.medicalHistoryNote.update({
+    where: { noteId },
+    data: { body },
+  });
+  revalidatePatient(row.patientId);
 }
 
 export async function createTreatmentPlan(formData: FormData) {
@@ -122,6 +157,61 @@ export async function updatePlanItemStatus(formData: FormData) {
   revalidatePatient(item.plan.patientId);
 }
 
+export async function updatePlanItem(formData: FormData) {
+  await requireDentistId();
+  const itemId      = parseInt(formData.get("itemId")          as string, 10);
+  const description = ((formData.get("description")           as string) || "").trim().slice(0, 200);
+  const toothRaw    = (formData.get("toothNumber")            as string) || "";
+  const toothNumber = toothRaw ? parseInt(toothRaw, 10) : null;
+  const chargeRaw   = (formData.get("estimatedCharge")        as string) || "";
+  const estimatedCharge = chargeRaw ? parseInt(chargeRaw, 10) : null;
+  if (!itemId || !description) throw new Error("Description is required.");
+  if (toothNumber != null && !isValidFdiTooth(toothNumber)) throw new Error("Invalid tooth number.");
+  const item = await prisma.treatmentPlanItem.update({
+    where: { itemId },
+    data: {
+      description,
+      toothNumber,
+      estimatedCharge: estimatedCharge != null && !Number.isNaN(estimatedCharge) ? estimatedCharge : null,
+    },
+    include: { plan: true },
+  });
+  revalidatePatient(item.plan.patientId);
+}
+
+export async function deletePlanItem(formData: FormData) {
+  await requireDentistId();
+  const itemId = parseInt(formData.get("itemId") as string, 10);
+  const item = await prisma.treatmentPlanItem.findUnique({ where: { itemId }, include: { plan: true } });
+  if (!item) throw new Error("Item not found.");
+  await prisma.treatmentPlanItem.delete({ where: { itemId } });
+  revalidatePatient(item.plan.patientId);
+}
+
+export async function updateTreatmentPlan(formData: FormData) {
+  await requireDentistId();
+  const planId = parseInt(formData.get("planId") as string, 10);
+  const title  = ((formData.get("title") as string) || "").trim().slice(0, 120);
+  const notes  = ((formData.get("notes") as string) || "").trim().slice(0, 4000);
+  if (!planId || !title) throw new Error("Plan title is required.");
+  const plan = await prisma.treatmentPlan.update({
+    where: { planId },
+    data: { title, notes: notes || null },
+  });
+  revalidatePatient(plan.patientId);
+}
+
+export async function deleteTreatmentPlan(formData: FormData) {
+  await requireDentistId();
+  const planId = parseInt(formData.get("planId") as string, 10);
+  const plan = await prisma.treatmentPlan.findUnique({ where: { planId } });
+  if (!plan) throw new Error("Plan not found.");
+  // Delete all items first then the plan
+  await prisma.treatmentPlanItem.deleteMany({ where: { planId } });
+  await prisma.treatmentPlan.delete({ where: { planId } });
+  revalidatePatient(plan.patientId);
+}
+
 export async function upsertPerioReading(formData: FormData) {
   const dentistId = await requireDentistId();
   const patientId = parseInt(formData.get("patientId") as string, 10);
@@ -176,6 +266,15 @@ export async function addConsent(formData: FormData) {
   revalidatePatient(patientId);
 }
 
+export async function deleteConsent(formData: FormData) {
+  await requireClinicalEditor();
+  const consentId = parseInt(formData.get("consentId") as string, 10);
+  const row = await prisma.consentRecord.findUnique({ where: { consentId } });
+  if (!row) throw new Error("Consent not found.");
+  await prisma.consentRecord.delete({ where: { consentId } });
+  revalidatePatient(row.patientId);
+}
+
 export async function updateConsentStatus(formData: FormData) {
   await requireClinicalEditor();
   const consentId = parseInt(formData.get("consentId") as string, 10);
@@ -211,6 +310,24 @@ export async function addRecall(formData: FormData) {
     },
   });
   revalidatePatient(patientId);
+}
+
+export async function updateRecall(formData: FormData) {
+  await requireClinicalEditor();
+  const recallId   = parseInt(formData.get("recallId")  as string, 10);
+  const reason     = ((formData.get("reason")     as string) || "").trim().slice(0, 120);
+  const dueDateRaw = (formData.get("dueDate")     as string) || "";
+  const notes      = ((formData.get("notes")      as string) || "").trim().slice(0, 200);
+  if (!recallId || !reason || !dueDateRaw) throw new Error("Reason and due date required.");
+  const row = await prisma.recall.update({
+    where: { recallId },
+    data: {
+      reason,
+      dueDate: new Date(`${dueDateRaw}T12:00:00.000Z`),
+      notes: notes || null,
+    },
+  });
+  revalidatePatient(row.patientId);
 }
 
 export async function updateRecallStatus(formData: FormData) {
@@ -253,6 +370,28 @@ export async function deactivateInsurance(formData: FormData) {
   const row = await prisma.patientInsurance.update({
     where: { insuranceId },
     data: { active: false },
+  });
+  revalidatePatient(row.patientId);
+}
+
+export async function updateInsurance(formData: FormData) {
+  await requireClinicalEditor();
+  const insuranceId  = parseInt(formData.get("insuranceId")   as string, 10);
+  const provider     = ((formData.get("provider")     as string) || "").trim().slice(0, 80);
+  const policyNumber = ((formData.get("policyNumber") as string) || "").trim().slice(0, 60);
+  const memberId     = ((formData.get("memberId")     as string) || "").trim().slice(0, 60);
+  const groupNumber  = ((formData.get("groupNumber")  as string) || "").trim().slice(0, 60);
+  const notes        = ((formData.get("notes")        as string) || "").trim().slice(0, 200);
+  if (!insuranceId || !provider || !policyNumber) throw new Error("Provider and policy number are required.");
+  const row = await prisma.patientInsurance.update({
+    where: { insuranceId },
+    data: {
+      provider,
+      policyNumber,
+      memberId: memberId || null,
+      groupNumber: groupNumber || null,
+      notes: notes || null,
+    },
   });
   revalidatePatient(row.patientId);
 }
@@ -371,7 +510,8 @@ export async function addReferral(formData: FormData) {
 }
 
 export async function updateReferralStatus(formData: FormData) {
-  await requireDentistId();
+  // Allow any clinical editor (receptionist can also update referral status)
+  await requireClinicalEditor();
   const referralId = parseInt(formData.get("referralId") as string, 10);
   const status = formData.get("status") as "pending" | "sent" | "completed" | "cancelled";
   const allowed = ["pending","sent","completed","cancelled"];
@@ -391,3 +531,53 @@ export async function addRecallCallLog(formData: FormData) {
   });
   revalidatePath("/dashboard/reception/recalls");
 }
+
+export async function deleteRecall(formData: FormData) {
+  await requireClinicalEditor();
+  const recallId = parseInt(formData.get("recallId") as string, 10);
+  const recall = await prisma.recall.findUnique({ where: { recallId } });
+  if (!recall) throw new Error("Recall not found.");
+  await prisma.recallCallLog.deleteMany({ where: { recallId } });
+  await prisma.recall.delete({ where: { recallId } });
+  revalidatePatient(recall.patientId);
+  revalidatePath("/dashboard/reception/recalls");
+}
+
+export async function deleteInsurance(formData: FormData) {
+  await requireClinicalEditor();
+  const insuranceId = parseInt(formData.get("insuranceId") as string, 10);
+  const row = await prisma.patientInsurance.findUnique({ where: { insuranceId } });
+  if (!row) throw new Error("Insurance not found.");
+  // Delete associated claims or let user know
+  await prisma.insuranceClaim.deleteMany({ where: { patientInsuranceId: insuranceId } });
+  await prisma.patientInsurance.delete({ where: { insuranceId } });
+  revalidatePatient(row.patientId);
+}
+
+export async function deleteLabCase(formData: FormData) {
+  await requireClinicalEditor();
+  const labCaseId = parseInt(formData.get("labCaseId") as string, 10);
+  const row = await prisma.labCase.findUnique({ where: { labCaseId } });
+  if (!row) throw new Error("Lab case not found.");
+  await prisma.labCase.delete({ where: { labCaseId } });
+  revalidatePatient(row.patientId);
+}
+
+export async function deleteReferral(formData: FormData) {
+  await requireClinicalEditor();
+  const referralId = parseInt(formData.get("referralId") as string, 10);
+  const row = await prisma.referral.findUnique({ where: { referralId } });
+  if (!row) throw new Error("Referral not found.");
+  await prisma.referral.delete({ where: { referralId } });
+  revalidatePatient(row.patientId);
+}
+
+export async function deleteCurrentMedication(formData: FormData) {
+  await requireClinicalEditor();
+  const medicationId = parseInt(formData.get("medicationId") as string, 10);
+  const row = await prisma.currentMedication.findUnique({ where: { medicationId } });
+  if (!row) throw new Error("Medication not found.");
+  await prisma.currentMedication.delete({ where: { medicationId } });
+  revalidatePatient(row.patientId);
+}
+

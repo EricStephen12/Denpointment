@@ -34,7 +34,7 @@ export default async function TodaysAppointmentsPage() {
       include: {
         patient: { include: { person: true } },
         dentist: { include: { person: true } },
-        treatments: true,
+        treatments: { include: { medicines: true } },
       },
       orderBy: { hour: 'asc' },
     }),
@@ -170,6 +170,7 @@ export default async function TodaysAppointmentsPage() {
                             toothNumber: t.toothNumber,
                             charge: t.charge,
                             paid: t.paid,
+                            medicines: t.medicines,
                           }}
                         />
                       ) : (

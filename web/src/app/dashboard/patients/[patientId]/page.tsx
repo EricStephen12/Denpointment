@@ -9,6 +9,7 @@ import Odontogram from "@/components/dashboards/Odontogram";
 import PatientImages from "@/components/dashboards/PatientImages";
 import ClinicalCarePanel from "@/components/dashboards/ClinicalCarePanel";
 import PatientDemographicsEditor from "@/components/patients/PatientDemographicsEditor";
+import DeletePatientButton from "@/components/patients/DeletePatientButton";
 import { ArrowLeft, Calendar, User, AlertTriangle, Pill, Clock } from "lucide-react";
 import { formatNaira as _fmt } from "@/lib/currency";
 
@@ -187,7 +188,7 @@ export default async function PatientProfilePage({
                 <p className="text-lg font-display text-turq-400">Settled</p>
               </div>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {canEditDemographics && (
                 <Link
                   href={`/dashboard/book?patientId=${patient.patientId}`}
@@ -202,6 +203,14 @@ export default async function PatientProfilePage({
               >
                 View Tooth Chart
               </Link>
+              {isAdmin(dbUser) && (
+                <DeletePatientButton
+                  patientId={patient.patientId}
+                  patientName={`${person.firstName} ${person.lastName}`}
+                  variant="button"
+                  redirectAfterDelete={true}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -220,7 +229,9 @@ export default async function PatientProfilePage({
             data={{
               firstName: person.firstName,
               lastName: person.lastName,
+              email: person.email,
               phone: person.contacts[0]?.contactNumber ?? "",
+              contacts: person.contacts.map((c) => c.contactNumber),
               street: person.addresses[0]?.street ?? "",
               city: person.addresses[0]?.city ?? "",
               occupation: person.occupation ?? "",
@@ -404,7 +415,7 @@ export default async function PatientProfilePage({
       {/* ── Images ── */}
       <PatientImages
         patientId={patient.patientId}
-        canEdit={canEditChart}
+        canEdit={canEditChart || isAdmin(dbUser)}
         cloudinaryReady={isCloudinaryConfigured()}
         images={patient.images.map((img) => ({
           imageId: img.imageId,

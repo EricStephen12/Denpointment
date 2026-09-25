@@ -8,6 +8,7 @@ import { formatNaira } from "@/lib/currency";
 import { formatAppointmentDate } from "@/lib/clinic-date";
 import { Receipt } from "lucide-react";
 import PaymentPanel from "@/components/billing/PaymentPanel";
+import PaymentHistoryItem from "@/components/billing/PaymentHistoryItem";
 
 export default async function BillingPage({
   searchParams,
@@ -209,18 +210,28 @@ export default async function BillingPage({
                 )}
 
                 {/* Payment history */}
-                {appt.payments.length > 0 && (
-                  <div className="px-5 py-3 border-b border-sand-50/8 space-y-1">
-                    {appt.payments.map((p) => (
-                      <div key={p.paymentId} className="flex items-center justify-between text-xs text-sand-50/40">
-                        <span className="capitalize">{p.type} · {p.method.replace("_", " ")}{p.reference ? ` · ${p.reference}` : ""}</span>
-                        <span className={p.type === "refund" ? "text-red-400" : "text-turq-400"}>
-                          {p.type === "refund" ? "-" : "+"}{formatNaira(p.amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {appt.payments.length > 0 && (() => {
+                  const voidedPaymentIds = new Set(
+                    appt.payments
+                      .filter((p) => p.notes?.startsWith("VOID of payment #"))
+                      .map((p) => {
+                        const match = p.notes?.match(/VOID of payment #(\d+)/);
+                        return match ? parseInt(match[1], 10) : null;
+                      })
+                      .filter((id): id is number => id !== null)
+                  );
+                  return (
+                    <div className="px-5 py-3 border-b border-sand-50/8 space-y-1">
+                      {appt.payments.map((p) => (
+                        <PaymentHistoryItem
+                          key={p.paymentId}
+                          payment={p}
+                          isVoided={voidedPaymentIds.has(p.paymentId)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Payment panel */}
                 {!isSettled && charge > 0 && (

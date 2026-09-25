@@ -2,8 +2,14 @@ import React from 'react';
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
-import { updateClinicHours, createService, toggleServiceActive } from "@/app/actions/settings";
-import { Settings, Plus, DollarSign } from 'lucide-react';
+import {
+  updateClinicHours,
+  createService,
+  toggleServiceActive,
+  updateService,
+  deleteService,
+} from "@/app/actions/settings";
+import { Settings, Plus, DollarSign, Pencil, Trash2 } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
 
 const WEEKDAYS = [
@@ -103,7 +109,7 @@ export default async function ClinicSettingsPage() {
                   <th>Service</th>
                   <th>Price</th>
                   <th>Status</th>
-                  <th className="text-right">Action</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -117,13 +123,73 @@ export default async function ClinicSettingsPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <form action={toggleServiceActive}>
-                        <input type="hidden" name="serviceId" value={s.serviceId} />
-                        <input type="hidden" name="active" value={String(s.active)} />
-                        <button type="submit" className="text-xs text-turq-400 hover:text-turq-300 font-medium">
-                          {s.active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </form>
+                      <div className="flex items-center justify-end gap-3">
+                        {/* Toggle active */}
+                        <form action={toggleServiceActive} className="inline">
+                          <input type="hidden" name="serviceId" value={s.serviceId} />
+                          <input type="hidden" name="active" value={String(s.active)} />
+                          <button type="submit" className="text-xs text-sand-50/50 hover:text-turq-400 font-medium transition-colors">
+                            {s.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </form>
+
+                        {/* Edit — inline popover form using details/summary */}
+                        <details className="relative inline-block group">
+                          <summary className="cursor-pointer text-xs text-turq-400 hover:text-turq-300 font-medium list-none flex items-center gap-1 transition-colors">
+                            <Pencil className="h-3 w-3" /> Edit
+                          </summary>
+                          <div className="absolute right-0 top-6 z-20 w-72 bg-ink-900 border border-sand-50/15 rounded-xl p-4 shadow-2xl">
+                            <p className="text-xs font-semibold text-sand-50/60 mb-3 uppercase tracking-wider">Edit Service</p>
+                            <form action={updateService} className="space-y-3">
+                              <input type="hidden" name="serviceId" value={s.serviceId} />
+                              <div>
+                                <label className="block text-[10px] text-sand-50/40 mb-1">Name</label>
+                                <input
+                                  type="text"
+                                  name="name"
+                                  required
+                                  maxLength={100}
+                                  defaultValue={s.name}
+                                  className="dash-input w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-sand-50/40 mb-1">Price (₦)</label>
+                                <input
+                                  type="number"
+                                  name="price"
+                                  required
+                                  min={0}
+                                  defaultValue={s.price}
+                                  className="dash-input w-full"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="w-full bg-turq-600 text-ink-950 py-2 rounded-lg text-xs font-semibold hover:bg-turq-500 transition-colors"
+                              >
+                                Save Changes
+                              </button>
+                            </form>
+                          </div>
+                        </details>
+
+                        {/* Delete — only if no treatments linked (server validates too) */}
+                        <form action={deleteService} className="inline">
+                          <input type="hidden" name="serviceId" value={s.serviceId} />
+                          <button
+                            type="submit"
+                            className="text-xs text-red-400/70 hover:text-red-300 font-medium flex items-center gap-1 transition-colors"
+                            onClick={(e) => {
+                              if (!confirm(`Delete "${s.name}"? This will fail if the service is used in any treatment records.`)) {
+                                e.preventDefault();
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 )) : (

@@ -267,3 +267,92 @@ export async function deleteTreatment(formData: FormData) {
   revalidatePath("/dashboard/appointments");
   revalidatePath("/dashboard/admin/billing");
 }
+
+export async function updateMedicine(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const medicineId    = parseInt(formData.get("medicineId")    as string, 10);
+  const medicineName  = ((formData.get("medicineName")  as string) || "").trim().slice(0, 80);
+  const dose          = ((formData.get("dose")          as string) || "").trim().slice(0, 40);
+  const frequency     = ((formData.get("frequency")     as string) || "").trim().slice(0, 40);
+  const duration      = ((formData.get("duration")      as string) || "").trim().slice(0, 40);
+  const instructions  = ((formData.get("instructions")  as string) || "").trim().slice(0, 200);
+  if (!medicineId || !medicineName) throw new Error("Medicine name is required.");
+
+  const med = await prisma.medicine.findUnique({
+    where: { medicineId },
+    include: { treatment: { include: { appointment: true } } },
+  });
+  if (!med) throw new Error("Medicine not found.");
+  if (med.treatment.treatorId !== dentistId) throw new Error("You can only edit your own prescriptions.");
+  if (med.treatment.paid) throw new Error("Cannot edit prescriptions on a paid treatment.");
+
+  await prisma.medicine.update({
+    where: { medicineId },
+    data: {
+      medicineName,
+      dose: dose || null,
+      frequency: frequency || null,
+      duration: duration || null,
+      instructions: instructions || null,
+    },
+  });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath(`/dashboard/patients/${med.treatment.appointment.pId}`);
+}
+
+export async function deleteMedicine(formData: FormData) {
+  const dentistId  = await requireDentistId();
+  const medicineId = parseInt(formData.get("medicineId") as string, 10);
+  if (!medicineId) throw new Error("Medicine ID required.");
+
+  const med = await prisma.medicine.findUnique({
+    where: { medicineId },
+    include: { treatment: { include: { appointment: true } } },
+  });
+  if (!med) throw new Error("Medicine not found.");
+  if (med.treatment.treatorId !== dentistId) throw new Error("You can only delete your own prescriptions.");
+  if (med.treatment.paid) throw new Error("Cannot delete prescriptions on a paid treatment.");
+
+  await prisma.medicine.delete({ where: { medicineId } });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath(`/dashboard/patients/${med.treatment.appointment.pId}`);
+}
+
+export async function addMedicineToTreatment(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
+  const medicineName = ((formData.get("medicineName") as string) || "").trim().slice(0, 80);
+  const dose = ((formData.get("dose") as string) || "").trim().slice(0, 40);
+  const frequency = ((formData.get("frequency") as string) || "").trim().slice(0, 40);
+  const duration = ((formData.get("duration") as string) || "").trim().slice(0, 40);
+  const instructions = ((formData.get("instructions") as string) || "").trim().slice(0, 200);
+  if (!treatmentId || !medicineName) throw new Error("Treatment ID and medicine name required.");
+
+  const treatment = await prisma.treatment.findUnique({
+    where: { treatmentId },
+    include: { appointment: true },
+  });
+  if (!treatment) throw new Error("Treatment not found.");
+  if (treatment.treatorId !== dentistId) throw new Error("You can only add prescriptions to your own treatments.");
+  if (treatment.paid) throw new Error("Cannot add prescriptions to a paid treatment.");
+
+  await prisma.medicine.create({
+    data: {
+      tId: treatmentId,
+      medicineName,
+      dose: dose || null,
+      frequency: frequency || null,
+      duration: duration || null,
+      instructions: instructions || null,
+    },
+  });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath(`/dashboard/patients/${treatment.appointment.pId}`);
+}
+

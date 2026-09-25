@@ -79,6 +79,7 @@ export async function updatePatientDemographics(formData: FormData) {
   });
   if (!patient) throw new Error("Patient not found.");
 
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
   const firstName = (formData.get("firstName") as string || "").trim();
   const lastName = (formData.get("lastName") as string || "").trim();
   const phone = (formData.get("phone") as string || "").trim();
@@ -89,10 +90,18 @@ export async function updatePatientDemographics(formData: FormData) {
   const street = (formData.get("street") as string || "").trim();
   const city = (formData.get("city") as string || "").trim();
 
+  if (email && email !== patient.person.email) {
+    const existing = await prisma.person.findUnique({ where: { email } });
+    if (existing && existing.personId !== patient.personId) {
+      throw new Error("That email is already registered to another person.");
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.person.update({
       where: { personId: patient.personId },
       data: {
+        email: email || undefined,
         firstName: firstName || undefined,
         lastName: lastName || undefined,
         occupation: occupation || null,
@@ -183,3 +192,151 @@ export async function removeChronicDisease(formData: FormData) {
   });
   revalidatePath(`/dashboard/patients/${patientId}`);
 }
+
+/**
+ * Add a secondary contact phone number.
+ */
+export async function addPatientContactNumber(formData: FormData) {
+  await requireFrontDeskAccess();
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  const phone = ((formData.get("phone") as string) || "").trim();
+  if (!patientId || !phone) throw new Error("Patient ID and phone number required.");
+
+  const patient = await prisma.patient.findUnique({ where: { patientId } });
+  if (!patient) throw new Error("Patient not found.");
+
+  await prisma.personContactNumber.upsert({
+    where: { contactNumber_personId: { contactNumber: phone, personId: patient.personId } },
+    create: { contactNumber: phone, personId: patient.personId },
+    update: {},
+  });
+  revalidatePath(`/dashboard/patients/${patientId}`);
+}
+
+/**
+ * Remove a contact phone number.
+ */
+export async function removePatientContactNumber(formData: FormData) {
+  await requireFrontDeskAccess();
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  const phone = ((formData.get("phone") as string) || "").trim();
+  if (!patientId || !phone) throw new Error("Required.");
+
+  const patient = await prisma.patient.findUnique({ where: { patientId } });
+  if (!patient) throw new Error("Patient not found.");
+
+  await prisma.personContactNumber.delete({
+    where: { contactNumber_personId: { contactNumber: phone, personId: patient.personId } },
+  });
+  revalidatePath(`/dashboard/patients/${patientId}`);
+}
+
+/**
+ * Deletes a patient record (Admin only).
+ * Cleanly cascades through appointments, treatments, medicines, insurance claims, and payments,
+ * and deletes the person record if they hold no other clinic roles.
+ */
+export async function deletePatient(formData: FormData) {
+  const person = await getCurrentPerson();
+  if (!person || !isAdmin(person)) {
+    throw new Error("Only practice administrators can delete patient records.");
+  }
+
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  if (!patientId) throw new Error("Patient ID is required.");
+
+  const patient = await prisma.patient.findUnique({
+    where: { patientId },
+    include: {
+      person: {
+        include: { admins: true, dentists: true, receptionists: true },
+      },
+    },
+  });
+  if (!patient) throw new Error("Patient record not found.");
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Find all appointments for this patient
+    const appointments = await tx.appointment.findMany({
+      where: { pId: patientId },
+      select: { appointmentId: true },
+    });
+    const appointmentIds = appointments.map((a) => a.appointmentId);
+
+    if (appointmentIds.length > 0) {
+      // 2. Find treatments under these appointments
+      const treatments = await tx.treatment.findMany({
+        where: { aId: { in: appointmentIds } },
+        select: { treatmentId: true },
+      });
+      const treatmentIds = treatments.map((t) => t.treatmentId);
+
+      // 3. Delete medicines under these treatments
+      if (treatmentIds.length > 0) {
+        await tx.medicine.deleteMany({
+          where: { tId: { in: treatmentIds } },
+        });
+      }
+
+      // 4. Delete payments linked to these appointments or treatments
+      await tx.payment.deleteMany({
+        where: {
+          OR: [
+            { patientId },
+            { appointmentId: { in: appointmentIds } },
+            ...(treatmentIds.length > 0 ? [{ treatmentId: { in: treatmentIds } }] : []),
+          ],
+        },
+      });
+
+      // 5. Delete insurance claims linked to these appointments
+      await tx.insuranceClaim.deleteMany({
+        where: { appointmentId: { in: appointmentIds } },
+      });
+
+      // 6. Delete treatments
+      if (treatmentIds.length > 0) {
+        await tx.treatment.deleteMany({
+          where: { treatmentId: { in: treatmentIds } },
+        });
+      }
+
+      // 7. Delete appointments
+      await tx.appointment.deleteMany({
+        where: { appointmentId: { in: appointmentIds } },
+      });
+    }
+
+    // 8. Delete any other payments directly associated with patient
+    await tx.payment.deleteMany({
+      where: { patientId },
+    });
+
+    // 9. Delete the patient record itself
+    await tx.patient.delete({
+      where: { patientId },
+    });
+
+    // 10. If the person has no staff roles, delete the person record too
+    const isStaff =
+      patient.person.admins.length > 0 ||
+      patient.person.dentists.length > 0 ||
+      patient.person.receptionists.length > 0;
+
+    if (!isStaff) {
+      await tx.payment.updateMany({
+        where: { recordedById: patient.personId },
+        data: { recordedById: person.personId },
+      });
+      await tx.recallCallLog.deleteMany({
+        where: { calledById: patient.personId },
+      });
+      await tx.person.delete({
+        where: { personId: patient.personId },
+      });
+    }
+  });
+
+  revalidatePath("/dashboard/patients");
+}
+

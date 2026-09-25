@@ -119,6 +119,7 @@ export default async function PastTreatmentsPage({
                           toothNumber: t.toothNumber,
                           charge: t.charge,
                           paid: t.paid,
+                          medicines: t.medicines,
                         }}
                       />
                       <p className="text-xs text-sand-50/40 mt-1">

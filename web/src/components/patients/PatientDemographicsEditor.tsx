@@ -5,12 +5,26 @@ import {
   updatePatientDemographics,
   addChronicDisease,
   removeChronicDisease,
+  addPatientContactNumber,
+  removePatientContactNumber,
 } from "@/app/actions/patients";
 import {
   addCurrentMedication,
   removeCurrentMedication,
 } from "@/app/actions/clinical-care";
-import { Pencil, X, Plus, Check, Phone, MapPin, User, Pill, AlertTriangle } from "lucide-react";
+import {
+  Pencil,
+  X,
+  Plus,
+  Check,
+  Phone,
+  MapPin,
+  User,
+  Pill,
+  AlertTriangle,
+  Mail,
+  Trash2,
+} from "lucide-react";
 
 type Medication = {
   medicationId: number;
@@ -25,7 +39,9 @@ type Props = {
   data: {
     firstName: string;
     lastName: string;
+    email?: string;
     phone: string;
+    contacts?: string[];
     street: string;
     city: string;
     occupation: string;
@@ -54,6 +70,8 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
   const [newDisease, setNewDisease] = useState("");
   const [newMedName, setNewMedName] = useState("");
   const [newMedDose, setNewMedDose] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [showAddPhone, setShowAddPhone] = useState(false);
 
   function handleDemographicsSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -133,6 +151,45 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
     });
   }
 
+  function handleAddContactNumber(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPhone.trim()) return;
+    const fd = new FormData();
+    fd.set("patientId", String(patientId));
+    fd.set("phone", newPhone.trim());
+    setError(null);
+    startTransition(async () => {
+      try {
+        await addPatientContactNumber(fd);
+        setNewPhone("");
+        setShowAddPhone(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not add phone number.");
+      }
+    });
+  }
+
+  function handleRemoveContactNumber(phone: string) {
+    if (!confirm(`Remove phone number ${phone}?`)) return;
+    const fd = new FormData();
+    fd.set("patientId", String(patientId));
+    fd.set("phone", phone);
+    setError(null);
+    startTransition(async () => {
+      try {
+        await removePatientContactNumber(fd);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not remove phone number.");
+      }
+    });
+  }
+
+  const allContacts = data.contacts && data.contacts.length > 0
+    ? data.contacts
+    : data.phone
+    ? [data.phone]
+    : [];
+
   return (
     <div className="dash-surface p-5 space-y-5">
       {/* Header */}
@@ -171,9 +228,75 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
       {!editing && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3">
-            <InfoRow icon={<Phone className="h-3.5 w-3.5" />} label="Phone" value={data.phone || "—"} />
-            <InfoRow icon={<MapPin className="h-3.5 w-3.5" />} label="Address"
-              value={[data.street, data.city].filter(Boolean).join(", ") || "—"} />
+            {data.email && (
+              <InfoRow icon={<Mail className="h-3.5 w-3.5" />} label="Email" value={data.email} />
+            )}
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-sand-50/35 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> Phone Numbers
+                </span>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPhone((v) => !v)}
+                    className="text-[11px] text-turq-400 hover:text-turq-300 normal-case"
+                  >
+                    + Add number
+                  </button>
+                )}
+              </p>
+              {allContacts.length === 0 ? (
+                <p className="text-sm text-sand-50/40">—</p>
+              ) : (
+                <div className="space-y-1">
+                  {allContacts.map((c, i) => (
+                    <div key={c} className="flex items-center justify-between text-sm text-sand-50/75">
+                      <span>
+                        {c}
+                        {i === 0 && <span className="text-[10px] text-turq-400/80 ml-2">(primary)</span>}
+                      </span>
+                      {canEdit && allContacts.length > 1 && (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => handleRemoveContactNumber(c)}
+                          className="text-sand-50/30 hover:text-red-400 p-0.5"
+                          title="Remove number"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showAddPhone && (
+                <form onSubmit={handleAddContactNumber} className="flex gap-2 mt-2">
+                  <input
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="e.g. 0801 234 5678"
+                    type="tel"
+                    className="dash-input flex-1 text-xs"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={pending || !newPhone.trim()}
+                    className="px-2.5 py-1 text-xs bg-turq-600 text-ink-950 font-semibold rounded hover:bg-turq-500"
+                  >
+                    Add
+                  </button>
+                </form>
+              )}
+            </div>
+
+            <InfoRow
+              icon={<MapPin className="h-3.5 w-3.5" />}
+              label="Address"
+              value={[data.street, data.city].filter(Boolean).join(", ") || "—"}
+            />
             {data.occupation && <InfoRow label="Occupation" value={data.occupation} />}
             {data.referralSource && <InfoRow label="Referred via" value={data.referralSource} />}
             {data.emergencyContactName && (
@@ -239,7 +362,11 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
               </div>
             </div>
             <div>
-              <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Phone</label>
+              <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Email Address</label>
+              <input name="email" defaultValue={data.email ?? ""} type="email" className="dash-input" />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Primary Phone</label>
               <input name="phone" defaultValue={data.phone} type="tel" className="dash-input" />
             </div>
             <div className="grid grid-cols-2 gap-3">

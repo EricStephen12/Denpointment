@@ -69,3 +69,33 @@ export async function toggleServiceActive(formData: FormData) {
   await prisma.service.update({ where: { serviceId }, data: { active: !active } });
   revalidatePath("/dashboard/admin/settings");
 }
+
+export async function updateService(formData: FormData) {
+  await requireAdmin();
+  const serviceId = parseInt(formData.get("serviceId") as string, 10);
+  const name  = ((formData.get("name")  as string) || "").trim();
+  const price = parseInt(formData.get("price") as string, 10);
+  if (!serviceId || !name || Number.isNaN(price) || price < 0) {
+    throw new Error("Service ID, name, and a valid price are required.");
+  }
+  try {
+    await prisma.service.update({ where: { serviceId }, data: { name, price } });
+  } catch (error: unknown) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error("A service with that name already exists.");
+    }
+    throw error;
+  }
+  revalidatePath("/dashboard/admin/settings");
+}
+
+export async function deleteService(formData: FormData) {
+  await requireAdmin();
+  const serviceId = parseInt(formData.get("serviceId") as string, 10);
+  if (!serviceId) throw new Error("Service ID required.");
+  // Only allow delete if no treatments reference it
+  const linked = await prisma.treatment.count({ where: { serviceId } });
+  if (linked > 0) throw new Error("This service is used in treatment records and cannot be deleted. Deactivate it instead.");
+  await prisma.service.delete({ where: { serviceId } });
+  revalidatePath("/dashboard/admin/settings");
+}

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist, isDentist } from "@/lib/auth";
 import { registerWalkInPatient } from "@/app/actions/patients";
 import { Search, UserPlus, Calendar, Download } from "lucide-react";
+import DeletePatientButton from "@/components/patients/DeletePatientButton";
 
 const PAGE_SIZE = 50;
 const MAX_TAKE = 500;
@@ -154,6 +155,13 @@ export default async function PatientsPage({
                           >
                             <Calendar className="h-3 w-3" /> Book
                           </Link>
+                        )}
+                        {isAdmin(dbUser) && (
+                          <DeletePatientButton
+                            patientId={p.patientId}
+                            patientName={`${p.person.firstName} ${p.person.lastName}`}
+                            variant="table"
+                          />
                         )}
                       </td>
                     </tr>

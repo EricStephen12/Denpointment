@@ -19,12 +19,14 @@ import {
   ChevronRight,
   ShieldAlert,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import {
   assignOrPromoteMember,
   toggleMemberRole,
   updateDentistRoom,
   revokeStaffRoles,
+  removeStaffMember,
 } from "@/app/actions/admin";
 
 export type MemberItem = {
@@ -213,6 +215,33 @@ export default function StaffRoleManager({
       } else {
         setStatusMessage({ type: "success", text: "Staff privileges revoked successfully." });
         setManagingPersonId(null);
+      }
+    });
+  }
+
+  // Handle permanent account deletion
+  function handleDeleteAccount(personId: number, name: string) {
+    if (
+      !confirm(
+        `Permanently delete ${name}'s account?\n\nIf they have clinical appointment history, their staff roles will be revoked instead — records are preserved. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setStatusMessage(null);
+
+    const formData = new FormData();
+    formData.set("personId", String(personId));
+
+    startTransition(async () => {
+      try {
+        await removeStaffMember(formData);
+        setMembersList((prev) => prev.filter((m) => m.personId !== personId));
+        setManagingPersonId(null);
+        setStatusMessage({ type: "success", text: `${name}'s account has been removed.` });
+      } catch (err: any) {
+        setStatusMessage({ type: "error", text: err?.message || "Failed to delete account." });
       }
     });
   }
@@ -467,21 +496,40 @@ export default function StaffRoleManager({
 
                       {/* Actions */}
                       <td className="py-3.5 px-6 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setManagingPersonId(m.personId);
-                            setEditingRoomValue(m.dentistRoom || "1");
-                          }}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                            isStaff
-                              ? "bg-white/[0.06] hover:bg-white/[0.12] text-sand-50 border border-sand-50/10"
-                              : "bg-turq-500/10 hover:bg-turq-500/20 text-turq-300 border border-turq-500/20"
-                          }`}
-                        >
-                          <Settings2 className="h-3.5 w-3.5 opacity-70" />
-                          <span>{isStaff ? "Manage Roles" : "Promote to Staff"}</span>
-                        </button>
+                        <div className="inline-flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManagingPersonId(m.personId);
+                              setEditingRoomValue(m.dentistRoom || "1");
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              isStaff
+                                ? "bg-white/[0.06] hover:bg-white/[0.12] text-sand-50 border border-sand-50/10"
+                                : "bg-turq-500/10 hover:bg-turq-500/20 text-turq-300 border border-turq-500/20"
+                            }`}
+                          >
+                            <Settings2 className="h-3.5 w-3.5 opacity-70" />
+                            <span>{isStaff ? "Manage Roles" : "Promote to Staff"}</span>
+                          </button>
+
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              disabled={isPending}
+                              title={`Delete ${m.firstName} ${m.lastName}`}
+                              onClick={() =>
+                                handleDeleteAccount(
+                                  m.personId,
+                                  `${m.firstName} ${m.lastName}`
+                                )
+                              }
+                              className="p-1.5 rounded-lg text-sand-50/40 hover:text-red-400 hover:bg-red-950/25 border border-transparent hover:border-red-500/20 transition-all"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -836,31 +884,48 @@ export default function StaffRoleManager({
               </div>
             </div>
 
-            {/* Danger / Revoke Action & Done Button */}
-            <div className="flex items-center justify-between gap-3 pt-4 border-t border-sand-50/10">
-              {(managingMember.isAdmin ||
-                managingMember.isDentist ||
-                managingMember.isReceptionist) &&
-              managingMember.personId !== currentAdminId ? (
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => handleRevokeAll(managingMember.personId)}
-                  className="text-xs text-red-400 hover:text-red-300 font-medium px-2.5 py-1.5 rounded-lg hover:bg-red-950/20 transition-colors"
-                >
-                  Revoke Staff Privileges
-                </button>
-              ) : (
-                <div />
+            {/* Danger Zone & Done Button */}
+            <div className="pt-4 border-t border-sand-50/10 space-y-3">
+              {managingMember.personId !== currentAdminId && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {(managingMember.isAdmin ||
+                    managingMember.isDentist ||
+                    managingMember.isReceptionist) && (
+                    <button
+                      type="button"
+                      disabled={isPending}
+                      onClick={() => handleRevokeAll(managingMember.personId)}
+                      className="text-xs text-amber-400 hover:text-amber-300 font-medium px-2.5 py-1.5 rounded-lg hover:bg-amber-950/20 border border-amber-500/20 transition-colors"
+                    >
+                      Revoke Staff Privileges
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() =>
+                      handleDeleteAccount(
+                        managingMember.personId,
+                        `${managingMember.firstName} ${managingMember.lastName}`
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-medium px-2.5 py-1.5 rounded-lg hover:bg-red-950/20 border border-red-500/20 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Account
+                  </button>
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={() => setManagingPersonId(null)}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-sand-50/10 hover:bg-sand-50/15 text-sand-50 transition-colors"
-              >
-                Done
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setManagingPersonId(null)}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-sand-50/10 hover:bg-sand-50/15 text-sand-50 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -273,8 +273,15 @@ export async function removeStaffMember(formData: FormData) {
         prisma.receptionist.deleteMany({ where: { personId } }),
       ]);
     } else {
-      // Safe to completely delete
-      await prisma.person.delete({ where: { personId } });
+      // Reassign recorded payments or call logs to the performing admin before deleting
+      await prisma.$transaction([
+        prisma.payment.updateMany({
+          where: { recordedById: personId },
+          data: { recordedById: currentAdmin.personId },
+        }),
+        prisma.recallCallLog.deleteMany({ where: { calledById: personId } }),
+        prisma.person.delete({ where: { personId } }),
+      ]);
     }
 
     revalidatePath("/dashboard/admin/staff");
