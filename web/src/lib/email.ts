@@ -604,3 +604,52 @@ export async function sendStaffInvitationEmail(params: {
 
 
 
+
+/**
+ * Post-visit follow-up: sent ~24h after appointment is marked completed.
+ */
+export async function sendPostVisitFollowUpEmail(params: {
+  to: string;
+  patientName: string;
+  dentistName: string;
+  clinicPhone: string;
+}) {
+  const { to, patientName, dentistName, clinicPhone } = params;
+  const name = await clinicName();
+
+  if (!resend) {
+    console.info(`[followup] (Simulated) Sent to ${patientName} <${to}>`);
+    return { sent: true as const, simulated: true };
+  }
+
+  const res = await sendEmail(
+    to,
+    `How are you feeling? — ${name}`,
+    `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 28px; color: #0f172a; line-height: 1.6; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <div style="border-bottom: 2px solid #248473; padding-bottom: 12px; margin-bottom: 20px;">
+          <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #248473; margin: 0;">${name}</p>
+          <h2 style="font-size: 20px; margin: 4px 0 0 0; color: #0f172a;">Checking in on you 😊</h2>
+        </div>
+        <p style="margin: 0 0 16px 0; color: #475569;">Hi ${patientName},</p>
+        <p style="margin: 0 0 16px 0; color: #475569;">
+          It's been a day since your visit with <strong>Dr. ${dentistName}</strong> and we just wanted to check in — how are you feeling?
+        </p>
+        <p style="margin: 0 0 16px 0; color: #475569;">
+          If you have any discomfort, questions about your prescription, or anything on your mind, don't hesitate to reach out. We're always here.
+        </p>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; text-align: center;">
+          <p style="font-size: 13px; color: #64748b; margin: 0 0 8px 0;">Call or WhatsApp us anytime</p>
+          <a href="tel:${clinicPhone.replace(/\s/g, '')}" style="font-size: 18px; font-weight: 700; color: #248473; text-decoration: none;">${clinicPhone}</a>
+        </div>
+        <p style="font-size: 13px; color: #94a3b8; margin-top: 24px;">
+          Wishing you a speedy recovery and a healthy smile.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 20px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+          With care, <strong>${name}</strong>
+        </p>
+      </div>
+    `
+  );
+  return { sent: Boolean(res?.success), simulated: false };
+}

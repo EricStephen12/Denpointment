@@ -4,7 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist, isDentist } from "@/lib/auth";
 import { registerWalkInPatient } from "@/app/actions/patients";
-import { Search, UserPlus, Calendar } from "lucide-react";
+import { Search, UserPlus, Calendar, Download } from "lucide-react";
 
 const PAGE_SIZE = 50;
 const MAX_TAKE = 500;
@@ -71,6 +71,16 @@ export default async function PatientsPage({
             at the bottom of their profile.
           </p>
         </div>
+        {canRegister && (
+          <div className="ml-auto">
+            <a
+              href="/api/export/patients"
+              className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/40 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </a>
+          </div>
+        )}
       </div>
 
       <div className={`grid grid-cols-1 ${canRegister ? "lg:grid-cols-5" : ""} gap-8`}>
@@ -177,50 +187,21 @@ export default async function PatientsPage({
               <form action={registerWalkInPatient} className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label
-                      htmlFor="firstName"
-                      className="block text-xs font-medium text-sand-50/50 mb-1"
-                    >
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      name="firstName"
-                      required
-                      className="dash-input"
-                    />
+                    <label htmlFor="firstName" className="block text-xs font-medium text-sand-50/50 mb-1">First Name</label>
+                    <input type="text" id="firstName" name="firstName" required className="dash-input" />
                   </div>
                   <div>
-                    <label
-                      htmlFor="lastName"
-                      className="block text-xs font-medium text-sand-50/50 mb-1"
-                    >
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      name="lastName"
-                      required
-                      className="dash-input"
-                    />
+                    <label htmlFor="lastName" className="block text-xs font-medium text-sand-50/50 mb-1">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" required className="dash-input" />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-xs font-medium text-sand-50/50 mb-1">
-                    Email
-                  </label>
+                  <label htmlFor="email" className="block text-xs font-medium text-sand-50/50 mb-1">Email</label>
                   <input type="email" id="email" name="email" required className="dash-input" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label
-                      htmlFor="gender"
-                      className="block text-xs font-medium text-sand-50/50 mb-1"
-                    >
-                      Gender
-                    </label>
+                    <label htmlFor="gender" className="block text-xs font-medium text-sand-50/50 mb-1">Gender</label>
                     <select id="gender" name="gender" required className="dash-input">
                       <option value="">Select</option>
                       <option value="male">Male</option>
@@ -228,10 +209,35 @@ export default async function PatientsPage({
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="phone" className="block text-xs font-medium text-sand-50/50 mb-1">
-                      Phone (optional)
-                    </label>
+                    <label htmlFor="phone" className="block text-xs font-medium text-sand-50/50 mb-1">Phone</label>
                     <input type="tel" id="phone" name="phone" className="dash-input" />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="occupation" className="block text-xs font-medium text-sand-50/50 mb-1">Occupation</label>
+                  <input type="text" id="occupation" name="occupation" maxLength={80} className="dash-input" />
+                </div>
+                <div>
+                  <label htmlFor="referralSource" className="block text-xs font-medium text-sand-50/50 mb-1">How did they find us?</label>
+                  <select id="referralSource" name="referralSource" className="dash-input">
+                    <option value="">Select…</option>
+                    <option>Walk-in</option>
+                    <option>Referred by patient</option>
+                    <option>Google</option>
+                    <option>Instagram</option>
+                    <option>Facebook</option>
+                    <option>Doctor referral</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="emergencyContactName" className="block text-xs font-medium text-sand-50/50 mb-1">Emergency Contact</label>
+                    <input type="text" id="emergencyContactName" name="emergencyContactName" maxLength={80} placeholder="Name" className="dash-input" />
+                  </div>
+                  <div>
+                    <label htmlFor="emergencyContactPhone" className="block text-xs font-medium text-sand-50/50 mb-1">Emergency Phone</label>
+                    <input type="tel" id="emergencyContactPhone" name="emergencyContactPhone" maxLength={20} className="dash-input" />
                   </div>
                 </div>
                 <button

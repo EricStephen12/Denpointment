@@ -295,3 +295,99 @@ export async function updateLabCaseStatus(formData: FormData) {
   const row = await prisma.labCase.update({ where: { labCaseId }, data: { status } });
   revalidatePatient(row.patientId);
 }
+
+export async function addCurrentMedication(formData: FormData) {
+  await requireClinicalEditor();
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  const name = ((formData.get("name") as string) || "").trim().slice(0, 100);
+  const dose = ((formData.get("dose") as string) || "").trim().slice(0, 60);
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 200);
+  if (!patientId || !name) throw new Error("Medication name is required.");
+  await prisma.currentMedication.create({
+    data: { patientId, name, dose: dose || null, notes: notes || null },
+  });
+  revalidatePatient(patientId);
+}
+
+export async function removeCurrentMedication(formData: FormData) {
+  await requireClinicalEditor();
+  const medicationId = parseInt(formData.get("medicationId") as string, 10);
+  const row = await prisma.currentMedication.findUnique({ where: { medicationId } });
+  if (!row) throw new Error("Medication not found.");
+  await prisma.currentMedication.update({ where: { medicationId }, data: { active: false } });
+  revalidatePatient(row.patientId);
+}
+
+// ─── Phase 3: SOAP notes, vitals, referrals, recall call log ────────────────
+
+export async function updateTreatmentSoap(formData: FormData) {
+  await requireDentistId();
+  const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
+  if (!treatmentId) throw new Error("Treatment ID required.");
+  const soapSubjective = ((formData.get("soapSubjective") as string) || "").trim();
+  const soapObjective  = ((formData.get("soapObjective")  as string) || "").trim();
+  const soapAssessment = ((formData.get("soapAssessment") as string) || "").trim();
+  const soapPlan       = ((formData.get("soapPlan")       as string) || "").trim();
+  const vitalsBP       = ((formData.get("vitalsBP")       as string) || "").trim().slice(0, 10);
+  const vitalsHRRaw    = (formData.get("vitalsHR") as string) || "";
+  const vitalsHR       = vitalsHRRaw ? parseInt(vitalsHRRaw, 10) : null;
+
+  const treatment = await prisma.treatment.update({
+    where: { treatmentId },
+    data: {
+      soapSubjective: soapSubjective || null,
+      soapObjective:  soapObjective  || null,
+      soapAssessment: soapAssessment || null,
+      soapPlan:       soapPlan       || null,
+      vitalsBP:       vitalsBP       || null,
+      vitalsHR:       vitalsHR && !Number.isNaN(vitalsHR) ? vitalsHR : null,
+    },
+    include: { appointment: true },
+  });
+  revalidatePath(`/dashboard/treatments/today`);
+  revalidatePath(`/dashboard/patients/${treatment.appointment.pId}`);
+}
+
+export async function addReferral(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const patientId     = parseInt(formData.get("patientId") as string, 10);
+  const specialistType = ((formData.get("specialistType") as string) || "").trim().slice(0, 60);
+  const reason         = ((formData.get("reason")         as string) || "").trim().slice(0, 300);
+  const urgency        = ((formData.get("urgency")        as string) || "routine") as "routine" | "urgent" | "emergency";
+  const notes          = ((formData.get("notes")          as string) || "").trim().slice(0, 500);
+  if (!patientId || !specialistType || !reason) throw new Error("Specialist type and reason are required.");
+  const allowed = ["routine","urgent","emergency"];
+  await prisma.referral.create({
+    data: {
+      patientId,
+      dentistId,
+      specialistType,
+      reason,
+      urgency: allowed.includes(urgency) ? urgency : "routine",
+      notes: notes || null,
+    },
+  });
+  revalidatePatient(patientId);
+}
+
+export async function updateReferralStatus(formData: FormData) {
+  await requireDentistId();
+  const referralId = parseInt(formData.get("referralId") as string, 10);
+  const status = formData.get("status") as "pending" | "sent" | "completed" | "cancelled";
+  const allowed = ["pending","sent","completed","cancelled"];
+  if (!referralId || !allowed.includes(status)) throw new Error("Invalid.");
+  const row = await prisma.referral.update({ where: { referralId }, data: { status } });
+  revalidatePatient(row.patientId);
+}
+
+export async function addRecallCallLog(formData: FormData) {
+  const person = await requireClinicalEditor();
+  const recallId = parseInt(formData.get("recallId") as string, 10);
+  const outcome  = ((formData.get("outcome") as string) || "").trim().slice(0, 60);
+  const notes    = ((formData.get("notes")   as string) || "").trim().slice(0, 300);
+  if (!recallId || !outcome) throw new Error("Outcome required.");
+  await prisma.recallCallLog.create({
+    data: { recallId, calledById: person.personId, outcome, notes: notes || null },
+  });
+  revalidatePath("/dashboard/reception/recalls");
+}

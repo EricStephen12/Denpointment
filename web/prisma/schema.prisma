@@ -32,6 +32,13 @@ model Person {
   addresses     Address[]
   contacts      PersonContactNumber[]
   diseases      ChronicDisease[]
+  recallCallLogs RecallCallLog[]
+  payments       Payment[]
+
+  occupation            String?  @db.VarChar(80)
+  referralSource        String?  @map("referral_source") @db.VarChar(60)
+  emergencyContactName  String?  @map("emergency_contact_name") @db.VarChar(80)
+  emergencyContactPhone String?  @map("emergency_contact_phone") @db.VarChar(20)
 
   @@map("persons")
 }
@@ -52,6 +59,10 @@ model Patient {
   recalls           Recall[]
   insurancePolicies PatientInsurance[]
   labCases          LabCase[]
+  currentMedications CurrentMedication[]
+  waitlistEntries   WaitlistEntry[]
+  referrals         Referral[]
+  payments          Payment[]
 
   @@map("patients")
 }
@@ -73,6 +84,8 @@ model Dentist {
   consents       ConsentRecord[]
   recalls        Recall[]
   labCases       LabCase[]
+  waitlistEntries WaitlistEntry[]
+  referrals      Referral[]
 
   @@map("dentists")
 }
@@ -102,6 +115,22 @@ enum AppointmentStatus {
   cancelled
 }
 
+enum AppointmentType {
+  checkup
+  cleaning
+  emergency
+  follow_up
+  consultation
+  extraction
+  other
+}
+
+enum WaitlistStatus {
+  waiting
+  booked
+  expired
+}
+
 enum ClinicalImageKind {
   photo
   xray
@@ -121,13 +150,36 @@ model Appointment {
   checkedIn     Boolean           @default(false) @map("checked_in")
   status        AppointmentStatus @default(scheduled)
   reminderSent  Boolean           @default(false) @map("reminder_sent")
+  type          AppointmentType   @default(checkup)
+  notes         String?           @db.VarChar(500)
+  confirmedAt   DateTime?         @map("confirmed_at")
+  arrivedAt     DateTime?         @map("arrived_at")
+  noShow        Boolean           @default(false) @map("no_show")
 
   dentist    Dentist     @relation(fields: [dId], references: [dentistId])
   patient    Patient     @relation(fields: [pId], references: [patientId])
   treatments Treatment[]
+  payments   Payment[]
+  insuranceClaims InsuranceClaim[]
 
   @@unique([dId, year, month, day, hour], name: "dentist_slot")
   @@map("appointments")
+}
+
+model WaitlistEntry {
+  waitlistId    Int            @id @default(autoincrement()) @map("waitlist_id")
+  patientId     Int            @map("patient_id")
+  dentistId     Int?           @map("dentist_id")
+  requestedDate DateTime       @map("requested_date") @db.Date
+  notes         String?        @db.VarChar(300)
+  status        WaitlistStatus @default(waiting)
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  patient Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist? @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([status, requestedDate])
+  @@map("waitlist_entries")
 }
 
 enum ToothCondition {
@@ -154,12 +206,19 @@ model Treatment {
   aId         Int     @map("a_id")
   treatorId   Int     @map("treator_id")
   serviceId   Int?    @map("service_id")
+  soapSubjective String? @map("soap_subjective") @db.Text
+  soapObjective  String? @map("soap_objective")  @db.Text
+  soapAssessment String? @map("soap_assessment") @db.Text
+  soapPlan       String? @map("soap_plan")       @db.Text
+  vitalsBP       String? @map("vitals_bp")       @db.VarChar(10)
+  vitalsHR       Int?    @map("vitals_hr")
 
   appointment   Appointment    @relation(fields: [aId], references: [appointmentId])
   dentist       Dentist        @relation(fields: [treatorId], references: [dentistId])
   service       Service?       @relation(fields: [serviceId], references: [serviceId])
   medicines     Medicine[]
   toothFindings ToothFinding[]
+  payments      Payment[]
 
   @@map("treatments")
 }
@@ -326,11 +385,11 @@ model Recall {
 
   patient Patient  @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
   dentist Dentist? @relation(fields: [dentistId], references: [dentistId])
+  callLogs RecallCallLog[]
 
   @@index([patientId, dueDate])
   @@map("recalls")
 }
-
 model PatientInsurance {
   insuranceId  Int      @id @default(autoincrement()) @map("insurance_id")
   patientId    Int      @map("patient_id")
@@ -343,11 +402,11 @@ model PatientInsurance {
   createdAt    DateTime @default(now()) @map("created_at")
 
   patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  insuranceClaims InsuranceClaim[]
 
   @@index([patientId])
   @@map("patient_insurance")
 }
-
 model LabCase {
   labCaseId       Int           @id @default(autoincrement()) @map("lab_case_id")
   patientId       Int           @map("patient_id")
@@ -474,6 +533,21 @@ model ChronicDisease {
   @@map("chronic_diseases")
 }
 
+model CurrentMedication {
+  medicationId Int      @id @default(autoincrement()) @map("medication_id")
+  patientId    Int      @map("patient_id")
+  name         String   @db.VarChar(100)
+  dose         String?  @db.VarChar(60)
+  notes        String?  @db.VarChar(200)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+
+  @@index([patientId, active])
+  @@map("current_medications")
+}
+
 model HolidayDate {
   holidayId Int      @id @default(autoincrement()) @map("holiday_id")
   restingId Int      @map("resting_id")
@@ -531,3 +605,113 @@ model AutomationDispatchLog {
   @@map("automation_dispatch_logs")
 }
 
+
+enum ReferralStatus {
+  pending
+  sent
+  completed
+  cancelled
+}
+
+enum ReferralUrgency {
+  routine
+  urgent
+  emergency
+}
+
+enum PaymentMethod {
+  cash
+  card
+  bank_transfer
+  insurance
+  online
+}
+
+enum PaymentType {
+  payment
+  discount
+  waiver
+  refund
+}
+
+enum InsuranceClaimStatus {
+  pending
+  submitted
+  approved
+  rejected
+  paid
+}
+
+model Referral {
+  referralId      Int             @id @default(autoincrement()) @map("referral_id")
+  patientId       Int             @map("patient_id")
+  dentistId       Int             @map("dentist_id")
+  specialistType  String          @map("specialist_type") @db.VarChar(60)
+  reason          String          @db.VarChar(300)
+  urgency         ReferralUrgency @default(routine)
+  notes           String?         @db.VarChar(500)
+  status          ReferralStatus  @default(pending)
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  patient Patient @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  dentist Dentist @relation(fields: [dentistId], references: [dentistId])
+
+  @@index([patientId])
+  @@map("referrals")
+}
+
+model RecallCallLog {
+  logId      Int      @id @default(autoincrement()) @map("log_id")
+  recallId   Int      @map("recall_id")
+  calledById Int      @map("called_by_id")
+  outcome    String   @db.VarChar(60)
+  notes      String?  @db.VarChar(300)
+  calledAt   DateTime @default(now()) @map("called_at")
+
+  recall   Recall @relation(fields: [recallId], references: [recallId], onDelete: Cascade)
+  calledBy Person @relation(fields: [calledById], references: [personId])
+
+  @@index([recallId])
+  @@map("recall_call_logs")
+}
+
+model Payment {
+  paymentId   Int           @id @default(autoincrement()) @map("payment_id")
+  patientId   Int           @map("patient_id")
+  appointmentId Int?        @map("appointment_id")
+  treatmentId Int?          @map("treatment_id")
+  amount      Int
+  method      PaymentMethod @default(cash)
+  type        PaymentType   @default(payment)
+  reference   String?       @db.VarChar(100)
+  notes       String?       @db.VarChar(300)
+  recordedById Int          @map("recorded_by_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  patient     Patient      @relation(fields: [patientId], references: [patientId], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [appointmentId])
+  treatment   Treatment?   @relation(fields: [treatmentId], references: [treatmentId])
+  recordedBy  Person       @relation(fields: [recordedById], references: [personId])
+
+  @@index([patientId])
+  @@index([appointmentId])
+  @@map("payments")
+}
+
+model InsuranceClaim {
+  claimId           Int                  @id @default(autoincrement()) @map("claim_id")
+  appointmentId     Int                  @map("appointment_id")
+  patientInsuranceId Int                 @map("patient_insurance_id")
+  claimAmount       Int                  @map("claim_amount")
+  submittedAt       DateTime?            @map("submitted_at")
+  status            InsuranceClaimStatus @default(pending)
+  settledAt         DateTime?            @map("settled_at")
+  notes             String?              @db.VarChar(300)
+  createdAt         DateTime             @default(now()) @map("created_at")
+
+  appointment     Appointment     @relation(fields: [appointmentId], references: [appointmentId])
+  patientInsurance PatientInsurance @relation(fields: [patientInsuranceId], references: [insuranceId])
+
+  @@index([appointmentId])
+  @@map("insurance_claims")
+}

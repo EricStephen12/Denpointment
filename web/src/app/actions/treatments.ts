@@ -64,6 +64,13 @@ export async function addTreatment(formData: FormData) {
   const toothNumber = toothRaw ? parseInt(toothRaw, 10) : null;
   const chartConditionRaw = (formData.get("chartCondition") as string) || "";
   const prescriptions = parsePrescriptions((formData.get("prescriptions") as string) || "");
+  const soapSubjective = ((formData.get("soapSubjective") as string) || "").trim();
+  const soapObjective  = ((formData.get("soapObjective")  as string) || "").trim();
+  const soapAssessment = ((formData.get("soapAssessment") as string) || "").trim();
+  const soapPlan       = ((formData.get("soapPlan")       as string) || "").trim();
+  const vitalsBP       = ((formData.get("vitalsBP")       as string) || "").trim().slice(0, 10);
+  const vitalsHRRaw    = (formData.get("vitalsHR") as string) || "";
+  const vitalsHR       = vitalsHRRaw ? parseInt(vitalsHRRaw, 10) : null;
 
   if (!appointmentId || !action || !complaint) {
     throw new Error("Please fill in the required treatment fields.");
@@ -119,6 +126,12 @@ export async function addTreatment(formData: FormData) {
       action,
       complaint,
       toothNumber,
+      soapSubjective: soapSubjective || null,
+      soapObjective:  soapObjective  || null,
+      soapAssessment: soapAssessment || null,
+      soapPlan:       soapPlan       || null,
+      vitalsBP:       vitalsBP       || null,
+      vitalsHR:       vitalsHR && !Number.isNaN(vitalsHR) ? vitalsHR : null,
       medicines: {
         create: prescriptions.map((rx) => ({
           medicineName: rx.name,

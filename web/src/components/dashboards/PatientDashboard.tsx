@@ -36,6 +36,26 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
 
   const upcoming = allUpcoming.find((app) => isAppointmentUpcoming(app, now)) ?? null;
 
+  // Outstanding balance
+  const allPaymentsData = patientId ? await prisma.payment.findMany({
+    where: { patientId, type: "payment" },
+    select: { amount: true },
+  }) : [];
+  const allDiscData = patientId ? await prisma.payment.findMany({
+    where: { patientId, type: { in: ["discount", "waiver"] } },
+    select: { amount: true },
+  }) : [];
+  const totalCharge = allUpcoming.flatMap((a) => a.treatments).reduce((s, t) => s + t.charge, 0);
+  const totalPaid   = allPaymentsData.reduce((s, p) => s + p.amount, 0);
+  const totalDisc   = allDiscData.reduce((s, p) => s + p.amount, 0);
+  const outstandingBalance = Math.max(totalCharge - totalPaid - totalDisc, 0);
+
+  // Due recall
+  const dueRecall = patientId ? await prisma.recall.findFirst({
+    where: { patientId, status: { in: ["due", "scheduled"] }, dueDate: { lte: now } },
+    orderBy: { dueDate: "asc" },
+  }) : null;
+
   // Time-based greeting (clinic clock — Abuja)
   const hour = new Intl.DateTimeFormat("en-US", {
     timeZone: CLINIC_TIMEZONE,
@@ -100,19 +120,53 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
             <span>Book Appointment</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
+          {outstandingBalance > 0 && (
+            <Link
+              href="/dashboard/portal/bills"
+              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-red-900/20"
+            >
+              <span>Pay {new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(outstandingBalance)}</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          )}
           <a
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 border border-sand-50/15 hover:border-turq-400/50 bg-sand-50/5 hover:bg-sand-50/10 text-sand-50 px-6 py-3.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all"
           >
-            <span>Continue with WhatsApp</span>
+            <span>WhatsApp Clinic</span>
             <ArrowRight className="h-4 w-4 text-turq-400" />
           </a>
         </div>
       </div>
 
       <div id="portal-web" className="scroll-mt-24 space-y-16">
+      {/* Outstanding balance banner */}
+      {outstandingBalance > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-red-500/20 bg-red-900/10 rounded-2xl">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-red-400/70 mb-0.5">Outstanding Balance</p>
+            <p className="text-xl font-display text-red-400">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(outstandingBalance)}</p>
+          </div>
+          <Link href="/dashboard/portal/bills" className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 rounded-full font-semibold transition-colors shrink-0">
+            View & Pay <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
+
+      {/* Recall due banner */}
+      {dueRecall && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-turq-500/20 bg-turq-600/5 rounded-2xl">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-turq-400/70 mb-0.5">Time for your checkup</p>
+            <p className="text-sm text-sand-50/70">{dueRecall.reason}</p>
+          </div>
+          <Link href="/dashboard/book" className="inline-flex items-center gap-2 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 px-4 py-2.5 rounded-full font-semibold transition-colors shrink-0">
+            Book Now <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      )}
       {/* Next appointment */}
       {upcoming ? (
         <div className="border-y border-sand-50/10 py-10">
@@ -212,12 +266,15 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
         <p className="text-xs text-sand-50/40 tracking-[0.2em] uppercase mb-8">
           Quick Actions
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-px bg-sand-50/10 border-y border-sand-50/10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-sand-50/10 border-y border-sand-50/10">
           {[
             { label: 'Book Visit', href: '/dashboard/book' },
             { label: 'My History', href: '/dashboard/appointments' },
+            { label: 'Treatment Plan', href: '/dashboard/portal/plan' },
+            { label: 'Prescriptions', href: '/dashboard/portal/prescriptions' },
+            { label: 'My Bills', href: '/dashboard/portal/bills' },
             { label: 'WhatsApp Us', href: whatsappHref, external: true },
-            { label: 'Update Profile', href: '/dashboard/profile' },
+            { label: 'Update Contact', href: '/dashboard/portal/contact' },
             { label: 'Directions', href: mapsHref, external: true },
           ].map(({ label, href, external }) => (
             <Link

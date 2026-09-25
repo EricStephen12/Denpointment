@@ -119,6 +119,11 @@ export async function bookAppointment(formData: FormData) {
 
   const serviceIdRaw = formData.get("serviceId") as string | null;
   const serviceId = serviceIdRaw ? parseInt(serviceIdRaw, 10) : null;
+  const typeRaw = (formData.get("type") as string | null) || "checkup";
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 500);
+
+  const VALID_TYPES = ["checkup","cleaning","emergency","follow_up","consultation","extraction","other"];
+  const apptType = VALID_TYPES.includes(typeRaw) ? typeRaw : "checkup";
   const service = serviceId ? await prisma.service.findUnique({ where: { serviceId } }) : null;
 
   let patient;
@@ -127,11 +132,10 @@ export async function bookAppointment(formData: FormData) {
       data: {
         pId: patientId,
         dId: assignedDentist.dentistId,
-        year,
-        month,
-        day,
-        hour,
+        year, month, day, hour,
         room: assignedDentist.roomNumber,
+        type: apptType as any,
+        notes: notes || null,
       }
     });
 
@@ -262,4 +266,173 @@ export async function cancelAppointment(formData: FormData) {
 
   revalidatePath('/dashboard/appointments');
   revalidatePath('/dashboard');
+}
+
+// ─── Phase 2: Scheduling actions ────────────────────────────────────────────
+
+async function requireStaff() {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not authenticated");
+  const isStaff = (person.admins?.length ?? 0) > 0 || (person.receptionists?.length ?? 0) > 0;
+  if (!isStaff) throw new Error("Not authorized.");
+  return person;
+}
+
+/** One-click check-in: set arrivedAt + status → checked_in */
+export async function checkInAppointment(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: {
+      status: "checked_in",
+      checkedIn: true,
+      arrivedAt: new Date(),
+    },
+  });
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/reception/checkin");
+}
+
+/** Mark a patient as no-show */
+export async function markNoShow(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: { status: "no_show", noShow: true },
+  });
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/reception/checkin");
+}
+
+/** Confirm appointment (patient confirmed they're coming) */
+export async function confirmAppointment(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: { confirmedAt: new Date() },
+  });
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+}
+
+/** Reschedule: move appointment to a new date + hour */
+export async function rescheduleAppointment(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  const dateStr = (formData.get("date") as string || "").trim();
+  const hour = parseInt(formData.get("hour") as string, 10);
+  if (!appointmentId || !dateStr || Number.isNaN(hour)) throw new Error("All fields required.");
+
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!dateParts) throw new Error("Invalid date.");
+  const year = parseInt(dateParts[1], 10);
+  const month = parseInt(dateParts[2], 10);
+  const day = parseInt(dateParts[3], 10);
+
+  const existing = await prisma.appointment.findUnique({ where: { appointmentId } });
+  if (!existing) throw new Error("Appointment not found.");
+
+  // Check new slot is free for this dentist
+  const conflict = await prisma.appointment.findFirst({
+    where: {
+      dId: existing.dId,
+      year, month, day, hour,
+      status: { not: "cancelled" },
+      NOT: { appointmentId },
+    },
+  });
+  if (conflict) throw new Error("That slot is already taken. Please choose another time.");
+
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: { year, month, day, hour, status: "scheduled", checkedIn: false, arrivedAt: null, confirmedAt: null },
+  });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath(`/dashboard/patients/${existing.pId}`);
+}
+
+/** Add a patient to the waiting list */
+export async function addToWaitlist(formData: FormData) {
+  await requireStaff();
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  const dateStr = (formData.get("requestedDate") as string || "").trim();
+  const notes = (formData.get("notes") as string || "").trim().slice(0, 300);
+  const dentistIdRaw = formData.get("dentistId") as string | null;
+  const dentistId = dentistIdRaw ? parseInt(dentistIdRaw, 10) : null;
+
+  if (!patientId || !dateStr) throw new Error("Patient and date required.");
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!dateParts) throw new Error("Invalid date.");
+  const [, y, m, d] = dateParts;
+
+  await prisma.waitlistEntry.create({
+    data: {
+      patientId,
+      dentistId,
+      requestedDate: new Date(`${y}-${m}-${d}T12:00:00.000Z`),
+      notes: notes || null,
+    },
+  });
+  revalidatePath("/dashboard/reception/waitlist");
+}
+
+/** Update waitlist entry status */
+export async function updateWaitlistStatus(formData: FormData) {
+  await requireStaff();
+  const waitlistId = parseInt(formData.get("waitlistId") as string, 10);
+  const status = formData.get("status") as "waiting" | "booked" | "expired";
+  const allowed = ["waiting", "booked", "expired"];
+  if (!waitlistId || !allowed.includes(status)) throw new Error("Invalid.");
+  await prisma.waitlistEntry.update({ where: { waitlistId }, data: { status } });
+  revalidatePath("/dashboard/reception/waitlist");
+}
+
+// ─── Phase 6: Manual reminder trigger ────────────────────────────────────────
+
+import { sendAppointmentReminderEmail } from "@/lib/email";
+
+export async function sendManualReminder(formData: FormData) {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not authenticated");
+  const isStaff = (person.admins?.length ?? 0) > 0 || (person.receptionists?.length ?? 0) > 0;
+  if (!isStaff) throw new Error("Not authorized.");
+
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  const appt = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: {
+      patient: { include: { person: true } },
+      dentist: { include: { person: true } },
+    },
+  });
+  if (!appt) throw new Error("Appointment not found.");
+
+  await sendAppointmentReminderEmail({
+    to: appt.patient.person.email,
+    patientName: appt.patient.person.firstName,
+    dentistName: `${appt.dentist.person.firstName} ${appt.dentist.person.lastName}`,
+    room: appt.room,
+    date: { year: appt.year, month: appt.month, day: appt.day },
+    hour: appt.hour,
+  });
+
+  // Mark reminder sent
+  await prisma.appointment.update({
+    where: { appointmentId },
+    data: { reminderSent: true },
+  });
+
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/reception/checkin");
+  revalidatePath("/dashboard/treatments/upcoming");
 }

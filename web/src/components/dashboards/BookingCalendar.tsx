@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { formatNaira } from "@/lib/currency";
 
@@ -97,6 +97,9 @@ export default function BookingCalendar({
     [services, selectedServiceId],
   );
 
+  const [appointmentType, setAppointmentType] = useState("checkup");
+  const [bookingNotes, setBookingNotes] = useState("");
+
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -186,15 +189,11 @@ export default function BookingCalendar({
     const formData = new FormData();
     formData.set("date", selectedDate);
     formData.set("hour", selectedHour.toString());
-    if (selectedServiceId) {
-      formData.set("serviceId", selectedServiceId);
-    }
-    if (isStaffBooking && selectedPatientId) {
-      formData.set("patientId", selectedPatientId);
-    }
-    if (!isStaffBooking && phone.trim()) {
-      formData.set("phone", phone.trim());
-    }
+    if (selectedServiceId) formData.set("serviceId", selectedServiceId);
+    if (appointmentType) formData.set("type", appointmentType);
+    if (bookingNotes.trim()) formData.set("notes", bookingNotes.trim());
+    if (isStaffBooking && selectedPatientId) formData.set("patientId", selectedPatientId);
+    if (!isStaffBooking && phone.trim()) formData.set("phone", phone.trim());
 
     setError(null);
     startTransition(async () => {
@@ -422,7 +421,7 @@ export default function BookingCalendar({
                         </p>
                         {selectedService && (
                           <div className="flex items-start gap-3 pb-3 border-b border-sand-50/10">
-                            <Sparkles className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
+                            <Tag className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                             <div className="flex-1 flex items-baseline justify-between gap-2">
                               <div>
                                 <p className="text-xs uppercase tracking-wider text-sand-50/50">Procedure</p>
@@ -444,6 +443,41 @@ export default function BookingCalendar({
                         <div className="flex items-start gap-3">
                           <MapPin className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                           <p className="text-sm text-sand-50/50">{clinicAddress}</p>
+                        </div>
+
+                        {/* Appointment type + notes */}
+                        <div className="pt-3 border-t border-sand-50/10 space-y-3">
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium mb-1.5">
+                              Appointment Type
+                            </label>
+                            <select
+                              value={appointmentType}
+                              onChange={(e) => setAppointmentType(e.target.value)}
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 focus:border-turq-400 focus:outline-none transition-colors"
+                            >
+                              <option value="checkup">Checkup</option>
+                              <option value="cleaning">Cleaning</option>
+                              <option value="emergency">Emergency</option>
+                              <option value="follow_up">Follow-up</option>
+                              <option value="consultation">Consultation</option>
+                              <option value="extraction">Extraction</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium mb-1.5">
+                              Notes for the clinic (optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={bookingNotes}
+                              onChange={(e) => setBookingNotes(e.target.value)}
+                              maxLength={300}
+                              placeholder="e.g. walk-in, nervous patient, referred by Dr. X"
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
+                            />
+                          </div>
                         </div>
 
                         {!isStaffBooking && (

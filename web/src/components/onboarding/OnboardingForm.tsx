@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { createPatientAccount } from "@/app/actions/onboarding";
-import { Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function OnboardingForm() {
   const [error, setError] = useState<string | null>(null);
@@ -122,8 +122,8 @@ export default function OnboardingForm() {
           </>
         ) : (
           <>
-            <Sparkles className="w-4 h-4" />
             <span>Complete Profile & Start Booking</span>
+            <ArrowRight className="w-4 h-4" />
           </>
         )}
       </button>

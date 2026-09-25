@@ -40,7 +40,8 @@ export default async function AppointmentsPage() {
     where: { pId: patientId },
     include: {
       dentist: { include: { person: true } },
-      treatments: { include: { medicines: true } }
+      treatments: { include: { medicines: true } },
+      payments: { orderBy: { createdAt: "asc" } },
     },
     orderBy: [{ year: 'asc' }, { month: 'asc' }, { day: 'asc' }, { hour: 'asc' }]
   });
@@ -50,6 +51,12 @@ export default async function AppointmentsPage() {
   const past = allAppointments
     .filter((app) => !isAppointmentUpcoming(app, now))
     .reverse();
+
+  // Calculate total outstanding balance across all visits
+  const totalCharge   = allAppointments.flatMap((a) => a.treatments).reduce((s, t) => s + t.charge, 0);
+  const totalPaid     = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "payment").reduce((s, p) => s + p.amount, 0);
+  const totalDisc     = allAppointments.flatMap((a) => a.payments).filter((p) => p.type === "discount" || p.type === "waiver").reduce((s, p) => s + p.amount, 0);
+  const totalOutstanding = Math.max(totalCharge - totalPaid - totalDisc, 0);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -64,11 +71,26 @@ export default async function AppointmentsPage() {
         <p className="mt-2 text-sand-50/50 text-sm">
           Track your upcoming visits and past treatments.
         </p>
-        <p className="mt-3 text-xs text-sand-50/40 max-w-md">
-          Online payment appears here after your dentist adds a treatment charge — tap{" "}
-          <span className="text-turq-300">Pay</span> to checkout with Paystack (card / transfer).
-        </p>
       </div>
+
+      {/* Outstanding balance banner */}
+      {totalOutstanding > 0 && (
+        <div className="mb-8 p-5 border border-red-500/20 bg-red-900/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-red-400/70 mb-1">Outstanding Balance</p>
+            <p className="text-2xl font-display text-red-400">{formatNaira(totalOutstanding)}</p>
+            <p className="text-xs text-sand-50/40 mt-1">
+              Scroll down to past treatments and tap <span className="text-turq-300 font-medium">Pay</span> next to each charge — card or bank transfer via Paystack.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/portal/bills"
+            className="inline-flex items-center gap-2 text-xs bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-full font-semibold transition-colors shrink-0"
+          >
+            <CreditCard className="h-3.5 w-3.5" /> Pay Now
+          </Link>
+        </div>
+      )}
 
       {/* ── Upcoming ── */}
       <section className="mb-12">

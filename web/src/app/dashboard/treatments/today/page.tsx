@@ -248,6 +248,42 @@ export default async function TodaysAppointmentsPage() {
                     <label className="block text-xs font-medium text-sand-50/50 mb-1">Clinical notes</label>
                     <textarea name="description" rows={3} maxLength={4000} className="dash-input resize-y" />
                   </div>
+                  {/* SOAP notes */}
+                  <div className="sm:col-span-2 border-t border-sand-50/8 pt-3">
+                    <p className="text-xs font-semibold text-sand-50/40 uppercase tracking-wider mb-2">SOAP Notes (optional)</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">S — Subjective (patient complaint)</label>
+                        <textarea name="soapSubjective" rows={2} maxLength={2000} className="dash-input resize-y" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">O — Objective (clinical findings)</label>
+                        <textarea name="soapObjective" rows={2} maxLength={2000} className="dash-input resize-y" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">A — Assessment (diagnosis)</label>
+                        <textarea name="soapAssessment" rows={2} maxLength={2000} className="dash-input resize-y" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">P — Plan (treatment planned)</label>
+                        <textarea name="soapPlan" rows={2} maxLength={2000} className="dash-input resize-y" />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Vitals */}
+                  <div className="sm:col-span-2 border-t border-sand-50/8 pt-3">
+                    <p className="text-xs font-semibold text-sand-50/40 uppercase tracking-wider mb-2">Vital Signs (optional)</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">Blood Pressure (e.g. 120/80)</label>
+                        <input type="text" name="vitalsBP" maxLength={10} placeholder="120/80" className="dash-input" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-sand-50/50 mb-1">Heart Rate (bpm)</label>
+                        <input type="number" name="vitalsHR" min={30} max={220} placeholder="72" className="dash-input" />
+                      </div>
+                    </div>
+                  </div>
                   <div className="sm:col-span-2">
                     <button type="submit"
                       className="bg-turq-600 text-ink-950 py-2 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors">

@@ -48,12 +48,12 @@ export default function DashboardShell({
         </main>
 
         {/* Minimalist Dashboard Footer */}
-        <footer className="border-t border-sand-50/10 py-6 px-4 sm:px-8 text-center sm:text-left text-xs text-sand-50/40 bg-ink-950/40 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <footer className="border-t border-sand-50/10 py-5 px-4 sm:px-8 text-xs text-sand-50/30 bg-ink-950/40 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
             {clinicName} &copy; {new Date().getFullYear()}. All clinical records protected.
           </span>
-          <span className="text-[11px] uppercase tracking-wider text-turq-400/60 font-semibold">
-            High-Performance Portal
+          <span className="text-[11px] uppercase tracking-wider text-sand-50/25">
+            Abuja · Nigeria
           </span>
         </footer>
       </div>

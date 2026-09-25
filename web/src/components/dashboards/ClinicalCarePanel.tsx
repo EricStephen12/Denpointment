@@ -6,6 +6,8 @@ import type {
   LabCaseStatus,
   PlanItemStatus,
   RecallStatus,
+  ReferralStatus,
+  ReferralUrgency,
 } from "@prisma/client";
 import { formatNaira } from "@/lib/currency";
 import {
@@ -16,6 +18,7 @@ import {
   addMedicalNote,
   addPlanItem,
   addRecall,
+  addReferral,
   createTreatmentPlan,
   deactivateInsurance,
   deleteAllergy,
@@ -23,6 +26,7 @@ import {
   updateLabCaseStatus,
   updatePlanItemStatus,
   updateRecallStatus,
+  updateReferralStatus,
   upsertPerioReading,
 } from "@/app/actions/clinical-care";
 
@@ -92,6 +96,15 @@ export type ClinicalCareData = {
     status: LabCaseStatus;
     notes: string | null;
   }[];
+  referrals: {
+    referralId: number;
+    specialistType: string;
+    reason: string;
+    urgency: ReferralUrgency;
+    status: ReferralStatus;
+    notes: string | null;
+    createdAt: string;
+  }[];
 };
 
 type Tab =
@@ -101,16 +114,18 @@ type Tab =
   | "consents"
   | "recalls"
   | "insurance"
-  | "labs";
+  | "labs"
+  | "referrals";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "history", label: "History" },
-  { id: "plans", label: "Treatment plan" },
+  { id: "plans", label: "Treatment Plan" },
   { id: "perio", label: "Perio" },
   { id: "consents", label: "Consents" },
   { id: "recalls", label: "Recalls" },
   { id: "insurance", label: "Insurance" },
   { id: "labs", label: "Labs" },
+  { id: "referrals", label: "Referrals" },
 ];
 
 type Props = {
@@ -807,6 +822,86 @@ export default function ClinicalCarePanel({
                 className="sm:col-span-2 bg-turq-600 text-ink-950 py-2 px-3 rounded-lg text-sm font-semibold disabled:opacity-60"
               >
                 Add lab case
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {tab === "referrals" && (
+        <div className="space-y-4">
+          {data.referrals.length === 0 ? (
+            <p className="text-sm text-sand-50/40">No referrals recorded.</p>
+          ) : (
+            <ul className="space-y-3">
+              {data.referrals.map((r) => (
+                <li key={r.referralId} className="text-sm space-y-1 border-b border-sand-50/8 pb-3 last:border-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sand-50 font-medium">{r.specialistType}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      r.urgency === "emergency" ? "bg-red-900/40 text-red-300" :
+                      r.urgency === "urgent"    ? "bg-amber-900/40 text-amber-300" :
+                                                  "bg-sand-50/8 text-sand-50/50"
+                    }`}>{r.urgency}</span>
+                    {isDentist ? (
+                      <select
+                        value={r.status}
+                        disabled={pending}
+                        onChange={(e) => runFd(updateReferralStatus, { referralId: String(r.referralId), status: e.target.value })}
+                        className="dash-input w-auto text-xs py-1"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="sent">Sent</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    ) : (
+                      <span className="text-xs text-sand-50/40 capitalize">{r.status}</span>
+                    )}
+                  </div>
+                  <p className="text-sand-50/60 text-xs">{r.reason}</p>
+                  {r.notes && <p className="text-sand-50/30 text-xs">{r.notes}</p>}
+                  <p className="text-[10px] text-sand-50/25">{new Date(r.createdAt).toLocaleDateString()}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {isDentist && (
+            <form
+              className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-sand-50/10 pt-3"
+              onSubmit={(e) => { e.preventDefault(); run(addReferral, e.currentTarget); }}
+            >
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Specialist Type</label>
+                <select name="specialistType" required className="dash-input">
+                  <option value="">Select…</option>
+                  <option value="Orthodontist">Orthodontist</option>
+                  <option value="Oral Surgeon">Oral Surgeon</option>
+                  <option value="Periodontist">Periodontist</option>
+                  <option value="Endodontist">Endodontist</option>
+                  <option value="Prosthodontist">Prosthodontist</option>
+                  <option value="Paediatric Dentist">Paediatric Dentist</option>
+                  <option value="Other Specialist">Other Specialist</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Urgency</label>
+                <select name="urgency" className="dash-input">
+                  <option value="routine">Routine</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Reason for referral</label>
+                <textarea name="reason" required rows={2} maxLength={300} className="dash-input resize-y" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] uppercase tracking-wider text-sand-50/40 mb-1">Additional notes</label>
+                <input name="notes" maxLength={500} className="dash-input" />
+              </div>
+              <button type="submit" disabled={pending} className="sm:col-span-2 bg-turq-600 text-ink-950 py-2 px-3 rounded-lg text-sm font-semibold disabled:opacity-60">
+                Create Referral
               </button>
             </form>
           )}

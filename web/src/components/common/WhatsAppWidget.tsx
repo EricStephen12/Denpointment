@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageCircle, X, Send, Sparkles } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 
 type WhatsAppWidgetProps = {
   clinicName: string;
@@ -56,8 +56,8 @@ export default function WhatsAppWidget({
           {/* Body */}
           <div className="p-4 bg-ink-950/80 space-y-3">
             <div className="bg-ink-900 border border-sand-50/10 rounded-2xl rounded-tl-sm p-3.5 text-xs text-sand-50/90 leading-relaxed shadow-sm">
-              <p className="font-medium text-turq-300 mb-1 flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> Clinic Reception
+              <p className="font-medium text-turq-300 mb-1 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Clinic Reception
               </p>
               Hello! 👋 Welcome to {clinicName}. How can our dental specialists help you today?
             </div>
