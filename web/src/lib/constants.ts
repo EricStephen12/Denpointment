@@ -18,13 +18,6 @@ export const HERO_LINE_2 = "REFINED.";
 export const PHILOSOPHY_LINE_1 = "WE OFTEN RUSH TO JUDGE BEAUTY AT FIRST GLANCE.";
 export const PHILOSOPHY_LINE_2 = "ONLY AN EXPERT EYE CAN UNVEIL THE HIDDEN PERFECTION WITHIN.";
 
-export const DEFAULT_PACKAGES = [
-  { title: "THE ESSENTIAL", price: 25000, desc: "Exam, x-rays, and a full professional cleaning." },
-  { title: "THE RADIANCE", price: 65000, desc: "In-clinic whitening, calibrated to your natural shade." },
-  { title: "THE ALIGN", price: 150000, desc: "Braces / clear-aligner consultation and smile assessment." },
-  { title: "THE MAKEOVER", price: 120000, desc: "Veneers, replacements, and full smile transformation planning." },
-];
-
 export const DEFAULT_SERVICES = [
   { name: "Consultation", price: 5000 },
   { name: "Pediatric Consultation", price: 10000 },

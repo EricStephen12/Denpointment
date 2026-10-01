@@ -14,7 +14,6 @@ import {
   HERO_LINE_2,
   PHILOSOPHY_LINE_1,
   PHILOSOPHY_LINE_2,
-  DEFAULT_PACKAGES,
 } from "@/lib/constants";
 
 /**
@@ -76,7 +75,7 @@ export const SITE_DEFAULTS: SiteContent = {
   rating: CLINIC_RATING,
   reviewCount: CLINIC_REVIEW_COUNT,
   accentColor: "turquoise",
-  packages: DEFAULT_PACKAGES,
+  packages: [],
 };
 
 function parsePackages(value: unknown): SitePackage[] | null {
