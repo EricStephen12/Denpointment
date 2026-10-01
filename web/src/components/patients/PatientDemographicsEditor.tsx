@@ -36,6 +36,7 @@ type Medication = {
 type Props = {
   patientId: number;
   canEdit: boolean;
+  canViewClinical: boolean;
   data: {
     firstName: string;
     lastName: string;
@@ -63,7 +64,7 @@ const REFERRAL_OPTIONS = [
   "Other",
 ];
 
-export default function PatientDemographicsEditor({ patientId, canEdit, data }: Props) {
+export default function PatientDemographicsEditor({ patientId, canEdit, canViewClinical, data }: Props) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -308,7 +309,7 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
           </div>
 
           {/* Chronic diseases */}
-          <div className="pt-3 border-t border-sand-50/8">
+          {canViewClinical && <div className="pt-3 border-t border-sand-50/8">
             <p className="text-[10px] uppercase tracking-wider text-sand-50/35 mb-2 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" /> Chronic Conditions
             </p>
@@ -323,10 +324,10 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Current medications */}
-          <div className="pt-3 border-t border-sand-50/8">
+          {canViewClinical && <div className="pt-3 border-t border-sand-50/8">
             <p className="text-[10px] uppercase tracking-wider text-sand-50/35 mb-2 flex items-center gap-1">
               <Pill className="h-3 w-3" /> Current Medications
             </p>
@@ -343,7 +344,7 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
                 ))}
               </ul>
             )}
-          </div>
+          </div>}
         </div>
       )}
 
@@ -413,7 +414,7 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
           </form>
 
           {/* Chronic diseases — edit inline */}
-          <div className="pt-4 border-t border-sand-50/10 space-y-3">
+          {canViewClinical && <div className="pt-4 border-t border-sand-50/10 space-y-3">
             <p className="text-[10px] uppercase tracking-wider text-sand-50/35 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" /> Chronic Conditions
             </p>
@@ -443,10 +444,10 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
                 <Plus className="h-3.5 w-3.5" /> Add
               </button>
             </form>
-          </div>
+          </div>}
 
           {/* Current medications — edit inline */}
-          <div className="pt-4 border-t border-sand-50/10 space-y-3">
+          {canViewClinical && <div className="pt-4 border-t border-sand-50/10 space-y-3">
             <p className="text-[10px] uppercase tracking-wider text-sand-50/35 flex items-center gap-1">
               <Pill className="h-3 w-3" /> Current Medications
             </p>
@@ -491,7 +492,7 @@ export default function PatientDemographicsEditor({ patientId, canEdit, data }: 
                 <Plus className="h-3.5 w-3.5" /> Add
               </button>
             </form>
-          </div>
+          </div>}
         </div>
       )}
     </div>

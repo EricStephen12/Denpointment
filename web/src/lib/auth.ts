@@ -71,5 +71,24 @@ export function isPatient(person: PersonWithRoles | null) {
   return !!person && person.patients.length > 0;
 }
 
+export type ClinicCapability =
+  | "manageClinic"
+  | "frontDesk"
+  | "clinicalCare"
+  | "clinicOperations"
+  | "patientPortal";
+
+const capabilityRoles: Record<ClinicCapability, readonly (keyof Pick<PersonWithRoles, "admins" | "receptionists" | "dentists" | "patients">)[]> = {
+  manageClinic: ["admins"],
+  frontDesk: ["admins", "receptionists"],
+  clinicalCare: ["admins", "dentists"],
+  clinicOperations: ["admins", "receptionists", "dentists"],
+  patientPortal: ["patients"],
+};
+
+export function hasCapability(person: PersonWithRoles | null, capability: ClinicCapability) {
+  return !!person && capabilityRoles[capability].some((role) => person[role].length > 0);
+}
+
 // Re-export actions from dedicated 'use server' file
 export { loginAction, signupAction, logoutAction } from "@/app/actions/auth";

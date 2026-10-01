@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
   assignOrPromoteMember,
   toggleMemberRole,
@@ -274,18 +275,11 @@ export default function StaffRoleManager({
         </div>
       )}
 
-      {/* Top Header & Action Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div>
-          <h1 className="text-2xl font-bold font-display text-sand-50 tracking-tight">
-            Staff & Permissions
-          </h1>
-          <p className="text-xs text-sand-50/50 mt-1">
-            Manage practice providers, assign consultation rooms, and configure role-based access.
-          </p>
-        </div>
-
-        <button
+      <AdminPageHeader
+        section="Practice setup"
+        title="Staff and access"
+        description="Invite team members, assign clinic roles, and manage dentist rooms."
+        action={<button
           type="button"
           onClick={() => {
             setNewEmail("");
@@ -298,9 +292,9 @@ export default function StaffRoleManager({
           className="inline-flex items-center justify-center gap-2 bg-turq-500 hover:bg-turq-400 text-ink-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-turq-500/10 hover:shadow-turq-500/20 active:scale-[0.98]"
         >
           <UserPlus className="h-4 w-4" />
-          <span>Add or Promote Member</span>
-        </button>
-      </div>
+          <span>Add team member</span>
+        </button>}
+        />
 
       {/* Overview Stat Badges */}
       <div className="grid grid-cols-3 gap-3">

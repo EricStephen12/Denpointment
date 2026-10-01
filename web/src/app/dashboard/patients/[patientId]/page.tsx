@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isDentist, isReceptionist } from "@/lib/auth";
+import { formatClinicDate, getClinicDay } from "@/lib/clinic-date";
 import { formatNaira } from "@/lib/currency";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import Odontogram from "@/components/dashboards/Odontogram";
@@ -80,8 +81,9 @@ export default async function PatientProfilePage({
   const person = patient.person;
 
   const canEditDemographics = isReceptionist(dbUser) || isAdmin(dbUser);
-  const canEditChart = isDentist(dbUser);
-  const canEditClinical = isDentist(dbUser) || isReceptionist(dbUser) || isAdmin(dbUser);
+  const canEditChart = isDentist(dbUser) || isAdmin(dbUser);
+  const canEditClinical = isDentist(dbUser) || isAdmin(dbUser);
+  const canViewClinical = isDentist(dbUser) || isAdmin(dbUser);
 
   // Derive patient since from earliest appointment
   const firstAppt = patient.appointments.length > 0
@@ -102,17 +104,20 @@ export default async function PatientProfilePage({
   const outstanding = totalCharge - totalPaid;
 
   const birthLabel = person.birthDate
-    ? new Date(person.birthDate).toLocaleDateString(undefined, {
+    ? formatClinicDate(person.birthDate, {
         year: "numeric",
         month: "long",
         day: "numeric",
       })
     : null;
-
-  // Age
+  const clinicToday = getClinicDay();
   const age = person.birthDate
-    ? Math.floor(
-        (Date.now() - new Date(person.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25),
+    ? clinicToday.year -
+      person.birthDate.getUTCFullYear() -
+      Number(
+        clinicToday.month < person.birthDate.getUTCMonth() + 1 ||
+          (clinicToday.month === person.birthDate.getUTCMonth() + 1 &&
+            clinicToday.day < person.birthDate.getUTCDate()),
       )
     : null;
 
@@ -189,6 +194,14 @@ export default async function PatientProfilePage({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
+              {outstanding > 0 && (isAdmin(dbUser) || isReceptionist(dbUser)) && (
+                <Link
+                  href={`/dashboard/admin/billing?q=${encodeURIComponent(person.firstName + " " + person.lastName)}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-4 py-2 rounded-xl transition-colors"
+                >
+                  💳 Collect Payment
+                </Link>
+              )}
               {canEditDemographics && (
                 <Link
                   href={`/dashboard/book?patientId=${patient.patientId}`}
@@ -216,16 +229,41 @@ export default async function PatientProfilePage({
         </div>
       </div>
 
+      {/* ── Quick Anchor Navigation Bar ── */}
+      <div className="flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-ink-900/90 border border-sand-50/10 mb-8 sticky top-4 z-20 backdrop-blur-md shadow-lg shadow-black/30">
+        <span className="text-xs font-semibold text-sand-50/40 uppercase tracking-wider px-2">Jump to:</span>
+        <a href="#demographics" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+          👤 Info &amp; Contacts
+        </a>
+        <a href="#visit-history" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+          🗓️ Visits ({patient.appointments.length})
+        </a>
+        {(isDentist(dbUser) || isAdmin(dbUser)) && (
+          <>
+            <a href="#dental-chart" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+              🦷 2D Dental Chart ({patient.toothFindings.length})
+            </a>
+            <a href="#clinical-care" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+              📋 Clinical &amp; Plans ({patient.treatmentPlans.length})
+            </a>
+            <a href="#patient-images" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+              📸 Photos &amp; X-Rays ({patient.images.length})
+            </a>
+          </>
+        )}
+      </div>
+
       {/* ── Main two-column layout ── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
 
         {/* Left column: Demographics + Contact */}
-        <div className="xl:col-span-1 space-y-6">
+        <div id="demographics" className="xl:col-span-1 space-y-6 scroll-mt-24">
 
           {/* Demographics — editable by receptionist/admin */}
           <PatientDemographicsEditor
             patientId={patientId}
             canEdit={canEditDemographics}
+            canViewClinical={canEditChart}
             data={{
               firstName: person.firstName,
               lastName: person.lastName,
@@ -238,19 +276,19 @@ export default async function PatientProfilePage({
               referralSource: person.referralSource ?? "",
               emergencyContactName: person.emergencyContactName ?? "",
               emergencyContactPhone: person.emergencyContactPhone ?? "",
-              diseases: person.diseases.map((d) => d.chronicDisease),
-              currentMedications: patient.currentMedications.map((m) => ({
+              diseases: canEditChart ? person.diseases.map((d) => d.chronicDisease) : [],
+              currentMedications: canEditChart ? patient.currentMedications.map((m) => ({
                 medicationId: m.medicationId,
                 name: m.name,
                 dose: m.dose,
                 notes: m.notes,
-              })),
+              })) : [],
             }}
           />
         </div>
 
         {/* Right column: Appointment history */}
-        <div className="xl:col-span-2">
+        <div id="visit-history" className="xl:col-span-2 scroll-mt-24">
           <div className="dash-surface p-5">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="h-4 w-4 text-turq-400" />
@@ -314,117 +352,125 @@ export default async function PatientProfilePage({
       </div>
 
       {/* ── Dental Chart ── */}
-      <div id="dental-chart" className="scroll-mt-24 mb-8">
-        <Odontogram
-          patientId={patient.patientId}
-          findings={patient.toothFindings.map((f) => ({
-            toothNumber: f.toothNumber,
-            condition: f.condition,
-            surfaces: f.surfaces,
-            notes: f.notes,
-          }))}
-          canEdit={canEditChart}
-        />
-      </div>
+      {(isDentist(dbUser) || isAdmin(dbUser)) && (
+        <div id="dental-chart" className="scroll-mt-24 mb-8">
+          <Odontogram
+            patientId={patient.patientId}
+            findings={patient.toothFindings.map((f) => ({
+              toothNumber: f.toothNumber,
+              condition: f.condition,
+              surfaces: f.surfaces,
+              notes: f.notes,
+            }))}
+            canEdit={canEditChart}
+          />
+        </div>
+      )}
 
       {/* ── Clinical Care Panel ── */}
-      <div id="clinical-care" className="mb-8">
-        <ClinicalCarePanel
-          patientId={patient.patientId}
-          canEdit={canEditClinical}
-          isDentist={canEditChart}
-          data={{
-            allergies: patient.allergies.map((a) => ({
-              allergyId: a.allergyId,
-              name: a.name,
-              severity: a.severity,
-              notes: a.notes,
-            })),
-            medicalNotes: patient.medicalNotes.map((n) => ({
-              noteId: n.noteId,
-              body: n.body,
-              recordedAt: n.recordedAt.toISOString(),
-            })),
-            treatmentPlans: patient.treatmentPlans.map((p) => ({
-              planId: p.planId,
-              title: p.title,
-              notes: p.notes,
-              items: p.items.map((i) => ({
-                itemId: i.itemId,
-                description: i.description,
-                toothNumber: i.toothNumber,
-                surfaces: i.surfaces,
-                estimatedCharge: i.estimatedCharge,
-                status: i.status,
+      {(isDentist(dbUser) || isAdmin(dbUser)) && (
+        <div id="clinical-care" className="scroll-mt-24 mb-8">
+          <ClinicalCarePanel
+            patientId={patient.patientId}
+            canEdit={canEditClinical}
+            isDentist={canEditChart}
+            data={{
+              allergies: patient.allergies.map((a) => ({
+                allergyId: a.allergyId,
+                name: a.name,
+                severity: a.severity,
+                notes: a.notes,
               })),
-            })),
-            perioReadings: patient.perioReadings.map((r) => ({
-              readingId: r.readingId,
-              toothNumber: r.toothNumber,
-              pocketMm: r.pocketMm,
-              bleeding: r.bleeding,
-              mobility: r.mobility,
-              notes: r.notes,
-            })),
-            consents: patient.consents.map((c) => ({
-              consentId: c.consentId,
-              title: c.title,
-              summary: c.summary,
-              status: c.status,
-              signedByName: c.signedByName,
-              signedAt: c.signedAt?.toISOString() ?? null,
-            })),
-            recalls: patient.recalls.map((r) => ({
-              recallId: r.recallId,
-              reason: r.reason,
-              dueDate: r.dueDate.toISOString(),
-              status: r.status,
-              notes: r.notes,
-            })),
-            insurancePolicies: patient.insurancePolicies.map((p) => ({
-              insuranceId: p.insuranceId,
-              provider: p.provider,
-              policyNumber: p.policyNumber,
-              memberId: p.memberId,
-              groupNumber: p.groupNumber,
-              notes: p.notes,
-              active: p.active,
-            })),
-            labCases: patient.labCases.map((l) => ({
-              labCaseId: l.labCaseId,
-              labName: l.labName,
-              itemDescription: l.itemDescription,
-              toothNumber: l.toothNumber,
-              dueDate: l.dueDate?.toISOString() ?? null,
-              status: l.status,
-              notes: l.notes,
-            })),
-            referrals: patient.referrals.map((r) => ({
-              referralId: r.referralId,
-              specialistType: r.specialistType,
-              reason: r.reason,
-              urgency: r.urgency,
-              status: r.status,
-              notes: r.notes,
-              createdAt: r.createdAt.toISOString(),
-            })),
-          }}
-        />
-      </div>
+              medicalNotes: patient.medicalNotes.map((n) => ({
+                noteId: n.noteId,
+                body: n.body,
+                recordedAt: n.recordedAt.toISOString(),
+              })),
+              treatmentPlans: patient.treatmentPlans.map((p) => ({
+                planId: p.planId,
+                title: p.title,
+                notes: p.notes,
+                items: p.items.map((i) => ({
+                  itemId: i.itemId,
+                  description: i.description,
+                  toothNumber: i.toothNumber,
+                  surfaces: i.surfaces,
+                  estimatedCharge: i.estimatedCharge,
+                  status: i.status,
+                })),
+              })),
+              perioReadings: patient.perioReadings.map((r) => ({
+                readingId: r.readingId,
+                toothNumber: r.toothNumber,
+                pocketMm: r.pocketMm,
+                bleeding: r.bleeding,
+                mobility: r.mobility,
+                notes: r.notes,
+              })),
+              consents: patient.consents.map((c) => ({
+                consentId: c.consentId,
+                title: c.title,
+                summary: c.summary,
+                status: c.status,
+                signedByName: c.signedByName,
+                signedAt: c.signedAt?.toISOString() ?? null,
+              })),
+              recalls: patient.recalls.map((r) => ({
+                recallId: r.recallId,
+                reason: r.reason,
+                dueDate: r.dueDate.toISOString(),
+                status: r.status,
+                notes: r.notes,
+              })),
+              insurancePolicies: patient.insurancePolicies.map((p) => ({
+                insuranceId: p.insuranceId,
+                provider: p.provider,
+                policyNumber: p.policyNumber,
+                memberId: p.memberId,
+                groupNumber: p.groupNumber,
+                notes: p.notes,
+                active: p.active,
+              })),
+              labCases: patient.labCases.map((l) => ({
+                labCaseId: l.labCaseId,
+                labName: l.labName,
+                itemDescription: l.itemDescription,
+                toothNumber: l.toothNumber,
+                dueDate: l.dueDate?.toISOString() ?? null,
+                status: l.status,
+                notes: l.notes,
+              })),
+              referrals: patient.referrals.map((r) => ({
+                referralId: r.referralId,
+                specialistType: r.specialistType,
+                reason: r.reason,
+                urgency: r.urgency,
+                status: r.status,
+                notes: r.notes,
+                createdAt: r.createdAt.toISOString(),
+              })),
+            }}
+          />
+        </div>
+      )}
 
       {/* ── Images ── */}
-      <PatientImages
-        patientId={patient.patientId}
-        canEdit={canEditChart || isAdmin(dbUser)}
-        cloudinaryReady={isCloudinaryConfigured()}
-        images={patient.images.map((img) => ({
-          imageId: img.imageId,
-          kind: img.kind,
-          url: img.url,
-          caption: img.caption,
-          createdAt: img.createdAt.toISOString(),
-        }))}
-      />
+      {(isDentist(dbUser) || isAdmin(dbUser)) && (
+        <div id="patient-images" className="scroll-mt-24 mb-8">
+          <PatientImages
+            patientId={patient.patientId}
+            canEdit={canEditChart}
+            cloudinaryReady={isCloudinaryConfigured()}
+            images={patient.images.map((img) => ({
+              imageId: img.imageId,
+              kind: img.kind,
+              url: img.url,
+              caption: img.caption,
+              createdAt: img.createdAt.toISOString(),
+            }))}
+          />
+        </div>
+      )}
     </div>
   );
 }

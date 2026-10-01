@@ -4,6 +4,7 @@ import React, { useState, useMemo, useTransition } from "react";
 import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { formatNaira } from "@/lib/currency";
+import { compareCalendarDays, formatAppointmentDate, type CalendarDay } from "@/lib/clinic-date";
 
 /* ── Types ── */
 interface SlotMap {
@@ -20,6 +21,7 @@ export interface BookingService {
 interface BookingCalendarProps {
   /** Pre-computed available slots for the next N months */
   slots: SlotMap;
+  clinicToday: CalendarDay;
   clinicAddress: string;
   /** For staff booking on behalf of a patient */
   patientId?: string;
@@ -56,6 +58,7 @@ function formatTime(h: number): string {
 
 export default function BookingCalendar({
   slots,
+  clinicToday,
   clinicAddress,
   patientId,
   isStaffBooking,
@@ -65,9 +68,8 @@ export default function BookingCalendar({
   defaultPhone,
   bookAction,
 }: BookingCalendarProps) {
-  const today = useMemo(() => new Date(), []);
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(clinicToday.year);
+  const [viewMonth, setViewMonth] = useState(clinicToday.month - 1);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState(patientId || "");
@@ -155,16 +157,21 @@ export default function BookingCalendar({
 
   // Can't go before current month
   const canGoPrev =
-    viewYear > today.getFullYear() ||
-    (viewYear === today.getFullYear() && viewMonth > today.getMonth());
+    viewYear > clinicToday.year ||
+    (viewYear === clinicToday.year && viewMonth > clinicToday.month - 1);
 
   // Available hours for selected date
   const availableHours = selectedDate ? (slots[selectedDate] || []) : [];
 
   // Friendly date label
-  const selectedDateObj = selectedDate ? new Date(selectedDate + "T00:00:00") : null;
-  const friendlyDate = selectedDateObj
-    ? selectedDateObj.toLocaleDateString("en-US", {
+  const selectedCalendarDay = selectedDate
+    ? (() => {
+        const [year, month, day] = selectedDate.split("-").map(Number);
+        return { year, month, day };
+      })()
+    : null;
+  const friendlyDate = selectedCalendarDay
+    ? formatAppointmentDate(selectedCalendarDay, {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -321,13 +328,9 @@ export default function BookingCalendar({
         <div className="grid grid-cols-7 gap-1 px-4 pb-5">
           {calendarDays.map((cell, i) => {
             const key = toDateKey(cell.year, cell.month, cell.day);
-            const isToday =
-              cell.day === today.getDate() &&
-              cell.month === today.getMonth() &&
-              cell.year === today.getFullYear();
-            const isPast =
-              new Date(cell.year, cell.month, cell.day) <
-              new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const cellDay = { year: cell.year, month: cell.month + 1, day: cell.day };
+            const isToday = compareCalendarDays(cellDay, clinicToday) === 0;
+            const isPast = compareCalendarDays(cellDay, clinicToday) < 0;
             const isAvailable = key in slots && slots[key].length > 0;
             const isSelected = key === selectedDate;
             const isDisabled = !cell.isCurrentMonth || isPast || !isAvailable;

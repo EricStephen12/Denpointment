@@ -9,21 +9,17 @@ export default function DashboardShell({
   children,
   user,
   clinicName,
+  clinicYear,
 }: {
   children: React.ReactNode;
   user: PersonWithRoles | null;
   clinicName: string;
+  clinicYear: number;
 }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-ink-950 text-sand-50 font-sans relative overflow-x-hidden selection:bg-turq-400 selection:text-ink-950">
-      {/* Subtle Background Glow Orbs */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-turq-400/[0.03] blur-3xl" />
-        <div className="absolute top-1/2 -left-48 w-[500px] h-[500px] rounded-full bg-turq-400/[0.02] blur-3xl" />
-        <div className="absolute -bottom-40 right-1/4 w-[400px] h-[400px] rounded-full bg-purple-500/[0.02] blur-3xl" />
-      </div>
 
       {/* Left Sidebar */}
       <DashboardSidebar
@@ -38,7 +34,6 @@ export default function DashboardShell({
         {/* Topbar */}
         <DashboardTopbar
           user={user}
-          clinicName={clinicName}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
         />
 
@@ -50,7 +45,7 @@ export default function DashboardShell({
         {/* Minimalist Dashboard Footer */}
         <footer className="border-t border-sand-50/10 py-5 px-4 sm:px-8 text-xs text-sand-50/30 bg-ink-950/40 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>
-            {clinicName} &copy; {new Date().getFullYear()}. All clinical records protected.
+            {clinicName} &copy; {clinicYear}. All clinical records protected.
           </span>
           <span className="text-[11px] uppercase tracking-wider text-sand-50/25">
             Abuja · Nigeria

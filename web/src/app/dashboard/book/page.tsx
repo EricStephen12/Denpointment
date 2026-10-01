@@ -1,12 +1,13 @@
 import React from 'react';
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isPatient, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability, isPatient } from "@/lib/auth";
 import { bookAppointment } from "@/app/actions/appointments";
 import { getSiteContent } from "@/lib/site";
 import { Calendar } from 'lucide-react';
 import Link from "next/link";
 import BookingCalendar from "@/components/dashboards/BookingCalendar";
+import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 import {
   addCalendarDays,
   getClinicDay,
@@ -26,8 +27,8 @@ async function buildSlotMap(
   openHour: number,
   closeHour: number,
   workingDays: number[],
+  today: CalendarDay,
 ) {
-  const today = getClinicDay();
   const endDay = addCalendarDays(today, 92);
   const rangeStart = new Date(Date.UTC(today.year, today.month - 1, today.day));
   const rangeEnd = new Date(Date.UTC(endDay.year, endDay.month - 1, endDay.day));
@@ -114,7 +115,7 @@ export default async function BookAppointmentPage({
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
 
-  const staffBooking = isReceptionist(dbUser);
+  const staffBooking = hasCapability(dbUser, "frontDesk");
   if (!isPatient(dbUser) && !staffBooking) {
     redirect("/dashboard");
   }
@@ -140,7 +141,8 @@ export default async function BookAppointmentPage({
     .map((d) => WEEKDAY_NAMES[d])
     .join(", ");
 
-  const slots = await buildSlotMap(dentists, openHour, closeHour, workingDays);
+  const clinicToday = getClinicDay();
+  const slots = await buildSlotMap(dentists, openHour, closeHour, workingDays, clinicToday);
 
   const patients = staffBooking
     ? (await prisma.patient.findMany({
@@ -163,11 +165,23 @@ export default async function BookAppointmentPage({
     : null;
 
   return (
-    <div className="max-w-xl mx-auto">
-      <div className="mb-8 animate-fade-up">
-        <p className="text-xs font-medium text-turq-400 uppercase tracking-widest mb-3">
-          {staffBooking ? "Staff Booking" : "Your Next Visit"}
-        </p>
+    <div className="max-w-xl mx-auto space-y-6">
+      {staffBooking && <ClinicWorkflowTracker currentStep={1} />}
+
+      <div className="mb-6 animate-fade-up">
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <p className="text-xs font-medium text-turq-400 uppercase tracking-widest">
+            {staffBooking ? "Staff Booking · Step 1" : "Your Next Visit"}
+          </p>
+          {staffBooking && (
+            <Link
+              href="/dashboard/reception/calendar"
+              className="text-xs text-sand-50/60 hover:text-turq-400 border border-sand-50/15 px-2.5 py-1 rounded-lg transition-colors"
+            >
+              Clinic Calendar
+            </Link>
+          )}
+        </div>
         <h1 className="text-3xl md:text-4xl font-display text-sand-50 leading-tight">
           Book an Appointment
         </h1>
@@ -193,6 +207,7 @@ export default async function BookAppointmentPage({
       ) : (
         <BookingCalendar
           slots={slots}
+          clinicToday={clinicToday}
           clinicAddress={site.address}
           patientId={patientId}
           isStaffBooking={staffBooking}

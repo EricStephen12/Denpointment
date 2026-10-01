@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin, isDentist, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability, isAdmin, isDentist, isReceptionist } from "@/lib/auth";
 import {
   checkedInFromStatus,
   parseAppointmentStatus,
@@ -10,7 +10,7 @@ import {
 
 export async function setAppointmentStatus(formData: FormData) {
   const person = await getCurrentPerson();
-  if (!person || (!isDentist(person) && !isReceptionist(person) && !isAdmin(person))) {
+  if (!person || !hasCapability(person, "clinicOperations")) {
     throw new Error("You're not authorized to update visit status.");
   }
 

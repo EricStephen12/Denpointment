@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isReceptionist, isAdmin } from "@/lib/auth";
 import { addTreatment } from "@/app/actions/treatments";
-import { CalendarCheck, LayoutGrid } from 'lucide-react';
+import { CalendarCheck, LayoutGrid, CreditCard, ArrowRight } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
 import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
@@ -11,6 +11,7 @@ import PrescriptionFields from "@/components/dashboards/PrescriptionFields";
 import VisitStatusSelect from "@/components/dashboards/VisitStatusSelect";
 import TreatmentEditor from "@/components/dashboards/TreatmentEditor";
 import PrintScheduleButton from "@/components/common/PrintScheduleButton";
+import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 import Link from "next/link";
 
 export default async function TodaysAppointmentsPage() {
@@ -56,9 +57,22 @@ export default async function TodaysAppointmentsPage() {
     apptByDentistHour.set(`${app.dId}-${app.hour}`, app);
   }
 
+  const checkedInCount = appointments.filter((a) => a.status === 'checked_in').length;
+  const inChairCount = appointments.filter((a) => a.status === 'in_chair').length;
+
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="space-y-6">
+      {/* ── 1. WORKFLOW TRACKER BANNER (STEP 3: CLINICAL CARE) ── */}
+      <ClinicWorkflowTracker
+        currentStep={3}
+        counts={{
+          booked: appointments.length,
+          checkedIn: checkedInCount,
+          inChair: inChairCount,
+        }}
+      />
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="dash-icon-badge">
             <CalendarCheck className="h-5 w-5 text-turq-400" />
@@ -75,7 +89,7 @@ export default async function TodaysAppointmentsPage() {
 
       {/* At-a-glance grid */}
       {gridDentists.length > 0 && (
-        <div className="mb-10">
+        <div className="mb-8">
           <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-sand-50/60">
             <LayoutGrid className="h-4 w-4" /> Schedule Overview
           </div>
@@ -117,12 +131,13 @@ export default async function TodaysAppointmentsPage() {
         </div>
       )}
 
+      {/* Appointment Cards */}
       <div className="space-y-4">
         {appointments.length > 0 ? appointments.map((app) => {
           const treatmentCount = app.treatments.length;
           return (
-            <div key={app.appointmentId} className="dash-card p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div key={app.appointmentId} className="dash-card p-5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="font-semibold text-sand-50">
                     {app.hour}:00 —{" "}
@@ -136,9 +151,9 @@ export default async function TodaysAppointmentsPage() {
                     {" · "}
                     <Link
                       href={`/dashboard/patients/${app.patient.patientId}#dental-chart`}
-                      className="text-turq-400 hover:text-turq-300"
+                      className="text-turq-400 hover:text-turq-300 underline font-medium"
                     >
-                      Open chart
+                      Open Dental Chart
                     </Link>
                   </p>
                 </div>
@@ -157,7 +172,7 @@ export default async function TodaysAppointmentsPage() {
               </div>
 
               {treatmentCount > 0 && (
-                <ul className="mb-3 space-y-2 text-sm text-sand-50/60 border-t border-sand-50/8 pt-3">
+                <ul className="space-y-2 text-sm text-sand-50/60 border-t border-sand-50/8 pt-3">
                   {app.treatments.map((t) => (
                     <li key={t.treatmentId}>
                       {!staffView ? (
@@ -185,6 +200,31 @@ export default async function TodaysAppointmentsPage() {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {/* Connected Step 4 Handoff to Billing */}
+              {treatmentCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-sand-50/8 bg-white/[0.01]">
+                  <span className="text-xs text-sand-50/50">
+                    Procedures documented. Patient ready for payment?
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/dashboard/patients/${app.patient.patientId}#dental-chart`}
+                      className="inline-flex items-center gap-1.5 text-xs text-sand-50/70 hover:text-sand-50 border border-sand-50/15 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Full Dental Chart
+                    </Link>
+                    <Link
+                      href={`/dashboard/admin/billing?q=${encodeURIComponent(app.patient.person.lastName)}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-ink-950 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      <span>Proceed to Billing &amp; Checkout (Step 4)</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
               )}
 
               {!staffView && (

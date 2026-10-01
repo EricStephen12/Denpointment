@@ -3,12 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { Prisma, Gender } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import { sendStaffInvitationEmail } from "@/lib/email";
 
 async function requireAdmin() {
   const person = await getCurrentPerson();
-  if (!person || !isAdmin(person)) {
+  if (!person || !hasCapability(person, "manageClinic")) {
     throw new Error("You're not authorized to manage staff.");
   }
   return person;

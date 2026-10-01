@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import {
   sendAppointmentConfirmationEmail,
   sendDentistNewAppointmentEmail,
@@ -18,7 +18,7 @@ export async function bookAppointment(formData: FormData) {
   const dbPerson = await getCurrentPerson();
   if (!dbPerson) throw new Error("Not authenticated");
 
-  const staffBooking = isReceptionist(dbPerson);
+  const staffBooking = hasCapability(dbPerson, "frontDesk");
 
   let patientId: number;
   if (staffBooking) {
@@ -194,11 +194,14 @@ export async function bookAppointment(formData: FormData) {
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/appointments');
   
+  const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const serviceParam = service ? `&service=${encodeURIComponent(service.name)}` : '';
+  const patientFullName = patient ? `${patient.person.firstName} ${patient.person.lastName}` : '';
+  const dentistFullName = `Dr. ${assignedDentist.person.firstName} ${assignedDentist.person.lastName}`;
+
   if (staffBooking) {
-    redirect('/dashboard');
+    redirect(`/dashboard/book/success?staff=1&patientId=${patientId}&patientName=${encodeURIComponent(patientFullName)}&dentistName=${encodeURIComponent(dentistFullName)}&date=${dateString}&hour=${hour}&room=${assignedDentist.roomNumber}${serviceParam}`);
   } else {
-    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const serviceParam = service ? `&service=${encodeURIComponent(service.name)}` : '';
     redirect(`/dashboard/book/success?date=${dateString}&hour=${hour}&room=${assignedDentist.roomNumber}${serviceParam}`);
   }
 }
@@ -223,7 +226,7 @@ export async function cancelAppointment(formData: FormData) {
   if (!appointment) throw new Error("Appointment not found.");
 
   const isOwner = dbPerson.patients.some((p) => p.patientId === appointment.pId);
-  const isStaff = isReceptionist(dbPerson) || dbPerson.admins.length > 0;
+  const isStaff = hasCapability(dbPerson, "frontDesk");
 
   if (!isOwner && !isStaff) {
     throw new Error("You're not authorized to cancel this appointment.");
@@ -276,7 +279,7 @@ export async function cancelAppointment(formData: FormData) {
 async function requireStaff() {
   const person = await getCurrentPerson();
   if (!person) throw new Error("Not authenticated");
-  const isStaff = (person.admins?.length ?? 0) > 0 || (person.receptionists?.length ?? 0) > 0;
+  const isStaff = hasCapability(person, "frontDesk");
   if (!isStaff) throw new Error("Not authorized.");
   return person;
 }
@@ -387,6 +390,44 @@ export async function addToWaitlist(formData: FormData) {
   revalidatePath("/dashboard/reception/waitlist");
 }
 
+/** Update a waiting-list entry without changing its patient history. */
+export async function updateWaitlistEntry(formData: FormData) {
+  await requireStaff();
+  const waitlistId = parseInt(formData.get("waitlistId") as string, 10);
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  const dateStr = ((formData.get("requestedDate") as string) || "").trim();
+  const dentistRaw = ((formData.get("dentistId") as string) || "").trim();
+  const dentistId = dentistRaw ? parseInt(dentistRaw, 10) : null;
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 300);
+  const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+
+  if (!waitlistId || !patientId || !dateParts || (dentistRaw && !dentistId)) {
+    throw new Error("Select a patient and valid requested date.");
+  }
+
+  const existing = await prisma.waitlistEntry.findUnique({ where: { waitlistId } });
+  if (!existing || existing.status !== "waiting") {
+    throw new Error("Only active waiting-list entries can be edited.");
+  }
+  const patient = await prisma.patient.findUnique({ where: { patientId }, select: { patientId: true } });
+  if (!patient) throw new Error("Patient not found.");
+  if (dentistId) {
+    const dentist = await prisma.dentist.findUnique({ where: { dentistId }, select: { dentistId: true } });
+    if (!dentist) throw new Error("Dentist not found.");
+  }
+
+  const requestedDate = new Date(`${dateParts[1]}-${dateParts[2]}-${dateParts[3]}T12:00:00.000Z`);
+  if (requestedDate.toISOString().slice(0, 10) !== dateStr) {
+    throw new Error("Select a valid calendar date.");
+  }
+
+  await prisma.waitlistEntry.update({
+    where: { waitlistId },
+    data: { patientId, requestedDate, dentistId, notes: notes || null },
+  });
+  revalidatePath("/dashboard/reception/waitlist");
+}
+
 /** Update waitlist entry status */
 export async function updateWaitlistStatus(formData: FormData) {
   await requireStaff();
@@ -405,7 +446,7 @@ import { sendAppointmentReminderEmail } from "@/lib/email";
 export async function sendManualReminder(formData: FormData) {
   const person = await getCurrentPerson();
   if (!person) throw new Error("Not authenticated");
-  const isStaff = (person.admins?.length ?? 0) > 0 || (person.receptionists?.length ?? 0) > 0;
+  const isStaff = hasCapability(person, "frontDesk");
   if (!isStaff) throw new Error("Not authorized.");
 
   const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
@@ -472,21 +513,20 @@ export async function deleteAppointment(formData: FormData) {
 
   const appt = await prisma.appointment.findUnique({
     where: { appointmentId },
-    include: { treatments: { select: { treatmentId: true } } },
+    include: {
+      treatments: { select: { treatmentId: true } },
+      payments: { select: { paymentId: true } },
+      insuranceClaims: { select: { claimId: true } },
+    },
   });
   if (!appt) throw new Error("Appointment not found.");
 
   const treatmentIds = appt.treatments.map((t) => t.treatmentId);
 
   await prisma.$transaction(async (tx) => {
-    // 1. Delete medicines under treatments
-    if (treatmentIds.length > 0) {
-      await tx.medicine.deleteMany({
-        where: { tId: { in: treatmentIds } },
-      });
+    if (appt.insuranceClaims.length > 0) {
+      await tx.insuranceClaim.deleteMany({ where: { appointmentId } });
     }
-
-    // 2. Delete payments linked to this appointment or treatments
     await tx.payment.deleteMany({
       where: {
         OR: [
@@ -495,26 +535,20 @@ export async function deleteAppointment(formData: FormData) {
         ],
       },
     });
-
-    // 3. Delete insurance claims
-    await tx.insuranceClaim.deleteMany({
-      where: { appointmentId },
-    });
-
-    // 4. Delete treatments
     if (treatmentIds.length > 0) {
-      await tx.treatment.deleteMany({
+      await tx.medicine.deleteMany({ where: { tId: { in: treatmentIds } } });
+      await tx.toothFinding.updateMany({
         where: { treatmentId: { in: treatmentIds } },
+        data: { treatmentId: null },
       });
+      await tx.treatment.deleteMany({ where: { aId: appointmentId } });
     }
-
-    // 5. Delete appointment
-    await tx.appointment.delete({
-      where: { appointmentId },
-    });
+    await tx.appointment.delete({ where: { appointmentId } });
   });
 
   revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
   revalidatePath("/dashboard/treatments/today");
   revalidatePath("/dashboard/treatments/upcoming");
   revalidatePath("/dashboard/reception/calendar");

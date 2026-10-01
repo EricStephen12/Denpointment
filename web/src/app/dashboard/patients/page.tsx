@@ -44,7 +44,17 @@ export default async function PatientsPage({
   const [patients, total] = await Promise.all([
     prisma.patient.findMany({
       where,
-      include: { person: { include: { contacts: true } } },
+      include: {
+        person: { include: { contacts: true } },
+        appointments: {
+          select: {
+            appointmentId: true,
+            treatments: { select: { treatmentId: true, charge: true, paid: true } },
+          },
+        },
+        toothFindings: { select: { findingId: true } },
+        images: { select: { imageId: true } },
+      },
       orderBy: { patientId: "desc" },
       take,
     }),
@@ -61,15 +71,14 @@ export default async function PatientsPage({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6">
         <div className="dash-icon-badge">
           <Search className="h-5 w-5 text-turq-400" />
         </div>
         <div>
-          <h1 className="dash-title font-display">Patients</h1>
+          <h1 className="dash-title font-display">Patients &amp; Clinical Records</h1>
           <p className="dash-body mt-0.5">
-            Search or open a patient — the <span className="text-turq-300">2D dental chart</span> is
-            at the bottom of their profile.
+            Search or select a patient to open their comprehensive file — including the <span className="text-turq-300">2D Odontogram</span>, treatment history, and clinical photos.
           </p>
         </div>
         {canRegister && (
@@ -82,6 +91,18 @@ export default async function PatientsPage({
             </a>
           </div>
         )}
+      </div>
+
+      {/* Guide Banner */}
+      <div className="dash-surface p-4 mb-6 border border-turq-500/20 bg-turq-500/5 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-semibold text-sand-50 flex items-center gap-2">
+            💡 Where do patient records live?
+          </h2>
+          <p className="text-xs text-sand-50/70 mt-1 leading-relaxed">
+            Click any patient below to open their master file. You will find their <strong className="text-sand-50">Demographics &amp; Phone</strong> on the left, and their <strong className="text-sand-50">Visit History</strong>, <strong className="text-turq-300">2D Dental Tooth Chart</strong>, <strong className="text-turq-300">Clinical Plans</strong>, and <strong className="text-turq-300">X-Rays &amp; Photos</strong> directly on the right.
+          </p>
+        </div>
       </div>
 
       <div className={`grid grid-cols-1 ${canRegister ? "lg:grid-cols-5" : ""} gap-8`}>
@@ -113,10 +134,10 @@ export default async function PatientsPage({
             <table className="dash-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th className="text-right">Action</th>
+                  <th>Patient File</th>
+                  <th>Contact</th>
+                  <th>Clinical Records</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -129,43 +150,96 @@ export default async function PatientsPage({
                     </td>
                   </tr>
                 ) : (
-                  patients.map((p) => (
-                    <tr key={p.patientId}>
-                      <td className="td-primary">
-                        <Link
-                          href={`/dashboard/patients/${p.patientId}`}
-                          className="hover:text-turq-400 transition-colors"
-                        >
-                          {p.person.firstName} {p.person.lastName}
-                        </Link>
-                      </td>
-                      <td>{p.person.email}</td>
-                      <td>{p.person.contacts[0]?.contactNumber || "—"}</td>
-                      <td className="text-right space-x-3">
-                        <Link
-                          href={`/dashboard/patients/${p.patientId}`}
-                          className="inline-flex items-center gap-1 text-xs text-sand-50/50 hover:text-turq-400 font-medium"
-                        >
-                          Profile
-                        </Link>
-                        {canRegister && (
+                  patients.map((p) => {
+                    const totalVisits = p.appointments.length;
+                    const toothCount = p.toothFindings.length;
+                    const imageCount = p.images.length;
+                    const totalCharge = p.appointments
+                      .flatMap((a) => a.treatments)
+                      .reduce((sum, t) => sum + t.charge, 0);
+                    const totalPaid = p.appointments
+                      .flatMap((a) => a.treatments)
+                      .filter((t) => t.paid)
+                      .reduce((sum, t) => sum + t.charge, 0);
+                    const hasUnpaid = totalCharge > totalPaid;
+
+                    return (
+                      <tr key={p.patientId}>
+                        <td className="td-primary">
                           <Link
-                            href={`/dashboard/book?patientId=${p.patientId}`}
-                            className="inline-flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300 font-medium"
+                            href={`/dashboard/patients/${p.patientId}`}
+                            className="font-semibold text-sand-50 hover:text-turq-400 transition-colors block"
                           >
-                            <Calendar className="h-3 w-3" /> Book
+                            {p.person.firstName} {p.person.lastName}
                           </Link>
-                        )}
-                        {isAdmin(dbUser) && (
-                          <DeletePatientButton
-                            patientId={p.patientId}
-                            patientName={`${p.person.firstName} ${p.person.lastName}`}
-                            variant="table"
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            <span className="text-[10px] text-sand-50/40 capitalize">{p.person.gender}</span>
+                            {hasUnpaid && (
+                              <span className="text-[10px] px-1.5 py-0.2 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+                                Unpaid Balance
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-xs text-sand-50/80">{p.person.contacts[0]?.contactNumber || "—"}</div>
+                          <div className="text-[11px] text-sand-50/40 truncate max-w-[150px]">{p.person.email}</div>
+                        </td>
+                        <td>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Link
+                              href={`/dashboard/patients/${p.patientId}#dental-chart`}
+                              title="Jump to 2D Odontogram"
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${
+                                toothCount > 0
+                                  ? "bg-turq-500/15 text-turq-300 border-turq-500/30 hover:bg-turq-500/25"
+                                  : "bg-sand-50/5 text-sand-50/40 border-sand-50/10 hover:text-sand-50/70"
+                              }`}
+                            >
+                              🦷 {toothCount} {toothCount === 1 ? "tooth" : "teeth"}
+                            </Link>
+                            <Link
+                              href={`/dashboard/patients/${p.patientId}#patient-images`}
+                              title="Jump to Photos and X-Rays"
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${
+                                imageCount > 0
+                                  ? "bg-sky-500/15 text-sky-300 border-sky-500/30 hover:bg-sky-500/25"
+                                  : "bg-sand-50/5 text-sand-50/40 border-sand-50/10 hover:text-sand-50/70"
+                              }`}
+                            >
+                              📸 {imageCount} {imageCount === 1 ? "photo" : "photos"}
+                            </Link>
+                            <span className="text-[10px] text-sand-50/40">
+                              {totalVisits} {totalVisits === 1 ? "visit" : "visits"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right space-x-2 whitespace-nowrap">
+                          <Link
+                            href={`/dashboard/patients/${p.patientId}`}
+                            className="inline-flex items-center gap-1 text-xs text-sand-50/70 hover:text-turq-400 font-medium px-2 py-1 rounded bg-sand-50/5 hover:bg-turq-500/10 border border-sand-50/10 transition-colors"
+                          >
+                            Open File
+                          </Link>
+                          {canRegister && (
+                            <Link
+                              href={`/dashboard/book?patientId=${p.patientId}`}
+                              className="inline-flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300 font-medium px-2 py-1 rounded bg-turq-500/10 border border-turq-500/20 transition-colors"
+                            >
+                              <Calendar className="h-3 w-3" /> Book
+                            </Link>
+                          )}
+                          {isAdmin(dbUser) && (
+                            <DeletePatientButton
+                              patientId={p.patientId}
+                              patientName={`${p.person.firstName} ${p.person.lastName}`}
+                              variant="table"
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

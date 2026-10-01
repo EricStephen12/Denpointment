@@ -1,7 +1,7 @@
 import React from "react";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isDentist, isAdmin, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, isDentist, isPatient } from "@/lib/auth";
 import { getSiteContent } from "@/lib/site";
 
 export default async function PrintPrescriptionPage({
@@ -11,7 +11,6 @@ export default async function PrintPrescriptionPage({
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
-  if (!isDentist(dbUser) && !isAdmin(dbUser) && !isReceptionist(dbUser)) redirect("/dashboard");
 
   const { treatmentId: rawId } = await params;
   const treatmentId = parseInt(rawId, 10);
@@ -34,6 +33,9 @@ export default async function PrintPrescriptionPage({
   ]);
 
   if (!treatment) notFound();
+  const isTreatingDentist = isDentist(dbUser) && dbUser.dentists.some((dentist) => dentist.dentistId === treatment.treatorId);
+  const isOwner = isPatient(dbUser) && dbUser.patients.some((patient) => patient.patientId === treatment.appointment.pId);
+  if (!isTreatingDentist && !isOwner) redirect("/dashboard");
   if (treatment.medicines.length === 0) {
     return (
       <div className="p-8 text-sand-50/50">

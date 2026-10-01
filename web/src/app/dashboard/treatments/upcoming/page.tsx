@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isReceptionist, isAdmin } from "@/lib/auth";
 import { CalendarClock } from 'lucide-react';
 import Link from "next/link";
-import { isAppointmentUpcoming, formatAppointmentDate } from "@/lib/clinic-date";
+import { isAppointmentUpcoming, formatAppointmentDate, getClinicDay, toDateKey } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
 import RescheduleModal from "@/components/reception/RescheduleModal";
+import { updateAppointmentNotes } from "@/app/actions/appointments";
 
 export default async function UpcomingAppointmentsPage() {
   const dbUser = await getCurrentPerson();
@@ -18,6 +19,7 @@ export default async function UpcomingAppointmentsPage() {
   const isDoc       = isDentist(dbUser) && !isAdmin(dbUser) && !isReceptionist(dbUser);
   const dentistId   = isDoc ? dbUser.dentists[0].dentistId : undefined;
   const now         = new Date();
+  const clinicToday = toDateKey(getClinicDay(now));
 
   const [appointments, settings] = await Promise.all([
     prisma.appointment.findMany({
@@ -140,13 +142,37 @@ export default async function UpcomingAppointmentsPage() {
                     </span>
                   )}
                   {(isReceptionist(dbUser) || isAdmin(dbUser)) && (
-                    <RescheduleModal
-                      appointmentId={app.appointmentId}
-                      currentDate={`${app.year}-${String(app.month).padStart(2,"0")}-${String(app.day).padStart(2,"0")}`}
-                      currentHour={app.hour}
-                      openHour={openHour}
-                      closeHour={closeHour}
-                    />
+                    <>
+                      <RescheduleModal
+                        appointmentId={app.appointmentId}
+                        currentDate={`${app.year}-${String(app.month).padStart(2,"0")}-${String(app.day).padStart(2,"0")}`}
+                        clinicToday={clinicToday}
+                        currentHour={app.hour}
+                        openHour={openHour}
+                        closeHour={closeHour}
+                      />
+                      <details className="relative">
+                        <summary className="cursor-pointer list-none rounded-lg border border-sand-50/10 px-3 py-2 text-xs text-sand-50/70 hover:text-sand-50">Edit details</summary>
+                        <form action={updateAppointmentNotes} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-lg border border-sand-50/15 bg-ink-900 p-4 shadow-xl">
+                          <input type="hidden" name="appointmentId" value={app.appointmentId} />
+                          <label className="grid gap-1 text-xs text-sand-50/60">Visit type
+                            <select name="type" defaultValue={app.type} className="dash-input">
+                              <option value="checkup">Check-up</option>
+                              <option value="cleaning">Cleaning</option>
+                              <option value="emergency">Emergency</option>
+                              <option value="follow_up">Follow-up</option>
+                              <option value="consultation">Consultation</option>
+                              <option value="extraction">Extraction</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </label>
+                          <label className="grid gap-1 text-xs text-sand-50/60">Reception notes
+                            <textarea name="notes" rows={3} maxLength={500} defaultValue={app.notes ?? ""} className="dash-input resize-y" />
+                          </label>
+                          <button type="submit" className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950">Save changes</button>
+                        </form>
+                      </details>
+                    </>
                   )}
                 </div>
               </div>

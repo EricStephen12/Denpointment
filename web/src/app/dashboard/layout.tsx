@@ -2,6 +2,7 @@ import React from "react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { getCurrentPerson } from "@/lib/auth";
 import { getSiteContent } from "@/lib/site";
+import { getClinicDay } from "@/lib/clinic-date";
 
 export default async function DashboardLayout({
   children,
@@ -12,9 +13,10 @@ export default async function DashboardLayout({
     getCurrentPerson(),
     getSiteContent(),
   ]);
+  const clinicYear = getClinicDay().year;
 
   return (
-    <DashboardShell user={dbUser} clinicName={site.clinicName}>
+    <DashboardShell user={dbUser} clinicName={site.clinicName} clinicYear={clinicYear}>
       {children}
     </DashboardShell>
   );

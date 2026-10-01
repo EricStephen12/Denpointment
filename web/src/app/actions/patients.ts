@@ -4,14 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma, Gender } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability, isAdmin } from "@/lib/auth";
 
 async function requireFrontDeskAccess() {
   const person = await getCurrentPerson();
-  if (!person || (!isAdmin(person) && !isReceptionist(person))) {
+  if (!hasCapability(person, "frontDesk")) {
     throw new Error("You're not authorized to manage patients.");
   }
   return person;
+}
+
+async function requireDentistAccess() {
+  const person = await getCurrentPerson();
+  if (!hasCapability(person, "clinicalCare")) {
+    throw new Error("Dentists only.");
+  }
 }
 
 /**
@@ -159,7 +166,7 @@ export async function updatePatientDemographics(formData: FormData) {
  * Add a chronic disease to a patient's person record.
  */
 export async function addChronicDisease(formData: FormData) {
-  await requireFrontDeskAccess();
+  await requireDentistAccess();
   const patientId = parseInt(formData.get("patientId") as string, 10);
   const disease = (formData.get("disease") as string || "").trim().slice(0, 50);
   if (!patientId || !disease) throw new Error("Disease name required.");
@@ -179,7 +186,7 @@ export async function addChronicDisease(formData: FormData) {
  * Remove a chronic disease.
  */
 export async function removeChronicDisease(formData: FormData) {
-  await requireFrontDeskAccess();
+  await requireDentistAccess();
   const patientId = parseInt(formData.get("patientId") as string, 10);
   const disease = (formData.get("disease") as string || "").trim();
   if (!patientId || !disease) throw new Error("Required.");

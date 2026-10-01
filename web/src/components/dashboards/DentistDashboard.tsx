@@ -1,6 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, Clock, Users, Calendar, Activity, Sun, FlaskConical, ClipboardList, RefreshCw, Share2 } from 'lucide-react';import { prisma } from '@/lib/prisma';
+import { ArrowRight, Clock, Users, Calendar, Activity, Sun, FlaskConical, RefreshCw, Share2, Stethoscope } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 import type { PersonWithRoles } from '@/lib/auth';
 import { getClinicDay } from '@/lib/clinic-date';
 
@@ -15,65 +17,62 @@ export default async function DentistDashboard({ user }: { user: PersonWithRoles
     dentistId ? prisma.recall.count({ where: { dentistId, status: { in: ["due","scheduled"] } } }) : Promise.resolve(0),
   ]);
 
-  const actions = [
-    { label: "Today's Schedule",    hint: "See your patients for today and record treatments.",                   href: '/dashboard/treatments/today',    icon: Clock },
-    { label: 'Upcoming Appointments', hint: "All future bookings assigned to you.",                              href: '/dashboard/treatments/upcoming', icon: Calendar },
-    { label: 'Past Treatments',     hint: "Full history of every visit you have treated.",                       href: '/dashboard/treatments/past',     icon: Activity },
-    { label: 'Patients & Records',  hint: "Open any patient: dental chart, SOAP notes, clinical care.",         href: '/dashboard/patients',            icon: Users },
-    { label: 'Lab Cases',           hint: "Track crowns, dentures and bridges sent to the lab.",                 href: '/dashboard/clinical/labs',       icon: FlaskConical,  badge: openLabs > 0 ? String(openLabs) : undefined },
-    { label: 'Referrals',           hint: "Specialist referrals you have created — track pending and sent.",      href: '/dashboard/clinical/referrals',  icon: Share2 },
-    { label: 'Recalls',             hint: "Patients you have set to return for follow-up.",                      href: '/dashboard/reception/recalls',   icon: RefreshCw,     badge: dueRecalls > 0 ? String(dueRecalls) : undefined },
-    { label: 'Patient Analytics',   hint: "Stats on patients, procedures and revenue.",                          href: '/dashboard/statistics/patients', icon: Activity },
-    { label: 'Holidays & Off-Days', hint: "Block days when you are not available.",                              href: '/dashboard/holidays',            icon: Sun },
-  ] as const;
+  const actions: { label: string; hint: string; href: string; icon: LucideIcon; badge?: string }[] = [
+    { label: "Today's schedule", hint: "Review visits and document treatment.", href: '/dashboard/treatments/today', icon: Clock },
+    { label: 'Upcoming appointments', hint: 'Review future visits assigned to you.', href: '/dashboard/treatments/upcoming', icon: Calendar },
+    { label: 'Patient records', hint: 'Open dental charts, clinical notes and care plans.', href: '/dashboard/patients', icon: Users },
+    { label: 'Past treatments', hint: 'Review your completed clinical work.', href: '/dashboard/treatments/past', icon: Activity },
+    { label: 'Laboratory cases', hint: 'Track work sent to the dental laboratory.', href: '/dashboard/clinical/labs', icon: FlaskConical, badge: openLabs > 0 ? String(openLabs) : undefined },
+    { label: 'Referrals', hint: 'Follow the status of specialist referrals.', href: '/dashboard/clinical/referrals', icon: Share2 },
+    { label: 'Recall follow-ups', hint: 'Review patients due to return.', href: '/dashboard/reception/recalls', icon: RefreshCw, badge: dueRecalls > 0 ? String(dueRecalls) : undefined },
+    { label: 'Time off', hint: 'Manage your unavailable dates.', href: '/dashboard/holidays', icon: Sun },
+  ];
 
   return (
-    <div className="space-y-12">
-      <div>
-        <p className="text-turq-400 text-xs tracking-[0.3em] uppercase mb-4">Clinical Desk</p>
-        <h1 className="text-4xl md:text-5xl font-display text-sand-50 leading-tight uppercase">
-          WELCOME BACK,<br /><span className="italic text-turq-400">DR. {user.lastName.toUpperCase()}.</span>
-        </h1>
-        <p className="mt-3 text-sm text-sand-50/40 max-w-xl">
-          Room {user.dentists[0]?.roomNumber ?? "—"} · {todayCount} patient{todayCount !== 1 ? "s" : ""} today · {upcomingCount} upcoming
-        </p>
-      </div>
+    <div className="space-y-9">
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 border-b border-sand-50/10 pb-6">
+        <div>
+          <p className="text-xs font-medium text-turq-400 mb-2">Clinical workspace</p>
+          <h1 className="text-3xl font-semibold text-sand-50">Good day, Dr. {user.lastName}</h1>
+          <p className="mt-1.5 text-sm text-sand-50/45">Room {user.dentists[0]?.roomNumber ?? "—"} · Your clinical schedule and follow-ups</p>
+        </div>
+        <Link href="/dashboard/treatments/today" className="inline-flex items-center justify-center gap-2 rounded-lg bg-turq-600 hover:bg-turq-500 px-4 py-2.5 text-sm font-semibold text-ink-950 transition-colors">
+          <Stethoscope className="h-4 w-4" /> Open today’s schedule
+        </Link>
+      </header>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
+      <section aria-label="Clinical summary" className="grid grid-cols-2 sm:grid-cols-4 border-y border-sand-50/10 divide-x divide-y sm:divide-y-0 divide-sand-50/10">
         {[
-          { label: "Today",     value: todayCount.toString(),    color: "text-turq-400" },
-          { label: "Upcoming",  value: upcomingCount.toString(), color: "text-sand-50"  },
-          { label: "Open Labs", value: openLabs.toString(),      color: openLabs > 0 ? "text-amber-400" : "text-sand-50/40" },
-          { label: "Recalls",   value: dueRecalls.toString(),    color: dueRecalls > 0 ? "text-amber-400" : "text-sand-50/40" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-ink-900 p-6 flex flex-col gap-2">
-            <span className="text-[10px] text-sand-50/35 tracking-[0.2em] uppercase">{label}</span>
-            <span className={`font-display text-3xl ${color}`}>{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Action tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
-        {actions.map(({ label, hint, href, icon: Icon, badge }: any) => (
-          <Link key={label} href={href} className="bg-ink-900 hover:bg-turq-600/10 transition-colors p-7 flex flex-col justify-between gap-5 group min-h-[180px]">
-            <div className="flex items-start justify-between">
-              <div className="p-2.5 rounded-xl bg-turq-500/10 border border-turq-500/15 text-turq-400 group-hover:bg-turq-500/20 transition-colors">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2">
-                {badge && <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full font-semibold">{badge}</span>}
-                <ArrowRight className="h-4 w-4 text-sand-50/15 group-hover:text-turq-400 group-hover:translate-x-1 transition-all" />
-              </div>
-            </div>
-            <div>
-              <p className="font-display text-lg uppercase text-sand-50 group-hover:text-turq-400 transition-colors mb-1">{label}</p>
-              <p className="text-xs text-sand-50/30 leading-relaxed">{hint}</p>
-            </div>
+          { label: "Patients today", value: todayCount, href: "/dashboard/treatments/today", alert: false },
+          { label: "Upcoming visits", value: upcomingCount, href: "/dashboard/treatments/upcoming", alert: false },
+          { label: "Open lab cases", value: openLabs, href: "/dashboard/clinical/labs", alert: openLabs > 0 },
+          { label: "Due recalls", value: dueRecalls, href: "/dashboard/reception/recalls", alert: dueRecalls > 0 },
+        ].map(({ label, value, href, alert }) => (
+          <Link key={label} href={href} className="group px-4 py-4 sm:px-5 hover:bg-white/[0.03] transition-colors">
+            <span className="block text-xs text-sand-50/45">{label}</span>
+            <span className={`mt-2 block text-2xl font-semibold tabular-nums ${alert ? "text-amber-400" : "text-sand-50"} group-hover:text-turq-300 transition-colors`}>{value}</span>
           </Link>
         ))}
-      </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-sand-50">Clinical work</h2>
+          <span className="text-xs text-sand-50/35">Patient care, case tracking and follow-up</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10">
+          {actions.map(({ label, hint, href, icon: Icon, badge }) => (
+            <Link key={label} href={href} className="group flex items-center gap-4 border-t border-sand-50/10 py-4">
+              <Icon className="h-4 w-4 shrink-0 text-turq-400/80" />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 text-sm font-medium text-sand-50 group-hover:text-turq-300 transition-colors">{label}{badge && <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-300">{badge}</span>}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-sand-50/40">{hint}</span>
+              </span>
+              <ArrowRight className="h-4 w-4 shrink-0 text-sand-50/25 group-hover:translate-x-0.5 group-hover:text-turq-400 transition-all" />
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

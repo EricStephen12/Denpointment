@@ -7,12 +7,13 @@ import { CalendarClock, X, Check, Loader2 } from "lucide-react";
 type Props = {
   appointmentId: number;
   currentDate: string; // YYYY-MM-DD
+  clinicToday: string; // YYYY-MM-DD in the clinic timezone
   currentHour: number;
   openHour: number;
   closeHour: number;
 };
 
-export default function RescheduleModal({ appointmentId, currentDate, currentHour, openHour, closeHour }: Props) {
+export default function RescheduleModal({ appointmentId, currentDate, clinicToday, currentHour, openHour, closeHour }: Props) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +42,6 @@ export default function RescheduleModal({ appointmentId, currentDate, currentHou
       }
     });
   }
-
-  // Today's min date
-  const today = new Date();
-  const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   return (
     <>
@@ -90,7 +87,7 @@ export default function RescheduleModal({ appointmentId, currentDate, currentHou
                   type="date"
                   name="date"
                   defaultValue={currentDate}
-                  min={minDate}
+                  min={clinicToday}
                   required
                   className="dash-input w-full"
                 />

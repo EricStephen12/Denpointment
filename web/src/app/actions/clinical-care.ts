@@ -8,22 +8,50 @@ import type {
   RecallStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isDentist, isReceptionist, isAdmin } from "@/lib/auth";
+import { getCurrentPerson, hasCapability, isDentist, isAdmin } from "@/lib/auth";
 import { isValidFdiTooth } from "@/lib/odontogram";
 import { parseSurfacesFromForm } from "@/lib/tooth-surfaces";
 
 async function requireClinicalEditor() {
   const person = await getCurrentPerson();
-  if (!person || (!isDentist(person) && !isReceptionist(person) && !isAdmin(person))) {
+  if (!person || !hasCapability(person, "clinicalCare")) throw new Error("Dentists only.");
+  return person;
+}
+
+async function requirePracticeStaff() {
+  const person = await getCurrentPerson();
+  if (!person || !hasCapability(person, "clinicOperations")) {
     throw new Error("Not authorized.");
   }
   return person;
 }
 
+async function resolveDentistId(person: any): Promise<number> {
+  if (isDentist(person) && person.dentists[0]) {
+    return person.dentists[0].dentistId;
+  }
+  const firstDentist = await prisma.dentist.findFirst();
+  if (!firstDentist) throw new Error("No dentists found in system.");
+  return firstDentist.dentistId;
+}
+
+async function requireDentistOrAdmin() {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not logged in");
+  if (isAdmin(person)) {
+    const dentistId = person.dentists[0]?.dentistId ?? null;
+    return { isAdmin: true, dentistId, person };
+  }
+  if (isDentist(person)) {
+    return { isAdmin: false, dentistId: person.dentists[0].dentistId, person };
+  }
+  throw new Error("Dentists or Admins only.");
+}
+
 async function requireDentistId() {
   const person = await getCurrentPerson();
-  if (!person || !isDentist(person)) throw new Error("Dentists only.");
-  return person.dentists[0].dentistId;
+  if (!person) throw new Error("Not logged in.");
+  return resolveDentistId(person);
 }
 
 function revalidatePatient(patientId: number) {
@@ -313,7 +341,7 @@ export async function addRecall(formData: FormData) {
 }
 
 export async function updateRecall(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const recallId   = parseInt(formData.get("recallId")  as string, 10);
   const reason     = ((formData.get("reason")     as string) || "").trim().slice(0, 120);
   const dueDateRaw = (formData.get("dueDate")     as string) || "";
@@ -331,7 +359,7 @@ export async function updateRecall(formData: FormData) {
 }
 
 export async function updateRecallStatus(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const recallId = parseInt(formData.get("recallId") as string, 10);
   const status = (formData.get("status") as string) as RecallStatus;
   const allowed: RecallStatus[] = ["due", "scheduled", "completed", "cancelled"];
@@ -341,7 +369,7 @@ export async function updateRecallStatus(formData: FormData) {
 }
 
 export async function addInsurance(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const patientId = parseInt(formData.get("patientId") as string, 10);
   const provider = ((formData.get("provider") as string) || "").trim().slice(0, 80);
   const policyNumber = ((formData.get("policyNumber") as string) || "").trim().slice(0, 60);
@@ -365,7 +393,7 @@ export async function addInsurance(formData: FormData) {
 }
 
 export async function deactivateInsurance(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const insuranceId = parseInt(formData.get("insuranceId") as string, 10);
   const row = await prisma.patientInsurance.update({
     where: { insuranceId },
@@ -375,7 +403,7 @@ export async function deactivateInsurance(formData: FormData) {
 }
 
 export async function updateInsurance(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const insuranceId  = parseInt(formData.get("insuranceId")   as string, 10);
   const provider     = ((formData.get("provider")     as string) || "").trim().slice(0, 80);
   const policyNumber = ((formData.get("policyNumber") as string) || "").trim().slice(0, 60);
@@ -397,7 +425,9 @@ export async function updateInsurance(formData: FormData) {
 }
 
 export async function addLabCase(formData: FormData) {
-  const dentistId = await requireDentistId();
+  const user = await requireDentistOrAdmin();
+  const formDentistId = formData.get("dentistId") ? parseInt(formData.get("dentistId") as string, 10) : null;
+  const dentistId = formDentistId || user.dentistId || (await resolveDentistId(user.person));
   const patientId = parseInt(formData.get("patientId") as string, 10);
   const labName = ((formData.get("labName") as string) || "").trim().slice(0, 80);
   const itemDescription = ((formData.get("itemDescription") as string) || "").trim().slice(0, 200);
@@ -426,13 +456,58 @@ export async function addLabCase(formData: FormData) {
 }
 
 export async function updateLabCaseStatus(formData: FormData) {
-  await requireDentistId();
+  const user = await requireDentistOrAdmin();
   const labCaseId = parseInt(formData.get("labCaseId") as string, 10);
   const status = (formData.get("status") as string) as LabCaseStatus;
   const allowed: LabCaseStatus[] = ["sent", "in_lab", "received", "fitted", "cancelled"];
   if (!labCaseId || !allowed.includes(status)) throw new Error("Invalid lab status.");
+  const existing = await prisma.labCase.findUnique({ where: { labCaseId } });
+  if (!existing) throw new Error("Lab case not found.");
+  if (!user.isAdmin && existing.dentistId !== user.dentistId) {
+    throw new Error("You can only update your own lab cases.");
+  }
   const row = await prisma.labCase.update({ where: { labCaseId }, data: { status } });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/labs");
+}
+
+export async function updateLabCase(formData: FormData) {
+  const user = await requireDentistOrAdmin();
+  const labCaseId = parseInt(formData.get("labCaseId") as string, 10);
+  const formDentistId = formData.get("dentistId") ? parseInt(formData.get("dentistId") as string, 10) : null;
+  const labName = ((formData.get("labName") as string) || "").trim().slice(0, 80);
+  const itemDescription = ((formData.get("itemDescription") as string) || "").trim().slice(0, 200);
+  const toothRaw = (formData.get("toothNumber") as string) || "";
+  const toothNumber = toothRaw ? parseInt(toothRaw, 10) : null;
+  const dueDateRaw = (formData.get("dueDate") as string) || "";
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 200);
+
+  if (!labCaseId || !labName || !itemDescription) {
+    throw new Error("Lab name and item description are required.");
+  }
+  if (toothNumber != null && !isValidFdiTooth(toothNumber)) {
+    throw new Error("Invalid tooth number.");
+  }
+
+  const existing = await prisma.labCase.findUnique({ where: { labCaseId } });
+  if (!existing) throw new Error("Lab case not found.");
+  if (!user.isAdmin && existing.dentistId !== user.dentistId) {
+    throw new Error("You can only edit your own lab cases.");
+  }
+
+  const row = await prisma.labCase.update({
+    where: { labCaseId },
+    data: {
+      ...(formDentistId ? { dentistId: formDentistId } : {}),
+      labName,
+      itemDescription,
+      toothNumber,
+      dueDate: dueDateRaw ? new Date(`${dueDateRaw}T12:00:00.000Z`) : null,
+      notes: notes || null,
+    },
+  });
+  revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/labs");
 }
 
 export async function addCurrentMedication(formData: FormData) {
@@ -509,19 +584,49 @@ export async function addReferral(formData: FormData) {
   revalidatePatient(patientId);
 }
 
+export async function updateReferral(formData: FormData) {
+  const dentistId = await requireDentistId();
+  const referralId = parseInt(formData.get("referralId") as string, 10);
+  const specialistType = ((formData.get("specialistType") as string) || "").trim().slice(0, 60);
+  const reason = ((formData.get("reason") as string) || "").trim().slice(0, 300);
+  const urgency = (formData.get("urgency") as string) || "routine";
+  const notes = ((formData.get("notes") as string) || "").trim().slice(0, 500);
+  const allowedUrgencies = ["routine", "urgent", "emergency"];
+
+  if (!referralId || !specialistType || !reason || !allowedUrgencies.includes(urgency)) {
+    throw new Error("Specialist type, valid urgency, and reason are required.");
+  }
+
+  const existing = await prisma.referral.findUnique({ where: { referralId } });
+  if (!existing || existing.dentistId !== dentistId) {
+    throw new Error("You can only edit referrals you created.");
+  }
+
+  const row = await prisma.referral.update({
+    where: { referralId },
+    data: { specialistType, reason, urgency: urgency as "routine" | "urgent" | "emergency", notes: notes || null },
+  });
+  revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/referrals");
+}
+
 export async function updateReferralStatus(formData: FormData) {
-  // Allow any clinical editor (receptionist can also update referral status)
-  await requireClinicalEditor();
+  const dentistId = await requireDentistId();
   const referralId = parseInt(formData.get("referralId") as string, 10);
   const status = formData.get("status") as "pending" | "sent" | "completed" | "cancelled";
   const allowed = ["pending","sent","completed","cancelled"];
   if (!referralId || !allowed.includes(status)) throw new Error("Invalid.");
+  const existing = await prisma.referral.findUnique({ where: { referralId } });
+  if (!existing || existing.dentistId !== dentistId) {
+    throw new Error("You can only update referrals you created.");
+  }
   const row = await prisma.referral.update({ where: { referralId }, data: { status } });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/referrals");
 }
 
 export async function addRecallCallLog(formData: FormData) {
-  const person = await requireClinicalEditor();
+  const person = await requirePracticeStaff();
   const recallId = parseInt(formData.get("recallId") as string, 10);
   const outcome  = ((formData.get("outcome") as string) || "").trim().slice(0, 60);
   const notes    = ((formData.get("notes")   as string) || "").trim().slice(0, 300);
@@ -533,7 +638,7 @@ export async function addRecallCallLog(formData: FormData) {
 }
 
 export async function deleteRecall(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const recallId = parseInt(formData.get("recallId") as string, 10);
   const recall = await prisma.recall.findUnique({ where: { recallId } });
   if (!recall) throw new Error("Recall not found.");
@@ -544,7 +649,7 @@ export async function deleteRecall(formData: FormData) {
 }
 
 export async function deleteInsurance(formData: FormData) {
-  await requireClinicalEditor();
+  await requirePracticeStaff();
   const insuranceId = parseInt(formData.get("insuranceId") as string, 10);
   const row = await prisma.patientInsurance.findUnique({ where: { insuranceId } });
   if (!row) throw new Error("Insurance not found.");
@@ -555,21 +660,29 @@ export async function deleteInsurance(formData: FormData) {
 }
 
 export async function deleteLabCase(formData: FormData) {
-  await requireClinicalEditor();
+  const user = await requireDentistOrAdmin();
   const labCaseId = parseInt(formData.get("labCaseId") as string, 10);
   const row = await prisma.labCase.findUnique({ where: { labCaseId } });
   if (!row) throw new Error("Lab case not found.");
+  if (!user.isAdmin && row.dentistId !== user.dentistId) {
+    throw new Error("You can only delete your own lab cases.");
+  }
   await prisma.labCase.delete({ where: { labCaseId } });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/labs");
 }
 
 export async function deleteReferral(formData: FormData) {
-  await requireClinicalEditor();
+  const user = await requireDentistOrAdmin();
   const referralId = parseInt(formData.get("referralId") as string, 10);
   const row = await prisma.referral.findUnique({ where: { referralId } });
   if (!row) throw new Error("Referral not found.");
+  if (!user.isAdmin && row.dentistId !== user.dentistId) {
+    throw new Error("You can only delete referrals you created.");
+  }
   await prisma.referral.delete({ where: { referralId } });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/clinical/referrals");
 }
 
 export async function deleteCurrentMedication(formData: FormData) {

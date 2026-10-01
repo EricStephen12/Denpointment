@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, CalendarCheck, CalendarClock, UserPlus, Users, CreditCard, CalendarPlus, RefreshCw, LayoutGrid, AlertCircle, Clock } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import type { PersonWithRoles } from '@/lib/auth';
 import { getClinicDay } from '@/lib/clinic-date';
@@ -31,61 +32,73 @@ export default async function ReceptionistDashboard({ user }: { user: PersonWith
     { label: 'Waitlist',       value: waitlistCount.toString(),          color: 'text-sand-50' },
   ];
 
-  const actions = [
-    { label: "Check-in Desk",        hint: "One-click check-in, no-show, send reminder — all from one screen.",       href: '/dashboard/reception/checkin',   icon: CalendarCheck },
-    { label: 'Multi-Dentist Calendar', hint: "See all chairs and all hours across every dentist for any day.",          href: '/dashboard/reception/calendar',  icon: LayoutGrid },
-    { label: "Today's Schedule",     hint: "Full appointment list for today with status and patient details.",         href: '/dashboard/treatments/today',    icon: Clock },
-    { label: 'Upcoming Appointments', hint: "Browse all future bookings. Reschedule or cancel from here.",             href: '/dashboard/treatments/upcoming', icon: CalendarClock },
-    { label: 'Book Appointment',     hint: "Create a booking on behalf of any patient, including walk-ins.",           href: '/dashboard/book',                icon: CalendarPlus },
-    { label: 'Patient Registry',     hint: "Search patients, view records, open dental history.",                     href: '/dashboard/patients',            icon: Users },
-    { label: 'Register New Patient', hint: "Add a walk-in to the system and go straight to booking.",                  href: '/dashboard/patients',            icon: UserPlus },
-    { label: 'Recall List',          hint: "Patients overdue for a checkup. Log call attempts and book them in.",      href: '/dashboard/reception/recalls',   icon: RefreshCw,    badge: overdueRecalls > 0 ? String(overdueRecalls) : undefined },
-    { label: 'Waiting List',         hint: "Patients waiting for a slot. Book them when one opens up.",               href: '/dashboard/reception/waitlist',  icon: CalendarCheck, badge: waitlistCount > 0 ? String(waitlistCount) : undefined },
-    { label: 'Invoicing & Payments', hint: "Record cash, card or bank transfer payments against any appointment.",     href: '/dashboard/admin/billing',       icon: CreditCard },
-    { label: 'Outstanding Balances', hint: "All patients with unpaid balances, sorted by amount owed.",               href: '/dashboard/admin/outstanding',   icon: AlertCircle },
-  ] as const;
+  const actions: { label: string; hint: string; href: string; icon: LucideIcon; badge?: string }[] = [
+    { label: 'Check-in desk', hint: 'Check patients in, mark no-shows and send reminders.', href: '/dashboard/reception/checkin', icon: CalendarCheck },
+    { label: "Today's appointments", hint: 'Review today’s visits and their current status.', href: '/dashboard/treatments/today', icon: Clock },
+    { label: 'Clinic calendar', hint: 'See chair availability across all dentists.', href: '/dashboard/reception/calendar', icon: LayoutGrid },
+    { label: 'Upcoming appointments', hint: 'Reschedule or cancel future visits.', href: '/dashboard/treatments/upcoming', icon: CalendarClock },
+    { label: 'Book an appointment', hint: 'Create a booking for a patient or walk-in.', href: '/dashboard/book', icon: CalendarPlus },
+    { label: 'Register a patient', hint: 'Add a patient and continue to appointment booking.', href: '/dashboard/patients', icon: UserPlus },
+    { label: 'Patient registry', hint: 'Find a patient and manage contact details.', href: '/dashboard/patients', icon: Users },
+    { label: 'Recall list', hint: 'Contact patients due for a follow-up.', href: '/dashboard/reception/recalls', icon: RefreshCw, badge: overdueRecalls > 0 ? String(overdueRecalls) : undefined },
+    { label: 'Waiting list', hint: 'Offer newly available appointment slots.', href: '/dashboard/reception/waitlist', icon: CalendarCheck, badge: waitlistCount > 0 ? String(waitlistCount) : undefined },
+    { label: 'Record a payment', hint: 'Record payments against patient appointments.', href: '/dashboard/admin/billing', icon: CreditCard },
+    { label: 'Outstanding balances', hint: 'Review patient accounts that need follow-up.', href: '/dashboard/admin/outstanding', icon: AlertCircle },
+  ];
 
   return (
-    <div className="space-y-12">
-      <div>
-        <p className="text-turq-400 text-xs tracking-[0.3em] uppercase mb-4">Front Desk</p>
-        <h1 className="text-4xl md:text-5xl font-display text-sand-50 leading-tight uppercase">
-          WELCOME BACK,<br /><span className="italic text-turq-400">{user.firstName.toUpperCase()}.</span>
-        </h1>
-        <p className="mt-3 text-sm text-sand-50/40 max-w-xl">
-          You manage check-ins, bookings, recalls and invoicing. Everything you need is below.
-        </p>
-      </div>
+    <div className="space-y-9">
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 border-b border-sand-50/10 pb-6">
+        <div>
+          <p className="text-xs font-medium text-turq-400 mb-2">Front desk</p>
+          <h1 className="text-3xl font-semibold text-sand-50">Good day, {user.firstName}</h1>
+          <p className="mt-1.5 text-sm text-sand-50/45">Today’s patient flow and reception tasks</p>
+        </div>
+        <Link href="/dashboard/reception/checkin" className="inline-flex items-center justify-center gap-2 rounded-lg bg-turq-600 hover:bg-turq-500 px-4 py-2.5 text-sm font-semibold text-ink-950 transition-colors">
+          <CalendarCheck className="h-4 w-4" /> Open check-in desk
+        </Link>
+      </header>
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
-        {stats.map(({ label, value, color }) => (
-          <div key={label} className="bg-ink-900 p-4 flex flex-col gap-1.5">
-            <span className={`font-display text-2xl ${color}`}>{value}</span>
-            <span className="text-[10px] text-sand-50/35 tracking-[0.12em] uppercase leading-snug">{label}</span>
+      <section aria-label="Front desk summary" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 border-y border-sand-50/10 divide-x divide-y sm:divide-y-0 divide-sand-50/10">
+        {stats.filter(({ label }) => ["Today's Total", "Checked In", "Still Pending", "Overdue Recalls", "Waitlist", "Unpaid Bills"].includes(label)).map(({ label, value, color }) => (
+          <div key={label} className="px-4 py-4 sm:px-5">
+            <span className="block text-xs text-sand-50/45">{label}</span>
+            <span className={`mt-2 block text-2xl font-semibold tabular-nums ${color}`}>{value}</span>
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* Action tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
-        {actions.map(({ label, hint, href, icon: Icon, badge }: any) => (
-          <Link key={label} href={href} className="bg-ink-900 hover:bg-turq-600/10 transition-colors p-7 flex flex-col justify-between gap-5 group min-h-[190px]">
-            <div className="flex items-start justify-between">
-              <div className="p-2.5 rounded-xl bg-turq-500/10 border border-turq-500/15 text-turq-400 group-hover:bg-turq-500/20 transition-colors">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2">
-                {badge && <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-full font-semibold">{badge}</span>}
-                <ArrowRight className="h-4 w-4 text-sand-50/15 group-hover:text-turq-400 group-hover:translate-x-1 transition-all" />
-              </div>
-            </div>
-            <div>
-              <p className="font-display text-lg uppercase text-sand-50 group-hover:text-turq-400 transition-colors mb-1">{label}</p>
-              <p className="text-xs text-sand-50/30 leading-relaxed">{hint}</p>
-            </div>
-          </Link>
-        ))}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-8">
+        <section>
+          <h2 className="mb-3 text-base font-semibold text-sand-50">Today’s flow</h2>
+          <div>
+            {actions.slice(0, 5).map(({ label, hint, href, icon: Icon }) => (
+              <Link key={label} href={href} className="group flex items-center gap-4 border-t border-sand-50/10 py-4">
+                <Icon className="h-4 w-4 shrink-0 text-turq-400/80" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-sand-50 group-hover:text-turq-300 transition-colors">{label}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sand-50/40">{hint}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sand-50/25 group-hover:translate-x-0.5 group-hover:text-turq-400 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </section>
+        <section>
+          <h2 className="mb-3 text-base font-semibold text-sand-50">Patient services</h2>
+          <div>
+            {actions.slice(5).map(({ label, hint, href, icon: Icon, badge }) => (
+              <Link key={label} href={href} className="group flex items-center gap-4 border-t border-sand-50/10 py-4">
+                <Icon className="h-4 w-4 shrink-0 text-turq-400/80" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 text-sm font-medium text-sand-50 group-hover:text-turq-300 transition-colors">{label}{badge && <span className="rounded bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-300">{badge}</span>}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-sand-50/40">{hint}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-sand-50/25 group-hover:translate-x-0.5 group-hover:text-turq-400 transition-all" />
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

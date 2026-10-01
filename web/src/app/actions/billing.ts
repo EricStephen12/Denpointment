@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import { initializePaystackTransaction } from "@/lib/paystack";
 
 async function requireBillingAccess() {
   const person = await getCurrentPerson();
-  if (!person || (!isAdmin(person) && !isReceptionist(person))) {
+  if (!hasCapability(person, "frontDesk")) {
     throw new Error("You're not authorized to manage billing.");
   }
 }
@@ -68,7 +68,7 @@ export async function initiateTreatmentPayment(formData: FormData) {
 
 async function requireBillingStaff() {
   const person = await getCurrentPerson();
-  if (!person || (!isAdmin(person) && !isReceptionist(person))) {
+  if (!person || !hasCapability(person, "frontDesk")) {
     throw new Error("Not authorized for billing.");
   }
   return person;
@@ -224,6 +224,43 @@ export async function voidPayment(formData: FormData) {
   if (pay.patientId) revalidatePath(`/dashboard/patients/${pay.patientId}`);
 }
 
+/** Permanently delete a payment entry (reopens treatments and recalculates balance) */
+export async function deletePayment(formData: FormData) {
+  await requireBillingStaff();
+
+  const paymentId = parseInt(formData.get("paymentId") as string, 10);
+  if (!paymentId) throw new Error("Payment ID required.");
+
+  const pay = await prisma.payment.findUnique({
+    where: { paymentId },
+    include: { appointment: { include: { treatments: true } } },
+  });
+  if (!pay) throw new Error("Payment not found.");
+
+  await prisma.payment.delete({ where: { paymentId } });
+
+  // If this payment was against an appointment, check if treatments should reopen
+  if (pay.appointmentId) {
+    const remainingPayments = await prisma.payment.aggregate({
+      where: { appointmentId: pay.appointmentId, type: "payment" },
+      _sum: { amount: true },
+    });
+    const totalPaid = remainingPayments._sum.amount ?? 0;
+    const totalCharge = pay.appointment?.treatments.reduce((s, t) => s + t.charge, 0) ?? 0;
+
+    if (totalPaid < totalCharge) {
+      await prisma.treatment.updateMany({
+        where: { aId: pay.appointmentId },
+        data: { paid: false },
+      });
+    }
+  }
+
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
+  if (pay.patientId) revalidatePath(`/dashboard/patients/${pay.patientId}`);
+}
+
 /** Submit an insurance claim for an appointment */
 export async function submitInsuranceClaim(formData: FormData) {
   await requireBillingStaff();
@@ -269,4 +306,117 @@ export async function updateInsuranceClaimStatus(formData: FormData) {
   });
 
   revalidatePath("/dashboard/admin/billing");
+}
+
+/**
+ * Permanently deletes an entire billing record (appointment visit),
+ * including its treatments, medicines, payments, and insurance claims.
+ */
+export async function deleteBillingRecord(formData: FormData) {
+  await requireBillingStaff();
+
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  const appt = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: {
+      treatments: { select: { treatmentId: true } },
+      payments: { select: { paymentId: true } },
+      insuranceClaims: { select: { claimId: true } },
+    },
+  });
+
+  if (!appt) throw new Error("Billing record not found.");
+
+  const treatmentIds = appt.treatments.map((t) => t.treatmentId);
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Delete insurance claims
+    if (appt.insuranceClaims.length > 0) {
+      await tx.insuranceClaim.deleteMany({ where: { appointmentId } });
+    }
+
+    // 2. Delete payments attached to this appointment or its treatments
+    await tx.payment.deleteMany({
+      where: {
+        OR: [
+          { appointmentId },
+          ...(treatmentIds.length > 0 ? [{ treatmentId: { in: treatmentIds } }] : []),
+        ],
+      },
+    });
+
+    // 3. Delete medicines attached to treatments
+    if (treatmentIds.length > 0) {
+      await tx.medicine.deleteMany({
+        where: { tId: { in: treatmentIds } },
+      });
+
+      // 4. Detach tooth findings from treatments (keep tooth finding history, unlink treatment)
+      await tx.toothFinding.updateMany({
+        where: { treatmentId: { in: treatmentIds } },
+        data: { treatmentId: null },
+      });
+
+      // 5. Delete treatments
+      await tx.treatment.deleteMany({
+        where: { aId: appointmentId },
+      });
+    }
+
+    // 6. Delete appointment
+    await tx.appointment.delete({
+      where: { appointmentId },
+    });
+  });
+
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
+  revalidatePath("/dashboard/admin/reports");
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath("/dashboard/treatments/past");
+  revalidatePath("/dashboard/reception/calendar");
+  revalidatePath("/dashboard/reception/checkin");
+  revalidatePath(`/dashboard/patients/${appt.pId}`);
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Permanently removes an individual treatment procedure item from a visit bill.
+ */
+export async function deleteTreatmentProcedure(formData: FormData) {
+  await requireBillingStaff();
+  const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
+  if (!treatmentId) throw new Error("Missing treatment ID.");
+
+  const treatment = await prisma.treatment.findUnique({
+    where: { treatmentId },
+    include: { appointment: true },
+  });
+
+  if (!treatment) throw new Error("Treatment not found.");
+
+  await prisma.$transaction(async (tx) => {
+    // Delete payments tied directly to this treatment
+    await tx.payment.deleteMany({ where: { treatmentId } });
+    // Delete medicines
+    await tx.medicine.deleteMany({ where: { tId: treatmentId } });
+    // Detach tooth findings
+    await tx.toothFinding.updateMany({
+      where: { treatmentId },
+      data: { treatmentId: null },
+    });
+    // Delete the treatment
+    await tx.treatment.delete({ where: { treatmentId } });
+  });
+
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/past");
+  if (treatment.appointment) {
+    revalidatePath(`/dashboard/patients/${treatment.appointment.pId}`);
+  }
 }

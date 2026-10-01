@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isDentist } from "@/lib/auth";
+import { getCurrentPerson, isDentist, isAdmin } from "@/lib/auth";
 import { isAppointmentToday } from "@/lib/clinic-date";
 import { isValidFdiTooth, parseToothCondition } from "@/lib/odontogram";
 import { sendTreatmentSummaryEmail } from "@/lib/email";
@@ -239,7 +239,15 @@ export async function updateTreatment(formData: FormData) {
 }
 
 export async function deleteTreatment(formData: FormData) {
-  const dentistId = await requireDentistId();
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not logged in");
+  const isAdministrator = isAdmin(person);
+  const dentistId = person.dentists[0]?.dentistId ?? null;
+
+  if (!isAdministrator && !dentistId) {
+    throw new Error("Dentists or Admins only.");
+  }
+
   const treatmentId = parseInt(formData.get("treatmentId") as string, 10);
   if (!treatmentId) throw new Error("Invalid treatment.");
 
@@ -247,11 +255,10 @@ export async function deleteTreatment(formData: FormData) {
     where: { treatmentId },
     include: { appointment: true },
   });
-  if (!existing || existing.treatorId !== dentistId) {
+  if (!existing) throw new Error("Treatment not found.");
+
+  if (!isAdministrator && existing.treatorId !== dentistId) {
     throw new Error("You can only delete your own treatments.");
-  }
-  if (existing.paid) {
-    throw new Error("Paid treatments can’t be deleted.");
   }
 
   await prisma.medicine.deleteMany({ where: { tId: treatmentId } });

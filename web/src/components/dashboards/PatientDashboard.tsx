@@ -77,74 +77,40 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
 
   const timeLabel = upcoming ? formatHour(upcoming.hour) : null;
 
-  const timelineSteps = upcoming
-    ? [
-        { label: 'BOOKED', done: true },
-        { label: 'REMINDER', done: upcoming.reminderSent },
-        {
-          label: 'CHECK-IN',
-          done:
-            upcoming.status === 'checked_in' ||
-            upcoming.status === 'in_chair' ||
-            upcoming.status === 'completed' ||
-            upcoming.checkedIn,
-        },
-        { label: 'TREATMENT', done: upcoming.treatments.length > 0 },
-        {
-          label: 'DONE',
-          done: upcoming.status === 'completed',
-        },
-      ]
-    : [];
-
   return (
-    <div className="space-y-16">
-      {/* Editorial greeting & Quick Continue actions */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+    <div className="space-y-9">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-5 border-b border-sand-50/10 pb-6">
         <div>
-          <p className="text-turq-400 text-xs tracking-[0.3em] uppercase mb-4">
-            Patient Portal
-          </p>
-          <h1 className="text-4xl md:text-5xl font-display text-sand-50 leading-tight uppercase">
-            {greeting}, <br />
-            <span className="italic text-turq-400">{user.firstName}.</span>
+          <p className="text-xs font-medium text-turq-400 mb-2">Patient portal</p>
+          <h1 className="text-3xl font-semibold text-sand-50">
+            {greeting.charAt(0) + greeting.slice(1).toLowerCase()}, {user.firstName}
           </h1>
+          <p className="mt-1.5 text-sm text-sand-50/45">Your appointments, care plan and account</p>
         </div>
 
-        {/* Simple 2-way Continue Actions */}
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <Link
             href="/dashboard/book"
-            className="inline-flex items-center gap-2 bg-turq-600 hover:bg-turq-500 text-ink-950 px-6 py-3.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-turq-900/20"
+            className="inline-flex items-center gap-2 bg-turq-600 hover:bg-turq-500 text-ink-950 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
           >
-            <span>Book Appointment</span>
+            <span>Book an appointment</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
           {outstandingBalance > 0 && (
             <Link
               href="/dashboard/portal/bills"
-              className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-6 py-3.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-red-900/20"
+              className="inline-flex items-center gap-2 border border-red-500/30 text-red-300 hover:bg-red-500/10 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
             >
-              <span>Pay {new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(outstandingBalance)}</span>
-              <ArrowRight className="h-4 w-4" />
+              <span>Pay balance</span>
             </Link>
           )}
-          <a
-            href={whatsappHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 border border-sand-50/15 hover:border-turq-400/50 bg-sand-50/5 hover:bg-sand-50/10 text-sand-50 px-6 py-3.5 rounded-full text-xs font-medium uppercase tracking-wider transition-all"
-          >
-            <span>WhatsApp Clinic</span>
-            <ArrowRight className="h-4 w-4 text-turq-400" />
-          </a>
         </div>
-      </div>
+      </header>
 
-      <div id="portal-web" className="scroll-mt-24 space-y-16">
+      <div id="portal-web" className="scroll-mt-24 space-y-8">
       {/* Outstanding balance banner */}
       {outstandingBalance > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-red-500/20 bg-red-900/10 rounded-2xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border border-red-500/20 bg-red-900/10 rounded-lg">
           <div>
             <p className="text-xs uppercase tracking-wider text-red-400/70 mb-0.5">Outstanding Balance</p>
             <p className="text-xl font-display text-red-400">{new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", minimumFractionDigits: 0 }).format(outstandingBalance)}</p>
@@ -157,7 +123,7 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
 
       {/* Recall due banner */}
       {dueRecall && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-turq-500/20 bg-turq-600/5 rounded-2xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border border-turq-500/20 bg-turq-600/5 rounded-lg">
           <div>
             <p className="text-xs uppercase tracking-wider text-turq-400/70 mb-0.5">Time for your checkup</p>
             <p className="text-sm text-sand-50/70">{dueRecall.reason}</p>
@@ -169,42 +135,34 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
       )}
       {/* Next appointment */}
       {upcoming ? (
-        <div className="border-y border-sand-50/10 py-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="border border-sand-50/10 bg-ink-900/60 rounded-lg p-5 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-xs text-sand-50/40 tracking-[0.2em] uppercase mb-4">
-                Next Appointment
-              </p>
-              <p className="text-4xl font-display text-sand-50 uppercase mb-2">
-                {dateLabel}
-              </p>
-              <p className="text-sand-50/60 font-display italic text-2xl">
-                {timeLabel} &middot; Room {upcoming.room}
-              </p>
+              <p className="text-xs text-sand-50/45 mb-2">Next appointment</p>
+              <p className="text-2xl font-semibold text-sand-50">{dateLabel}</p>
+              <p className="mt-1 text-sm text-sand-50/60">{timeLabel} · Room {upcoming.room}</p>
             </div>
             
-            <div className="md:text-right flex flex-col justify-between">
+            <div className="md:text-right flex flex-col justify-between gap-4">
               <div>
-                <p className="text-xs text-sand-50/40 tracking-[0.2em] uppercase mb-1">
-                  Provider
-                </p>
-                <p className="font-display text-2xl text-sand-50 uppercase">
-                  DR. {upcoming.dentist.person.firstName} {upcoming.dentist.person.lastName}
+                <p className="text-xs text-sand-50/45 mb-1">Dentist</p>
+                <p className="text-base font-medium text-sand-50">
+                  Dr. {upcoming.dentist.person.firstName} {upcoming.dentist.person.lastName}
                 </p>
               </div>
 
-              <div className="flex items-center gap-6 mt-8 md:mt-0 md:justify-end">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 md:justify-end">
                 <a
                   href={whatsappHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-medium text-turq-400 hover:text-turq-300 uppercase tracking-widest transition-colors"
+                  className="text-xs font-medium text-turq-400 hover:text-turq-300 transition-colors"
                 >
                   WhatsApp Clinic
                 </a>
                 <a
                   href={`tel:${site.phone.replace(/\s/g, "")}`}
-                  className="text-xs font-medium text-sand-50/60 hover:text-turq-400 uppercase tracking-widest transition-colors"
+                  className="text-xs font-medium text-sand-50/60 hover:text-turq-400 transition-colors"
                 >
                   Call Clinic
                 </a>
@@ -218,7 +176,7 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
                         e.preventDefault();
                       }
                     }}
-                    className="text-xs font-medium text-red-500 hover:text-red-700 uppercase tracking-widest transition-colors cursor-pointer"
+                    className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -227,34 +185,16 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
             </div>
           </div>
           
-          {/* Timeline Minimal */}
-          <div className="mt-12 flex items-center justify-between border-t border-sand-50/10 pt-8">
-            {timelineSteps.map((step, i, arr) => (
-              <React.Fragment key={step.label}>
-                <div className="flex flex-col items-center">
-                  <div className={`w-3 h-3 rounded-full mb-3 ${step.done ? 'bg-turq-600' : 'border border-sand-50/20'}`} />
-                  <span className={`text-[10px] tracking-[0.2em] ${step.done ? 'text-sand-50' : 'text-sand-50/30'}`}>
-                    {step.label}
-                  </span>
-                </div>
-                {i < arr.length - 1 && (
-                  <div className={`flex-1 h-px mx-4 ${step.done && arr[i + 1].done ? 'bg-turq-600' : 'bg-sand-50/10'}`} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
         </div>
       ) : (
-        <div className="border-y border-sand-50/10 py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div className="border border-sand-50/10 bg-ink-900/60 rounded-lg p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div>
-            <p className="font-display text-4xl text-sand-50 uppercase mb-2">No Upcoming <br className="hidden md:block"/> Appointments</p>
-            <p className="text-sand-50/50 text-sm tracking-wide">
-              Your next appointment is one click away.
-            </p>
+            <p className="text-lg font-semibold text-sand-50 mb-1">No upcoming appointments</p>
+            <p className="text-sand-50/50 text-sm">Book a visit whenever you’re ready.</p>
           </div>
           <Link
             href="/dashboard/book"
-            className="flex-shrink-0 border border-sand-50/20 text-sand-50 px-8 py-4 text-xs tracking-[0.2em] uppercase hover:border-turq-600 hover:text-turq-400 transition-colors flex items-center gap-3"
+            className="flex-shrink-0 bg-turq-600 hover:bg-turq-500 text-ink-950 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
           >
             Book Now <ArrowRight className="h-4 w-4" />
           </Link>
@@ -263,10 +203,8 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
 
       {/* Quick actions minimal */}
       <div>
-        <p className="text-xs text-sand-50/40 tracking-[0.2em] uppercase mb-8">
-          Quick Actions
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-sand-50/10 border-y border-sand-50/10">
+        <h2 className="text-base font-semibold text-sand-50 mb-3">Your care and account</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
           {[
             { label: 'Book Visit', href: '/dashboard/book' },
             { label: 'My History', href: '/dashboard/appointments' },
@@ -281,9 +219,9 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
               key={label}
               href={href}
               {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className="bg-transparent py-10 px-6 group flex items-center justify-between hover:bg-turq-50/10 transition-colors"
+              className="bg-transparent py-4 group flex items-center justify-between border-t border-sand-50/10 hover:bg-white/[0.03] transition-colors"
             >
-              <span className="font-display text-xl uppercase text-sand-50 group-hover:text-turq-400 transition-colors">
+              <span className="text-sm font-medium text-sand-50 group-hover:text-turq-300 transition-colors">
                 {label}
               </span>
               <ArrowRight className="h-4 w-4 text-sand-50/20 group-hover:text-turq-400 group-hover:translate-x-1 transition-all" />

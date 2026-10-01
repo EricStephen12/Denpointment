@@ -1,16 +1,16 @@
 import React from 'react';
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import {
   updateClinicHours,
   createService,
-  toggleServiceActive,
-  updateService,
-  deleteService,
 } from "@/app/actions/settings";
-import { Settings, Plus, DollarSign, Pencil, Trash2 } from 'lucide-react';
+import { Plus, DollarSign, Clock, Globe } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
+import ServiceRowActions from "@/components/admin/ServiceRowActions";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 const WEEKDAYS = [
   { value: 0, label: "Sun" },
@@ -36,21 +36,42 @@ export default async function ClinicSettingsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2 rounded-lg bg-purple-500/20">
-          <Settings className="h-5 w-5 text-purple-400" />
-        </div>
-        <div>
-          <h1 className="dash-title font-display">Clinic Settings</h1>
-          <p className="dash-body mt-0.5">Business hours and the service price list used across the clinic.</p>
-        </div>
+      <AdminPageHeader
+        section="Practice setup"
+        title="Hours and Fee Schedule"
+        description="Configure appointment booking hours and maintain the official clinical procedure prices used for patient billing."
+        action={
+          <Link
+            href="/dashboard/admin/site#packages"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-sand-50/15 px-3 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
+          >
+            <Globe className="h-3.5 w-3.5 text-turq-400" /> Public Website Packages →
+          </Link>
+        }
+      />
+
+      {/* Quick Jump Bar */}
+      <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-ink-900/80 border border-sand-50/10 my-6">
+        <span className="text-xs font-semibold text-sand-50/40 uppercase tracking-wider px-2">Jump to:</span>
+        <a href="#hours" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+          🕒 Clinic Schedule &amp; Working Days
+        </a>
+        <a href="#pricing" className="px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-50/5 hover:bg-turq-500/15 text-sand-50/80 hover:text-turq-300 border border-sand-50/10 transition-colors">
+          🏷️ Clinical Fee Schedule ({services.length} services)
+        </a>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="space-y-10">
         {/* Business hours */}
-        <div>
-          <h2 className="text-sm font-semibold text-sand-50 mb-4">Business Hours</h2>
-          <form action={updateClinicHours} className="dash-surface p-5 space-y-4">
+        <div id="hours" className="scroll-mt-24">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="h-4 w-4 text-turq-400" />
+            <h2 className="text-base font-semibold text-sand-50">Clinic Operating Hours &amp; Working Days</h2>
+          </div>
+          <p className="mb-4 text-xs text-sand-50/60">
+            These hours determine available chair time slots generated on the appointment calendar and booking desk.
+          </p>
+          <form action={updateClinicHours} className="dash-surface max-w-3xl rounded-lg p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="openHour" className="block text-xs font-medium text-sand-50/50 mb-1">Opens at</label>
@@ -87,22 +108,26 @@ export default async function ClinicSettingsPage() {
           </form>
         </div>
 
-        {/* Services */}
-        <div>
-          <h2 className="text-sm font-semibold text-sand-50 mb-4 flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-sand-50/50" /> Service Price List
-          </h2>
-          <form action={createService} className="dash-surface p-4 flex gap-3 mb-4">
-            <input type="text" name="name" required placeholder="Service name (e.g. Cleaning)"
+        {/* Services / Fee Schedule */}
+        <div id="pricing" className="scroll-mt-24">
+          <div className="flex items-center gap-2 mb-1">
+            <DollarSign className="h-4 w-4 text-turq-400" />
+            <h2 className="text-base font-semibold text-sand-50">Clinical Procedure Fee Schedule (Billing Prices)</h2>
+          </div>
+          <p className="mb-4 text-xs text-sand-50/60 leading-relaxed max-w-3xl">
+            These are the official clinical charges used across the practice. When receptionists or dentists checkout a patient under <Link href="/dashboard/admin/billing" className="text-turq-300 underline font-medium">Billing &amp; Payments</Link>, the system loads these procedure fees.
+          </p>
+          <form action={createService} className="dash-surface mb-4 flex max-w-3xl flex-col gap-3 rounded-lg p-4 sm:flex-row">
+            <input type="text" name="name" required placeholder="Service name (e.g. Scaling & Polishing, Root Canal)"
               className="dash-input flex-1" />
             <input type="number" name="price" required min={0} placeholder="Price (₦)"
-              className="dash-input w-28" />
+              className="dash-input sm:w-36" />
             <button type="submit" className="bg-turq-600 text-ink-950 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors flex items-center gap-1 shrink-0">
-              <Plus className="h-4 w-4" /> Add
+              <Plus className="h-4 w-4" /> Add Procedure
             </button>
           </form>
 
-          <div className="dash-table-wrap">
+          <div className="dash-table-wrap max-w-5xl">
             <table className="dash-table">
               <thead>
                 <tr>
@@ -123,73 +148,7 @@ export default async function ClinicSettingsPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        {/* Toggle active */}
-                        <form action={toggleServiceActive} className="inline">
-                          <input type="hidden" name="serviceId" value={s.serviceId} />
-                          <input type="hidden" name="active" value={String(s.active)} />
-                          <button type="submit" className="text-xs text-sand-50/50 hover:text-turq-400 font-medium transition-colors">
-                            {s.active ? 'Deactivate' : 'Activate'}
-                          </button>
-                        </form>
-
-                        {/* Edit — inline popover form using details/summary */}
-                        <details className="relative inline-block group">
-                          <summary className="cursor-pointer text-xs text-turq-400 hover:text-turq-300 font-medium list-none flex items-center gap-1 transition-colors">
-                            <Pencil className="h-3 w-3" /> Edit
-                          </summary>
-                          <div className="absolute right-0 top-6 z-20 w-72 bg-ink-900 border border-sand-50/15 rounded-xl p-4 shadow-2xl">
-                            <p className="text-xs font-semibold text-sand-50/60 mb-3 uppercase tracking-wider">Edit Service</p>
-                            <form action={updateService} className="space-y-3">
-                              <input type="hidden" name="serviceId" value={s.serviceId} />
-                              <div>
-                                <label className="block text-[10px] text-sand-50/40 mb-1">Name</label>
-                                <input
-                                  type="text"
-                                  name="name"
-                                  required
-                                  maxLength={100}
-                                  defaultValue={s.name}
-                                  className="dash-input w-full"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] text-sand-50/40 mb-1">Price (₦)</label>
-                                <input
-                                  type="number"
-                                  name="price"
-                                  required
-                                  min={0}
-                                  defaultValue={s.price}
-                                  className="dash-input w-full"
-                                />
-                              </div>
-                              <button
-                                type="submit"
-                                className="w-full bg-turq-600 text-ink-950 py-2 rounded-lg text-xs font-semibold hover:bg-turq-500 transition-colors"
-                              >
-                                Save Changes
-                              </button>
-                            </form>
-                          </div>
-                        </details>
-
-                        {/* Delete — only if no treatments linked (server validates too) */}
-                        <form action={deleteService} className="inline">
-                          <input type="hidden" name="serviceId" value={s.serviceId} />
-                          <button
-                            type="submit"
-                            className="text-xs text-red-400/70 hover:text-red-300 font-medium flex items-center gap-1 transition-colors"
-                            onClick={(e) => {
-                              if (!confirm(`Delete "${s.name}"? This will fail if the service is used in any treatment records.`)) {
-                                e.preventDefault();
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </form>
-                      </div>
+                      <ServiceRowActions service={s} />
                     </td>
                   </tr>
                 )) : (

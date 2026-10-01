@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import { checkedInFromStatus } from "@/lib/appointment-status";
 
 /** Legacy toggle — flips between scheduled and checked_in. Prefer setAppointmentStatus. */
 export async function toggleCheckedIn(formData: FormData) {
   const person = await getCurrentPerson();
-  if (!person || (!isAdmin(person) && !isReceptionist(person))) {
+  if (!hasCapability(person, "frontDesk")) {
     throw new Error("You're not authorized to check in patients.");
   }
 

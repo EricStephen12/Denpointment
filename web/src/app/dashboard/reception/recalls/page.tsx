@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist, isAdmin } from "@/lib/auth";
 import { updateRecallStatus, addRecallCallLog } from "@/app/actions/clinical-care";
 import { RefreshCw, Calendar, Phone, ChevronDown } from "lucide-react";
+import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 
 export default async function RecallsPage() {
   const dbUser = await getCurrentPerson();
@@ -130,8 +131,16 @@ export default async function RecallsPage() {
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-8">
+    <div className="space-y-6">
+      {/* ── 1. WORKFLOW TRACKER BANNER (STEP 5: RECALLS & FOLLOW-UP) ── */}
+      <ClinicWorkflowTracker
+        currentStep={5}
+        counts={{
+          recallsDue: overdue.length + upcoming.length,
+        }}
+      />
+
+      <div className="flex items-center gap-3">
         <div className="dash-icon-badge">
           <RefreshCw className="h-5 w-5 text-turq-400" />
         </div>

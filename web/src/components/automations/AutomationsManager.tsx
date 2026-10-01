@@ -7,6 +7,7 @@ import {
   sendBroadcastAction,
 } from "@/app/actions/automations";
 import type { AutomationSettingsData } from "@/lib/automations";
+import { formatClinicDateTime } from "@/lib/clinic-date";
 import {
   Zap,
   Cake,
@@ -675,7 +676,7 @@ export default function AutomationsManager({
                       <td className="px-5 py-3.5 capitalize text-sand-50/70">{camp.targetAudience}</td>
                       <td className="px-5 py-3.5 text-right font-semibold text-sand-50">{camp.recipientCount}</td>
                       <td className="px-5 py-3.5 text-right text-sand-50/50">
-                        {new Date(camp.sentAt).toLocaleDateString("en-US", {
+                        {formatClinicDateTime(camp.sentAt, {
                           month: "short",
                           day: "numeric",
                           year: "numeric",

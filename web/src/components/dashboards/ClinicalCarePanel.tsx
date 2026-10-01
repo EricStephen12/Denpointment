@@ -10,6 +10,7 @@ import type {
   ReferralUrgency,
 } from "@prisma/client";
 import { formatNaira } from "@/lib/currency";
+import { formatClinicDate, formatClinicDateTime } from "@/lib/clinic-date";
 import {
   addAllergy,
   updateAllergy,
@@ -29,6 +30,7 @@ import {
   addRecall,
   updateRecall,
   addReferral,
+  updateReferral,
   createTreatmentPlan,
   updateTreatmentPlan,
   deleteTreatmentPlan,
@@ -163,6 +165,7 @@ export default function ClinicalCarePanel({
   const [editingPlanItemId, setEditingPlanItemId] = useState<number | null>(null);
   const [editingRecallId, setEditingRecallId] = useState<number | null>(null);
   const [editingInsuranceId, setEditingInsuranceId] = useState<number | null>(null);
+  const [editingReferralId, setEditingReferralId] = useState<number | null>(null);
 
   function run(
     action: (fd: FormData) => Promise<void>,
@@ -345,7 +348,7 @@ export default function ClinicalCarePanel({
                   <li key={n.noteId} className="text-sm text-sand-50/75">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <p className="text-[10px] text-sand-50/35">
-                        {new Date(n.recordedAt).toLocaleString()}
+                        {formatClinicDateTime(n.recordedAt)}
                       </p>
                       {canEdit && (
                         <div className="flex gap-2 shrink-0">
@@ -756,7 +759,7 @@ export default function ClinicalCarePanel({
                   {c.signedByName && (
                     <p className="text-xs text-sand-50/40">
                       Signed by {c.signedByName}
-                      {c.signedAt ? ` · ${new Date(c.signedAt).toLocaleDateString()}` : ""}
+                      {c.signedAt ? ` · ${formatClinicDate(c.signedAt)}` : ""}
                     </p>
                   )}
                   {canEdit && c.status === "pending" && (
@@ -1135,10 +1138,45 @@ export default function ClinicalCarePanel({
                     ) : (
                       <span className="text-xs text-sand-50/40 capitalize">{r.status}</span>
                     )}
+                    {isDentist && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingReferralId(editingReferralId === r.referralId ? null : r.referralId)}
+                        className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300"
+                      >
+                        <Pencil className="h-3 w-3" /> {editingReferralId === r.referralId ? "Close edit" : "Edit"}
+                      </button>
+                    )}
                   </div>
                   <p className="text-sand-50/60 text-xs">{r.reason}</p>
                   {r.notes && <p className="text-sand-50/30 text-xs">{r.notes}</p>}
-                  <p className="text-[10px] text-sand-50/25">{new Date(r.createdAt).toLocaleDateString()}</p>
+                  <p className="text-[10px] text-sand-50/25">{formatClinicDate(r.createdAt)}</p>
+                  {isDentist && editingReferralId === r.referralId && (
+                    <form
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t border-sand-50/10 pt-3"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        runForm(updateReferral, e.currentTarget, { referralId: String(r.referralId) }, () => setEditingReferralId(null));
+                      }}
+                    >
+                      <input name="specialistType" required maxLength={60} defaultValue={r.specialistType} placeholder="Specialist type" className="dash-input" />
+                      <select name="urgency" defaultValue={r.urgency} className="dash-input">
+                        <option value="routine">Routine</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="emergency">Emergency</option>
+                      </select>
+                      <textarea name="reason" required rows={2} maxLength={300} defaultValue={r.reason} className="dash-input resize-y sm:col-span-2" />
+                      <textarea name="notes" rows={2} maxLength={500} defaultValue={r.notes ?? ""} placeholder="Notes" className="dash-input resize-y sm:col-span-2" />
+                      <div className="flex gap-2 sm:col-span-2">
+                        <button type="submit" disabled={pending} className="flex items-center gap-1 text-xs bg-turq-600 text-ink-950 px-3 py-1.5 rounded-lg font-semibold disabled:opacity-60">
+                          <Check className="h-3 w-3" /> Save changes
+                        </button>
+                        <button type="button" onClick={() => setEditingReferralId(null)} className="text-xs text-sand-50/50 px-3 py-1.5 rounded-lg border border-sand-50/15">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </li>
               ))}
             </ul>

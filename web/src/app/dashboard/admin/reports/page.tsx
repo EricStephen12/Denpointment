@@ -4,18 +4,19 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import { formatNaira } from "@/lib/currency";
-import { BarChart2, Users, Calendar, TrendingUp, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { Users, Calendar, TrendingUp, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; date?: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
   if (!isAdmin(dbUser)) redirect("/dashboard");
 
-  const { period = "month", date } = await searchParams;
+  const { date } = await searchParams;
 
   // ── Date range calculation ──────────────────────────────────────────────────
   const now   = new Date();
@@ -145,18 +146,11 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-10">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="dash-icon-badge">
-            <BarChart2 className="h-5 w-5 text-turq-400" />
-          </div>
-          <div>
-            <h1 className="dash-title font-display">Reports & Analytics</h1>
-            <p className="dash-body mt-0.5">Clinic performance at a glance</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+      <AdminPageHeader
+        section="Finance and performance"
+        title="Reports"
+        description="Monitor clinic activity, collections, attendance and recall follow-up over time."
+        action={<>
           <a
             href="/api/export/patients"
             className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/40 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
@@ -167,10 +161,10 @@ export default async function ReportsPage({
             href={`/api/export/schedule`}
             className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/40 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
           >
-            <Download className="h-3.5 w-3.5" /> Today's Schedule CSV
+            <Download className="h-3.5 w-3.5" /> Today&apos;s Schedule CSV
           </a>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* ── Daily Summary ── */}
       <section>

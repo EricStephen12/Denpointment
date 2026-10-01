@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isAdmin, isReceptionist } from "@/lib/auth";
-import { updateReferralStatus } from "@/app/actions/clinical-care";
+import { updateReferral, updateReferralStatus } from "@/app/actions/clinical-care";
 import { Share2 } from "lucide-react";
 
 const URGENCY_TONE: Record<string, string> = {
@@ -90,20 +90,47 @@ export default async function ReferralsPage({
 
           {/* Status updater — dentist only */}
           {isDoc && (
-            <form action={updateReferralStatus} className="shrink-0">
-              <input type="hidden" name="referralId" value={r.referralId} />
-              <select
-                name="status"
-                defaultValue={r.status}
-                onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                className="dash-input text-xs py-1 w-auto"
-              >
-                <option value="pending">Pending</option>
-                <option value="sent">Sent to Specialist</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </form>
+            <div className="flex shrink-0 items-center gap-2">
+              <form action={updateReferralStatus}>
+                <input type="hidden" name="referralId" value={r.referralId} />
+                <label className="sr-only" htmlFor={`referral-status-${r.referralId}`}>Referral status</label>
+                <select
+                  id={`referral-status-${r.referralId}`}
+                  name="status"
+                  defaultValue={r.status}
+                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                  className="dash-input text-xs py-1 w-auto"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="sent">Sent to Specialist</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </form>
+              <details className="relative">
+                <summary className="cursor-pointer list-none rounded-lg border border-sand-50/10 px-3 py-2 text-xs text-sand-50/70 hover:text-sand-50">Edit</summary>
+                <form action={updateReferral} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-lg border border-sand-50/15 bg-ink-900 p-4 shadow-xl">
+                  <input type="hidden" name="referralId" value={r.referralId} />
+                  <label className="grid gap-1 text-xs text-sand-50/60">Specialist type
+                    <input name="specialistType" required maxLength={60} defaultValue={r.specialistType} className="dash-input" />
+                  </label>
+                  <label className="grid gap-1 text-xs text-sand-50/60">Urgency
+                    <select name="urgency" defaultValue={r.urgency} className="dash-input">
+                      <option value="routine">Routine</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="emergency">Emergency</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs text-sand-50/60">Reason
+                    <textarea name="reason" required rows={3} maxLength={300} defaultValue={r.reason} className="dash-input resize-y" />
+                  </label>
+                  <label className="grid gap-1 text-xs text-sand-50/60">Notes
+                    <textarea name="notes" rows={2} maxLength={500} defaultValue={r.notes ?? ""} className="dash-input resize-y" />
+                  </label>
+                  <button type="submit" className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950">Save changes</button>
+                </form>
+              </details>
+            </div>
           )}
         </div>
       </div>

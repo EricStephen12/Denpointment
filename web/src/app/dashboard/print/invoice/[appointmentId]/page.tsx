@@ -33,10 +33,11 @@ export default async function PrintInvoicePage({
 
   if (!appt) notFound();
 
-  // Access control — staff sees any, patient sees own only
-  const isStaff = isAdmin(dbUser) || isReceptionist(dbUser) || isDentist(dbUser);
+  // Front desk/admin can access clinic invoices; dentists can access their visits only.
+  const isFrontDesk = isAdmin(dbUser) || isReceptionist(dbUser);
+  const isTreatingDentist = isDentist(dbUser) && dbUser.dentists.some((dentist) => dentist.dentistId === appt.dId);
   const isOwner = isPatient(dbUser) && dbUser.patients[0]?.patientId === appt.pId;
-  if (!isStaff && !isOwner) redirect("/dashboard");
+  if (!isFrontDesk && !isTreatingDentist && !isOwner) redirect("/dashboard");
 
   const person  = appt.patient.person;
   const dentist = appt.dentist.person;

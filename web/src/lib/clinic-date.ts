@@ -84,6 +84,28 @@ export function formatAppointmentDate(
   });
 }
 
+export function formatClinicDateTime(
+  value: Date | string,
+  options: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" },
+): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat("en-GB", {
+    ...options,
+    timeZone: CLINIC_TIMEZONE,
+  }).format(date);
+}
+
+export function formatClinicDate(
+  value: Date | string,
+  options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" },
+): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat("en-GB", {
+    ...options,
+    timeZone: CLINIC_TIMEZONE,
+  }).format(date);
+}
+
 /** "Today" / "Tomorrow" / full date — relative to the clinic clock. */
 export function relativeAppointmentLabel(day: CalendarDay, now: Date = new Date()): string {
   const today = getClinicDay(now);

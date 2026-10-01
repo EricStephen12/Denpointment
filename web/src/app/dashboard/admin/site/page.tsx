@@ -1,10 +1,11 @@
 import React from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import { getSiteContent, ACCENT_PRESETS, type AccentColorName } from "@/lib/site";
 import { updateSiteSettings } from "@/app/actions/site";
-import { Palette } from "lucide-react";
 import PackageFieldsEditor from "@/components/dashboards/PackageFieldsEditor";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 export default async function WebsiteSettingsPage({
   searchParams,
@@ -21,16 +22,32 @@ export default async function WebsiteSettingsPage({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-2 rounded-lg bg-turq-600/20">
-          <Palette className="h-5 w-5 text-turq-400" />
-        </div>
-        <div>
-          <h1 className="dash-title font-display">Website</h1>
-          <p className="dash-body mt-0.5">
-            Edit clinic write-ups, contact details, accent color, and package prices — no code needed.
-          </p>
-        </div>
+      <AdminPageHeader
+        section="Practice setup"
+        title="Website and Public Branding"
+        description="Update public clinic details, marketing website content, featured promotional packages, and visual brand colors."
+        action={
+          <Link
+            href="/dashboard/admin/settings#pricing"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-sand-50/15 px-3 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
+          >
+            🏷️ Clinical Billing Fee Schedule →
+          </Link>
+        }
+      />
+
+      {/* Guide Banner */}
+      <div className="dash-surface p-4 my-6 border border-turq-500/20 bg-turq-500/5 rounded-2xl">
+        <h2 className="text-sm font-semibold text-sand-50 flex items-center gap-2">
+          💡 Website Packages vs. Billing Prices
+        </h2>
+        <p className="text-xs text-sand-50/70 mt-1 leading-relaxed">
+          The packages and brand text configured on this page appear on your <strong>public marketing website</strong> (for prospective patients browsing online).
+          To configure the official clinical procedure prices used when checkout/billing patients in the clinic, go to the{" "}
+          <Link href="/dashboard/admin/settings#pricing" className="text-turq-300 font-semibold underline">
+            Clinical Procedure Fee Schedule
+          </Link>.
+        </p>
       </div>
 
       {saved === "1" && (
@@ -42,7 +59,7 @@ export default async function WebsiteSettingsPage({
       <form action={updateSiteSettings} className="space-y-10">
         {/* Brand & contact */}
         <section className="dash-surface p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-sand-50">Brand &amp; Contact</h2>
+          <h2 className="text-sm font-semibold text-sand-50">Brand &amp; Contact Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Clinic name" name="clinicName" defaultValue={site.clinicName} maxLength={60} />
             <Field label="Location label" name="location" defaultValue={site.location} maxLength={60} />
@@ -54,7 +71,21 @@ export default async function WebsiteSettingsPage({
             <div className="md:col-span-2">
               <Field label="Address" name="address" defaultValue={site.address} maxLength={120} />
             </div>
-            <Field label="Hours label" name="hoursLabel" defaultValue={site.hoursLabel} maxLength={60} />
+            <div className="md:col-span-2 space-y-1">
+              <Field
+                label="Website Footer Hours Display (Text)"
+                name="hoursLabel"
+                defaultValue={site.hoursLabel}
+                maxLength={60}
+                placeholder="e.g. Mon – Fri: 8:00 AM – 6:00 PM"
+              />
+              <p className="text-[11px] text-sand-50/40">
+                Marketing text displayed on the website footer. To adjust actual appointment booking hours, configure{" "}
+                <Link href="/dashboard/admin/settings#hours" className="text-turq-400 hover:underline">
+                  Clinic Schedule &amp; Working Days
+                </Link>.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -116,8 +147,21 @@ export default async function WebsiteSettingsPage({
         </section>
 
         {/* Packages */}
-        <section className="dash-surface p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-sand-50">Featured Packages</h2>
+        <section id="packages" className="dash-surface p-5 space-y-4 scroll-mt-24">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-sand-50/10 pb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-sand-50">Public Website Marketing Packages</h2>
+              <p className="text-xs text-sand-50/60 mt-0.5">
+                These promotional packages appear on your <strong>public website homepage</strong> for prospective patients.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/admin/settings#pricing"
+              className="inline-flex items-center gap-1 text-xs text-turq-300 hover:text-turq-200 font-medium px-2.5 py-1.5 rounded-lg bg-turq-500/10 border border-turq-500/20 whitespace-nowrap transition-colors"
+            >
+              🏷️ Need to edit In-Clinic Billing Fees? →
+            </Link>
+          </div>
           <PackageFieldsEditor
             initial={site.packages.map((pkg) => ({
               title: pkg.title,

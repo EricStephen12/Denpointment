@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import { isAccentColorName, type SitePackage } from "@/lib/site";
 
 async function requireAdmin() {
   const person = await getCurrentPerson();
-  if (!person || !isAdmin(person)) {
+  if (!hasCapability(person, "manageClinic")) {
     throw new Error("You're not authorized to manage the website.");
   }
 }

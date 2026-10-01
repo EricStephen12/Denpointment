@@ -12,13 +12,11 @@ import type { PersonWithRoles } from "@/lib/auth";
 
 type TopbarProps = {
   user: PersonWithRoles | null;
-  clinicName: string;
   onOpenMobileSidebar: () => void;
 };
 
 export default function DashboardTopbar({
   user,
-  clinicName,
   onOpenMobileSidebar,
 }: TopbarProps) {
   const pathname = usePathname();
@@ -73,18 +71,12 @@ export default function DashboardTopbar({
         </div>
       </div>
 
-      {/* Right section: live status & quick actions */}
+      {/* Right section: quick actions */}
       <div className="flex items-center gap-3">
-        {/* Subtle System Status Indicator */}
-        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-sand-50/[0.04] border border-sand-50/10 text-sand-50/50 text-xs font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>System Online</span>
-        </div>
-
         {/* Quick Book CTA */}
         <Link
           href="/dashboard/book"
-          className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-sand-50 border border-white/10 text-xs font-medium px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
+          className="inline-flex items-center gap-1.5 bg-white/[0.06] hover:bg-white/[0.1] text-sand-50 border border-sand-50/10 text-xs font-medium px-3.5 py-2 rounded-lg transition-colors"
         >
           <CalendarPlus className="h-3.5 w-3.5 text-turq-400" />
           <span className="hidden sm:inline">Book Appointment</span>
@@ -95,7 +87,7 @@ export default function DashboardTopbar({
         <Link
           href="/dashboard/profile"
           title="View Profile"
-          className="w-8 h-8 rounded-full bg-turq-500/15 border border-turq-500/25 text-turq-300 flex items-center justify-center font-semibold text-xs shadow-sm hover:border-turq-400/40 transition-all"
+          className="w-8 h-8 rounded-lg bg-white/[0.06] border border-sand-50/10 text-sand-50/75 flex items-center justify-center font-semibold text-xs hover:border-turq-400/40 hover:text-turq-300 transition-colors"
         >
           {initials}
         </Link>

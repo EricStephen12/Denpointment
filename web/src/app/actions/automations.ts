@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isAdmin } from "@/lib/auth";
+import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import {
   getAutomationSettings,
   runDailyAutomations,
@@ -11,7 +11,7 @@ import {
 
 async function requireAdmin() {
   const person = await getCurrentPerson();
-  if (!person || !isAdmin(person)) {
+  if (!hasCapability(person, "manageClinic")) {
     throw new Error("Unauthorized: Admin privileges required.");
   }
   return person;
