@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, hasCapability } from "@/lib/auth";
-import { isAccentColorName, type SitePackage } from "@/lib/site";
+import { isAccentColorName } from "@/lib/site";
 
 async function requireAdmin() {
   const person = await getCurrentPerson();
@@ -23,46 +23,6 @@ function text(formData: FormData, name: string, maxLength: number): string | nul
     throw new Error(`"${name}" is too long (max ${maxLength} characters).`);
   }
   return value;
-}
-
-function parsePackagesForm(formData: FormData): SitePackage[] | null {
-  const packages: SitePackage[] = [];
-  const MAX = 12;
-
-  for (let i = 0; i < MAX; i++) {
-    const title = ((formData.get(`pkgTitle${i}`) as string) || "").trim();
-    const priceRaw = ((formData.get(`pkgPrice${i}`) as string) || "").trim();
-    const desc = ((formData.get(`pkgDesc${i}`) as string) || "").trim();
-
-    // Stop when this index and higher have no fields at all (removed trailing rows).
-    if (!title && !priceRaw && !desc) {
-      const hasLater = Array.from({ length: MAX - i - 1 }, (_, k) => i + 1 + k).some((j) => {
-        const t = ((formData.get(`pkgTitle${j}`) as string) || "").trim();
-        const p = ((formData.get(`pkgPrice${j}`) as string) || "").trim();
-        const d = ((formData.get(`pkgDesc${j}`) as string) || "").trim();
-        return Boolean(t || p || d);
-      });
-      if (!hasLater) break;
-      continue;
-    }
-
-    if (!title || !priceRaw || !desc) {
-      throw new Error(
-        `Package ${i + 1} needs a title, price, and description (or clear/remove the row).`,
-      );
-    }
-    const price = parseInt(priceRaw, 10);
-    if (Number.isNaN(price) || price < 0) {
-      throw new Error(`Package ${i + 1} has an invalid price.`);
-    }
-    packages.push({
-      title: title.slice(0, 40),
-      price,
-      desc: desc.slice(0, 200),
-    });
-  }
-
-  return packages.length > 0 ? packages : null;
 }
 
 /**
@@ -90,8 +50,6 @@ export async function updateSiteSettings(formData: FormData) {
     throw new Error("Please pick a valid accent color.");
   }
 
-  const packages = parsePackagesForm(formData);
-
   const data = {
     clinicName: text(formData, "clinicName", 60),
     tagline: text(formData, "tagline", 200),
@@ -107,7 +65,7 @@ export async function updateSiteSettings(formData: FormData) {
     rating,
     reviewCount: text(formData, "reviewCount", 10),
     accentColor: accentColorRaw || null,
-    packages: packages ?? Prisma.JsonNull,
+    packages: Prisma.JsonNull,
   };
 
   await prisma.siteSettings.upsert({

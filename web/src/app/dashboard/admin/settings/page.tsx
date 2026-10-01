@@ -42,10 +42,10 @@ export default async function ClinicSettingsPage() {
         description="Configure appointment booking hours and maintain the official clinical procedure prices used for patient billing."
         action={
           <Link
-            href="/dashboard/admin/site#packages"
+            href="/dashboard/admin/site"
             className="inline-flex items-center gap-1.5 rounded-lg border border-sand-50/15 px-3 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
           >
-            <Globe className="h-3.5 w-3.5 text-turq-400" /> Public Website Packages →
+            <Globe className="h-3.5 w-3.5 text-turq-400" /> Website Branding →
           </Link>
         }
       />

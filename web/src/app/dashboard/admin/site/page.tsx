@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getCurrentPerson, isAdmin } from "@/lib/auth";
 import { getSiteContent, ACCENT_PRESETS, type AccentColorName } from "@/lib/site";
 import { updateSiteSettings } from "@/app/actions/site";
-import PackageFieldsEditor from "@/components/dashboards/PackageFieldsEditor";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 export default async function WebsiteSettingsPage({
@@ -25,7 +24,7 @@ export default async function WebsiteSettingsPage({
       <AdminPageHeader
         section="Practice setup"
         title="Website and Public Branding"
-        description="Update public clinic details, marketing website content, featured promotional packages, and visual brand colors."
+        description="Update public clinic details, marketing website content, and visual brand colors."
         action={
           <Link
             href="/dashboard/admin/settings#pricing"
@@ -36,27 +35,13 @@ export default async function WebsiteSettingsPage({
         }
       />
 
-      {/* Guide Banner */}
-      <div className="dash-surface p-4 my-6 border border-turq-500/20 bg-turq-500/5 rounded-2xl">
-        <h2 className="text-sm font-semibold text-sand-50 flex items-center gap-2">
-          💡 Website Packages vs. Billing Prices
-        </h2>
-        <p className="text-xs text-sand-50/70 mt-1 leading-relaxed">
-          The packages and brand text configured on this page appear on your <strong>public marketing website</strong> (for prospective patients browsing online).
-          To configure the official clinical procedure prices used when checkout/billing patients in the clinic, go to the{" "}
-          <Link href="/dashboard/admin/settings#pricing" className="text-turq-300 font-semibold underline">
-            Clinical Procedure Fee Schedule
-          </Link>.
-        </p>
-      </div>
-
       {saved === "1" && (
-        <div className="mb-6 rounded-lg border border-turq-500/30 bg-turq-600/10 px-4 py-3 text-sm text-turq-300">
+        <div className="my-6 rounded-lg border border-turq-500/30 bg-turq-600/10 px-4 py-3 text-sm text-turq-300">
           Website settings saved. Marketing pages will reflect these changes shortly.
         </div>
       )}
 
-      <form action={updateSiteSettings} className="space-y-10">
+      <form action={updateSiteSettings} className="space-y-10 mt-6">
         {/* Brand & contact */}
         <section className="dash-surface p-5 space-y-4">
           <h2 className="text-sm font-semibold text-sand-50">Brand &amp; Contact Information</h2>
@@ -144,31 +129,6 @@ export default async function WebsiteSettingsPage({
               );
             })}
           </div>
-        </section>
-
-        {/* Packages */}
-        <section id="packages" className="dash-surface p-5 space-y-4 scroll-mt-24">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-sand-50/10 pb-4">
-            <div>
-              <h2 className="text-sm font-semibold text-sand-50">Public Website Marketing Packages</h2>
-              <p className="text-xs text-sand-50/60 mt-0.5">
-                These promotional packages appear on your <strong>public website homepage</strong> for prospective patients.
-              </p>
-            </div>
-            <Link
-              href="/dashboard/admin/settings#pricing"
-              className="inline-flex items-center gap-1 text-xs text-turq-300 hover:text-turq-200 font-medium px-2.5 py-1.5 rounded-lg bg-turq-500/10 border border-turq-500/20 whitespace-nowrap transition-colors"
-            >
-              🏷️ Need to edit In-Clinic Billing Fees? →
-            </Link>
-          </div>
-          <PackageFieldsEditor
-            initial={site.packages.map((pkg) => ({
-              title: pkg.title,
-              price: String(pkg.price),
-              desc: pkg.desc,
-            }))}
-          />
         </section>
 
         <button

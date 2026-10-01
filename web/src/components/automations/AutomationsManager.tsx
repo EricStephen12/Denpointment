@@ -467,7 +467,7 @@ export default function AutomationsManager({
                 <Tag className="w-4 h-4 text-emerald-400 shrink-0" />
                 <div>
                   <p className="text-xs font-semibold">Promotion</p>
-                  <p className="text-[10px] text-sand-50/50">Special offers & packages</p>
+                  <p className="text-[10px] text-sand-50/50">Special clinic offers &amp; updates</p>
                 </div>
               </button>
             </div>
