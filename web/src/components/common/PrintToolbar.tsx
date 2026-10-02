@@ -3,11 +3,15 @@
 import React from "react";
 import { Printer, ArrowLeft } from "lucide-react";
 
+import EmailReceiptButton from "@/components/billing/EmailReceiptButton";
+
 interface PrintToolbarProps {
   title: string;
+  appointmentId?: number;
+  patientEmail?: string | null;
 }
 
-export default function PrintToolbar({ title }: PrintToolbarProps) {
+export default function PrintToolbar({ title, appointmentId, patientEmail }: PrintToolbarProps) {
   const handlePrint = () => {
     if (typeof window !== "undefined") {
       window.print();
@@ -30,6 +34,12 @@ export default function PrintToolbar({ title }: PrintToolbarProps) {
         {title}
       </span>
       <div className="flex items-center gap-3">
+        {appointmentId && (
+          <EmailReceiptButton
+            appointmentId={appointmentId}
+            patientEmail={patientEmail}
+          />
+        )}
         <button
           type="button"
           onClick={handlePrint}

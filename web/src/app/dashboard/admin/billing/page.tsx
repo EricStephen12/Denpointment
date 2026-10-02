@@ -12,6 +12,7 @@ import DeleteBillingRecordButton from "@/components/billing/DeleteBillingRecordB
 import DeleteTreatmentProcedureButton from "@/components/billing/DeleteTreatmentProcedureButton";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
+import EmailReceiptButton from "@/components/billing/EmailReceiptButton";
 import { Printer, RefreshCw, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default async function BillingPage({
@@ -346,6 +347,10 @@ export default async function BillingPage({
                       Payment recorded for this visit. Next steps:
                     </span>
                     <div className="flex items-center gap-2">
+                      <EmailReceiptButton
+                        appointmentId={appt.appointmentId}
+                        patientEmail={appt.patient.person.email}
+                      />
                       <Link
                         href={`/dashboard/print/invoice/${appt.appointmentId}`}
                         target="_blank"

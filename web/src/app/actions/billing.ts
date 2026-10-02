@@ -153,6 +153,42 @@ export async function recordPayment(formData: FormData) {
   revalidatePath(`/dashboard/patients/${appt.pId}`);
 }
 
+/** Re-send or manually dispatch an official payment receipt email to the patient */
+export async function emailReceiptAction(formData: FormData) {
+  await requireBillingStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Appointment ID is required.");
+
+  const appt = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: {
+      treatments: { include: { service: true } },
+      patient: { include: { person: true } },
+      payments: { where: { type: "payment" } },
+    },
+  });
+
+  if (!appt) throw new Error("Appointment not found.");
+  const patientEmail = appt.patient?.person?.email;
+  if (!patientEmail) throw new Error("This patient does not have an email address on file.");
+
+  const totalPaid = appt.payments.reduce((s, p) => s + p.amount, 0);
+  const patientName = `${appt.patient.person.firstName} ${appt.patient.person.lastName}`.trim();
+  const serviceName =
+    appt.treatments.map((t) => t.service?.name || t.action).filter(Boolean).join(", ") ||
+    "Dental Treatment";
+
+  const { sendPaymentReceiptEmail } = await import("@/lib/email");
+  await sendPaymentReceiptEmail({
+    to: patientEmail,
+    patientName,
+    amount: totalPaid,
+    serviceName,
+  });
+
+  return { success: true };
+}
+
 /** Record a discount or waiver against an appointment */
 export async function recordDiscount(formData: FormData) {
   const person = await requireBillingStaff();

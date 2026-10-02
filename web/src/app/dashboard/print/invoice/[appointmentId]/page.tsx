@@ -57,7 +57,11 @@ export default async function PrintInvoicePage({
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* Print toolbar */}
-      <PrintToolbar title={`Invoice — ${person.firstName} ${person.lastName} · ${dateStr}`} />
+      <PrintToolbar
+        title={`Invoice — ${person.firstName} ${person.lastName} · ${dateStr}`}
+        appointmentId={appointmentId}
+        patientEmail={person.email}
+      />
 
       <div className="max-w-[720px] mx-auto px-8 py-12 print:py-6 mt-14 print:mt-0">
         {/* Clinic header */}
