@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isPatient } from "@/lib/auth";
 import { cancelAppointment } from "@/app/actions/appointments";
-import { initiateTreatmentPayment } from "@/app/actions/billing";
+import { initiateTreatmentPayment, deletePatientOwnAppointment } from "@/app/actions/billing";
 import {
   X,
   CreditCard,
@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Pill,
   CheckCircle2,
+  Trash2,
+  Ban,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatNaira } from "@/lib/currency";
@@ -46,16 +48,26 @@ export default async function AppointmentsPage() {
     orderBy: [{ year: 'asc' }, { month: 'asc' }, { day: 'asc' }, { hour: 'asc' }]
   });
 
-  const upcoming = allAppointments.filter((app) => isAppointmentUpcoming(app, now));
+  // Upcoming = not cancelled, and slot is still in the future
+  const upcoming = allAppointments.filter(
+    (app) => app.status !== "cancelled" && isAppointmentUpcoming(app, now),
+  );
 
-  // Past = only appointments no longer upcoming that have treatments recorded,
-  // or are explicitly completed/no_show. Prevents future bookings with no
-  // treatments yet from appearing in the past section.
+  // Past = slot has already passed (not upcoming) AND NOT cancelled,
+  // AND either has treatments recorded OR is explicitly completed/no_show.
+  // This prevents a future booking that pre-created a treatment (via service
+  // selection) from accidentally appearing in Past Treatments.
   const past = allAppointments
     .filter((app) => {
       if (isAppointmentUpcoming(app, now)) return false;
+      if (app.status === "cancelled") return false;
       return app.treatments.length > 0 || app.status === "completed" || app.status === "no_show";
     })
+    .reverse();
+
+  // Cancelled = explicitly cancelled (patient can delete these to clean up)
+  const cancelled = allAppointments
+    .filter((app) => app.status === "cancelled")
     .reverse();
 
   // Outstanding balance across all visits
@@ -299,7 +311,48 @@ export default async function AppointmentsPage() {
           </div>
         )}
       </section>
+
+      {/* Cancelled Appointments */}
+      {cancelled.length > 0 && (
+        <section className="mt-12 mb-8">
+          <p className="text-xs font-medium text-sand-50/30 uppercase tracking-widest mb-4">Cancelled</p>
+          <div className="space-y-3">
+            {cancelled.map((app) => {
+              const dateLabel = formatAppointmentDate(
+                { year: app.year, month: app.month, day: app.day },
+                { month: "short", day: "numeric", year: "numeric" },
+              );
+              return (
+                <div key={app.appointmentId} className="dash-card p-4 sm:p-5 border-red-900/25 bg-red-950/10">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                        <Ban className="h-3.5 w-3.5 text-red-400/50" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-sand-50/50 line-through">{dateLabel}</p>
+                        <p className="text-xs text-sand-50/25 mt-0.5">
+                          {formatHour(app.hour)} · Dr. {app.dentist.person.firstName} {app.dentist.person.lastName} · Cancelled
+                        </p>
+                      </div>
+                    </div>
+                    <form action={deletePatientOwnAppointment}>
+                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-sand-50/25 hover:text-red-400 transition-colors cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
-

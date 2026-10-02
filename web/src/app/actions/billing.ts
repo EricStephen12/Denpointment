@@ -444,6 +444,127 @@ export async function deleteBillingRecord(formData: FormData) {
 }
 
 /**
+ * Admin / receptionist: write off the full outstanding balance for a patient
+ * by creating a waiver payment record that covers the remaining debt.
+ * Clinical records (treatments, appointments) are preserved — only the debt is cleared.
+ */
+export async function writeOffPatientBalance(formData: FormData) {
+  const person = await requireBillingStaff();
+
+  const patientId = parseInt(formData.get("patientId") as string, 10);
+  if (!patientId) throw new Error("Missing patient ID.");
+
+  // Recalculate outstanding in real time to avoid stale data
+  const patient = await prisma.patient.findUnique({
+    where: { patientId },
+    include: {
+      appointments: {
+        include: { treatments: true, payments: true },
+      },
+    },
+  });
+  if (!patient) throw new Error("Patient not found.");
+
+  // Collect all unpaid appointments
+  type UnpaidAppt = { appointmentId: number; remaining: number };
+  const unpaid: UnpaidAppt[] = [];
+  for (const appt of patient.appointments) {
+    const charge = appt.treatments.reduce((s, t) => s + t.charge, 0);
+    const paid   = appt.payments.filter((p) => p.type === "payment").reduce((s, p) => s + p.amount, 0);
+    const disc   = appt.payments.filter((p) => p.type === "discount" || p.type === "waiver").reduce((s, p) => s + p.amount, 0);
+    const remaining = charge - paid - disc;
+    if (remaining > 0) unpaid.push({ appointmentId: appt.appointmentId, remaining });
+  }
+
+  if (unpaid.length === 0) throw new Error("This patient has no outstanding balance.");
+
+  // Create a waiver record for each appointment that still has a balance
+  await prisma.$transaction(
+    unpaid.map(({ appointmentId, remaining }) =>
+      prisma.payment.create({
+        data: {
+          patientId,
+          appointmentId,
+          amount: remaining,
+          method: "cash",
+          type: "waiver",
+          notes: `Management write-off by ${person.firstName} ${person.lastName}`,
+          recordedById: person.personId,
+        },
+      }),
+    ),
+  );
+
+  revalidatePath("/dashboard/admin/outstanding");
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath(`/dashboard/patients/${patientId}`);
+  redirect("/dashboard/admin/outstanding");
+}
+
+/**
+ * Patient deletes their own past or cancelled appointment record from their view.
+ * Only allowed for appointments that are no longer upcoming (past date or cancelled).
+ * Wipes the appointment + its treatments, medicines, and payments permanently.
+ */
+export async function deletePatientOwnAppointment(formData: FormData) {
+  const person = await getCurrentPerson();
+  if (!person) throw new Error("Not authenticated.");
+
+  if (person.patients.length === 0) throw new Error("Not a patient.");
+  const patientId = person.patients[0].patientId;
+
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  const appt = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: {
+      treatments: { select: { treatmentId: true } },
+      payments:   { select: { paymentId: true } },
+      insuranceClaims: { select: { claimId: true } },
+    },
+  });
+
+  if (!appt) throw new Error("Appointment not found.");
+  if (appt.pId !== patientId) throw new Error("You can only delete your own records.");
+
+  // Patients may not delete future / active appointments — they must cancel instead
+  const { isAppointmentUpcoming } = await import("@/lib/clinic-date");
+  const now = new Date();
+  if (appt.status !== "cancelled" && isAppointmentUpcoming(appt, now)) {
+    throw new Error("You cannot delete an upcoming appointment. Please cancel it first.");
+  }
+
+  const treatmentIds = appt.treatments.map((t) => t.treatmentId);
+
+  await prisma.$transaction(async (tx) => {
+    if (appt.insuranceClaims.length > 0) {
+      await tx.insuranceClaim.deleteMany({ where: { appointmentId } });
+    }
+    await tx.payment.deleteMany({
+      where: {
+        OR: [
+          { appointmentId },
+          ...(treatmentIds.length > 0 ? [{ treatmentId: { in: treatmentIds } }] : []),
+        ],
+      },
+    });
+    if (treatmentIds.length > 0) {
+      await tx.medicine.deleteMany({ where: { tId: { in: treatmentIds } } });
+      await tx.toothFinding.updateMany({
+        where: { treatmentId: { in: treatmentIds } },
+        data: { treatmentId: null },
+      });
+      await tx.treatment.deleteMany({ where: { aId: appointmentId } });
+    }
+    await tx.appointment.delete({ where: { appointmentId } });
+  });
+
+  revalidatePath("/dashboard/appointments");
+  redirect("/dashboard/appointments");
+}
+
+/**
  * Permanently removes an individual treatment procedure item from a visit bill.
  */
 export async function deleteTreatmentProcedure(formData: FormData) {

@@ -286,6 +286,7 @@ export async function cancelAppointment(formData: FormData) {
 
   revalidatePath('/dashboard/appointments');
   revalidatePath('/dashboard');
+  redirect('/dashboard/appointments');
 }
 
 // ─── Phase 2: Scheduling actions ────────────────────────────────────────────
