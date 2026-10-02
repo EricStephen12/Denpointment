@@ -99,7 +99,6 @@ export default function BookingCalendar({
     [services, selectedServiceId],
   );
 
-  const [appointmentType, setAppointmentType] = useState("checkup");
   const [bookingNotes, setBookingNotes] = useState("");
 
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +196,6 @@ export default function BookingCalendar({
     formData.set("date", selectedDate);
     formData.set("hour", selectedHour.toString());
     if (selectedServiceId) formData.set("serviceId", selectedServiceId);
-    if (appointmentType) formData.set("type", appointmentType);
     if (bookingNotes.trim()) formData.set("notes", bookingNotes.trim());
     if (isStaffBooking && selectedPatientId) formData.set("patientId", selectedPatientId);
     if (!isStaffBooking && phone.trim()) formData.set("phone", phone.trim());
@@ -448,26 +446,8 @@ export default function BookingCalendar({
                           <p className="text-sm text-sand-50/50">{clinicAddress}</p>
                         </div>
 
-                        {/* Appointment type + notes */}
+                        {/* Notes for the clinic */}
                         <div className="pt-3 border-t border-sand-50/10 space-y-3">
-                          <div>
-                            <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium mb-1.5">
-                              Appointment Type
-                            </label>
-                            <select
-                              value={appointmentType}
-                              onChange={(e) => setAppointmentType(e.target.value)}
-                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 focus:border-turq-400 focus:outline-none transition-colors"
-                            >
-                              <option value="checkup">Checkup</option>
-                              <option value="cleaning">Cleaning</option>
-                              <option value="emergency">Emergency</option>
-                              <option value="follow_up">Follow-up</option>
-                              <option value="consultation">Consultation</option>
-                              <option value="extraction">Extraction</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
                           <div>
                             <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium mb-1.5">
                               Notes for the clinic (optional)

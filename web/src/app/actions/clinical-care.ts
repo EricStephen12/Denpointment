@@ -322,11 +322,18 @@ export async function updateConsentStatus(formData: FormData) {
 }
 
 export async function addRecall(formData: FormData) {
-  const person = await requireClinicalEditor();
+  const person = await requirePracticeStaff();
   const patientId = parseInt(formData.get("patientId") as string, 10);
   const reason = ((formData.get("reason") as string) || "").trim().slice(0, 120);
   const dueDateRaw = (formData.get("dueDate") as string) || "";
   const notes = ((formData.get("notes") as string) || "").trim().slice(0, 200);
+  const dentistIdRaw = formData.get("dentistId") as string | null;
+  const dentistId = dentistIdRaw
+    ? parseInt(dentistIdRaw, 10)
+    : isDentist(person) && person.dentists[0]
+    ? person.dentists[0].dentistId
+    : null;
+
   if (!patientId || !reason || !dueDateRaw) throw new Error("Reason and due date required.");
   await prisma.recall.create({
     data: {
@@ -334,10 +341,11 @@ export async function addRecall(formData: FormData) {
       reason,
       dueDate: new Date(`${dueDateRaw}T12:00:00.000Z`),
       notes: notes || null,
-      dentistId: isDentist(person) ? person.dentists[0].dentistId : null,
+      dentistId,
     },
   });
   revalidatePatient(patientId);
+  revalidatePath("/dashboard/reception/recalls");
 }
 
 export async function updateRecall(formData: FormData) {
@@ -356,6 +364,7 @@ export async function updateRecall(formData: FormData) {
     },
   });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/reception/recalls");
 }
 
 export async function updateRecallStatus(formData: FormData) {
@@ -366,6 +375,7 @@ export async function updateRecallStatus(formData: FormData) {
   if (!recallId || !allowed.includes(status)) throw new Error("Invalid recall status.");
   const row = await prisma.recall.update({ where: { recallId }, data: { status } });
   revalidatePatient(row.patientId);
+  revalidatePath("/dashboard/reception/recalls");
 }
 
 export async function addInsurance(formData: FormData) {

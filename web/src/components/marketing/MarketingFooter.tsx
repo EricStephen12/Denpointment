@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CLINIC_NAME, CLINIC_ADDRESS, CLINIC_PHONE, CLINIC_HOURS } from "@/lib/constants";
 import type { PersonWithRoles } from "@/lib/auth";
 import { logoutAction } from "@/app/actions/auth";
@@ -20,6 +21,7 @@ export default function MarketingFooter({
   hoursLabel = CLINIC_HOURS,
   user = null,
 }: Props) {
+  const router = useRouter();
   const isSignedIn = !!user;
 
   return (
@@ -64,7 +66,8 @@ export default function MarketingFooter({
                       type="button"
                       onClick={async () => {
                         await logoutAction();
-                        window.location.href = "/";
+                        router.push("/");
+                        router.refresh();
                       }}
                       className="hover:text-turq-400 transition-colors cursor-pointer"
                     >

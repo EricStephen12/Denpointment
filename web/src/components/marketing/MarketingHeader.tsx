@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { CLINIC_NAME } from "@/lib/constants";
 import type { PersonWithRoles } from "@/lib/auth";
@@ -23,13 +23,15 @@ export default function MarketingHeader({
   clinicName?: string;
   user?: PersonWithRoles | null;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const isSignedIn = !!user;
 
   async function handleSignOut() {
     await logoutAction();
-    window.location.href = "/";
+    router.push("/");
+    router.refresh();
   }
 
   return (

@@ -88,7 +88,10 @@ export async function recordPayment(formData: FormData) {
 
   const appt = await prisma.appointment.findUnique({
     where: { appointmentId },
-    include: { treatments: true },
+    include: {
+      treatments: { include: { service: true } },
+      patient: { include: { person: true } },
+    },
   });
   if (!appt) throw new Error("Appointment not found.");
 
@@ -123,6 +126,27 @@ export async function recordPayment(formData: FormData) {
       });
     }
   });
+
+  // Automatically dispatch email payment receipt to the patient
+  try {
+    const patientEmail = appt.patient?.person?.email;
+    if (patientEmail) {
+      const patientName = `${appt.patient.person.firstName} ${appt.patient.person.lastName}`.trim();
+      const serviceName =
+        appt.treatments.map((t) => t.service?.name || t.action).filter(Boolean).join(", ") ||
+        "Dental Treatment";
+      const { sendPaymentReceiptEmail } = await import("@/lib/email");
+      await sendPaymentReceiptEmail({
+        to: patientEmail,
+        patientName,
+        amount,
+        serviceName,
+      });
+    }
+  } catch (emailErr) {
+    console.error("Failed to send payment receipt email:", emailErr);
+    // Non-blocking: payment is already securely recorded in the database
+  }
 
   revalidatePath("/dashboard/admin/billing");
   revalidatePath("/dashboard/admin/outstanding");

@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isPatient } from "@/lib/auth";
 import { getSiteContent } from "@/lib/site";
+import PrintToolbar from "@/components/common/PrintToolbar";
 
 export default async function PrintPrescriptionPage({
   params,
@@ -54,20 +55,7 @@ export default async function PrintPrescriptionPage({
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans print:p-0">
       {/* Print action bar — hidden when printing */}
-      <div className="print:hidden fixed top-0 inset-x-0 bg-ink-950 border-b border-sand-50/10 px-6 py-3 flex items-center justify-between z-50">
-        <span className="text-sm text-sand-50/60">Prescription — {patient.firstName} {patient.lastName}</span>
-        <div className="flex gap-3">
-          <button
-            onClick={() => window.print()}
-            className="bg-turq-600 hover:bg-turq-500 text-ink-950 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            Print / Save PDF
-          </button>
-          <a href="javascript:history.back()" className="text-xs text-sand-50/40 hover:text-sand-50 px-3 py-2 transition-colors">
-            ← Back
-          </a>
-        </div>
-      </div>
+      <PrintToolbar title={`Prescription — ${patient.firstName} ${patient.lastName}`} />
 
       {/* Prescription document */}
       <div className="max-w-[680px] mx-auto px-8 py-12 print:py-6 mt-14 print:mt-0">

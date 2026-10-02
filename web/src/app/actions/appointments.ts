@@ -119,12 +119,26 @@ export async function bookAppointment(formData: FormData) {
 
   const serviceIdRaw = formData.get("serviceId") as string | null;
   const serviceId = serviceIdRaw ? parseInt(serviceIdRaw, 10) : null;
-  const typeRaw = (formData.get("type") as string | null) || "checkup";
+  const typeRaw = (formData.get("type") as string | null) || "";
   const notes = ((formData.get("notes") as string) || "").trim().slice(0, 500);
 
-  const VALID_TYPES = ["checkup","cleaning","emergency","follow_up","consultation","extraction","other"];
-  const apptType = VALID_TYPES.includes(typeRaw) ? typeRaw : "checkup";
   const service = serviceId ? await prisma.service.findUnique({ where: { serviceId } }) : null;
+
+  const VALID_TYPES = ["checkup","cleaning","emergency","follow_up","consultation","extraction","other"] as const;
+  type ApptTypeEnum = typeof VALID_TYPES[number];
+  let apptType: ApptTypeEnum = "checkup";
+
+  if (typeRaw && VALID_TYPES.includes(typeRaw as ApptTypeEnum)) {
+    apptType = typeRaw as ApptTypeEnum;
+  } else if (service) {
+    const sName = service.name.toLowerCase();
+    if (sName.includes("clean") || sName.includes("scaling") || sName.includes("polish")) apptType = "cleaning";
+    else if (sName.includes("extract")) apptType = "extraction";
+    else if (sName.includes("consult")) apptType = "consultation";
+    else if (sName.includes("emergency") || sName.includes("urgent")) apptType = "emergency";
+    else if (sName.includes("follow")) apptType = "follow_up";
+    else apptType = "other";
+  }
 
   let patient;
   try {

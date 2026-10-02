@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   CalendarPlus,
@@ -68,6 +68,7 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
     patient: { label: "Patient", subtitle: "Patient Portal", badgeClass: "bg-sand-50/10 text-sand-50/70 border-sand-50/15" },
   }[role];
 
+  const router = useRouter();
   const initials = user
     ? `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`.toUpperCase()
     : "U";
@@ -75,7 +76,8 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logoutAction();
-    window.location.href = "/login";
+    router.push("/login");
+    router.refresh();
   };
 
   const isActive = (href: string) => {

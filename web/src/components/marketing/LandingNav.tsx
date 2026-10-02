@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CLINIC_NAME } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
 import type { PersonWithRoles } from "@/lib/auth";
@@ -14,13 +15,15 @@ export default function LandingNav({
   clinicName?: string;
   user?: PersonWithRoles | null;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const isSignedIn = !!user;
 
   async function handleSignOut() {
     await logoutAction();
-    window.location.href = "/";
+    router.push("/");
+    router.refresh();
   }
 
   useEffect(() => {

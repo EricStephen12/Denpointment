@@ -22,7 +22,9 @@ import {
   Tag,
   Loader2,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
+import EmailTemplatesGallery from "@/components/automations/EmailTemplatesGallery";
 
 type Campaign = {
   id: number;
@@ -50,7 +52,7 @@ export default function AutomationsManager({
   isEmailConfigured: boolean;
   clinicName: string;
 }) {
-  const [activeTab, setActiveTab] = useState<"automations" | "broadcast" | "history">("automations");
+  const [activeTab, setActiveTab] = useState<"automations" | "broadcast" | "history" | "templates">("automations");
 
   // Automation settings state
   const [birthdayEnabled, setBirthdayEnabled] = useState(initialSettings.birthdayEnabled);
@@ -232,6 +234,19 @@ export default function AutomationsManager({
         >
           <Clock className="w-4 h-4" />
           <span>Campaign History ({campaigns.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("templates")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+            activeTab === "templates"
+              ? "bg-turq-500/15 text-turq-300 border border-turq-500/30"
+              : "text-sand-50/60 hover:text-sand-50 hover:bg-sand-50/5"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-turq-400" />
+          <span>Live Email Previews</span>
         </button>
       </div>
 
@@ -697,6 +712,11 @@ export default function AutomationsManager({
             </div>
           )}
         </div>
+      )}
+
+      {/* ── TAB 4: LIVE EMAIL TEMPLATES PREVIEW ── */}
+      {activeTab === "templates" && (
+        <EmailTemplatesGallery clinicName={clinicName} />
       )}
     </div>
   );

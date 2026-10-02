@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Menu, X, ChevronDown, Stethoscope, LogOut, User as UserIcon } from 'lucide-react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { CLINIC_NAME } from '@/lib/constants';
 import type { PersonWithRoles } from '@/lib/auth';
 import { logoutAction } from '@/app/actions/auth';
@@ -59,6 +59,7 @@ function DropdownMenu({ label, children }: { label: string; children: React.Reac
 }
 
 function UserMenu({ user }: { user: PersonWithRoles | null }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -115,7 +116,8 @@ function UserMenu({ user }: { user: PersonWithRoles | null }) {
           <button
             onClick={async () => {
               await logoutAction();
-              window.location.href = "/";
+              router.push("/");
+              router.refresh();
             }}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left cursor-pointer"
           >
@@ -135,6 +137,7 @@ export default function Navbar({
   user: PersonWithRoles | null;
   clinicName?: string;
 }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   const isAdmin = (user?.admins?.length ?? 0) > 0;
@@ -278,7 +281,8 @@ export default function Navbar({
             <button
               onClick={async () => {
                 await logoutAction();
-                window.location.href = "/";
+                router.push("/");
+                router.refresh();
               }}
               className="w-full text-left px-4 py-3 rounded-xl text-base font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors cursor-pointer"
             >

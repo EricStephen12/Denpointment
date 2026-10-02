@@ -2,11 +2,12 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { signupAction } from "@/app/actions/auth";
 import { Eye, EyeOff, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 export default function SignupForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get("redirect_url") || "/dashboard";
 
@@ -26,7 +27,8 @@ export default function SignupForm() {
       if (res?.error) {
         setError(res.error);
       } else if (res?.success) {
-        window.location.href = res.redirectUrl || "/dashboard";
+        router.push(res.redirectUrl || "/dashboard");
+        router.refresh();
       }
     });
   }

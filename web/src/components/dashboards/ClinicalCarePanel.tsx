@@ -29,6 +29,7 @@ import {
   deletePlanItem,
   addRecall,
   updateRecall,
+  deleteRecall,
   addReferral,
   updateReferral,
   createTreatmentPlan,
@@ -891,9 +892,28 @@ export default function ClinicalCarePanel({
                           <span className="text-xs text-sand-50/40 capitalize">{r.status}</span>
                         )}
                         {canEdit && (
-                          <button type="button" onClick={() => setEditingRecallId(r.recallId)} className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300">
-                            <Pencil className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingRecallId(r.recallId)}
+                              className="flex items-center gap-1 text-xs text-turq-400 hover:text-turq-300 p-1 rounded hover:bg-turq-500/10 transition-colors"
+                              title="Edit recall"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => {
+                                if (!window.confirm(`Permanently delete recall "${r.reason}"?`)) return;
+                                runFd(deleteRecall, { recallId: String(r.recallId) });
+                              }}
+                              className="flex items-center gap-1 text-xs text-sand-50/40 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                              title="Delete recall"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

@@ -5,6 +5,8 @@ import { getCurrentPerson, isAdmin, isReceptionist, isDentist, isPatient } from 
 import { getSiteContent } from "@/lib/site";
 import { formatNaira } from "@/lib/currency";
 
+import PrintToolbar from "@/components/common/PrintToolbar";
+
 export default async function PrintInvoicePage({
   params,
 }: {
@@ -55,20 +57,7 @@ export default async function PrintInvoicePage({
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
       {/* Print toolbar */}
-      <div className="print:hidden fixed top-0 inset-x-0 bg-ink-950 border-b border-sand-50/10 px-6 py-3 flex items-center justify-between z-50">
-        <span className="text-sm text-sand-50/60">Invoice — {person.firstName} {person.lastName} · {dateStr}</span>
-        <div className="flex gap-3">
-          <button
-            onClick={() => window.print()}
-            className="bg-turq-600 hover:bg-turq-500 text-ink-950 text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            Print / Save PDF
-          </button>
-          <a href="javascript:history.back()" className="text-xs text-sand-50/40 hover:text-sand-50 px-3 py-2 transition-colors">
-            ← Back
-          </a>
-        </div>
-      </div>
+      <PrintToolbar title={`Invoice — ${person.firstName} ${person.lastName} · ${dateStr}`} />
 
       <div className="max-w-[720px] mx-auto px-8 py-12 print:py-6 mt-14 print:mt-0">
         {/* Clinic header */}
