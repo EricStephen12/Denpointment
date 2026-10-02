@@ -6,6 +6,7 @@ import { getCurrentPerson, isReceptionist, isAdmin } from "@/lib/auth";
 import { getClinicDay, formatAppointmentDate, toDateKey } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
 import RescheduleModal from "@/components/reception/RescheduleModal";
+import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
 import SendReminderButton from "@/components/reception/SendReminderButton";
 import CheckInActions from "@/components/reception/CheckInActions";
 import {
@@ -43,6 +44,16 @@ export default async function CheckInPage() {
   const slots = await prisma.clinicSettings.findUnique({ where: { id: 1 } });
   const openHour = slots?.openHour ?? 8;
   const closeHour = slots?.closeHour ?? 18;
+
+  const allDentists = await prisma.dentist.findMany({
+    include: { person: true },
+    orderBy: { person: { lastName: "asc" } },
+  });
+  const dentistOptions = allDentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    defaultRoom: d.roomNumber,
+  }));
 
   // Stats
   const total = appointments.length;
@@ -173,7 +184,8 @@ export default async function CheckInPage() {
                     </span>
                   </div>
                   <p className="text-xs text-sand-50/50 mt-1">
-                    Dr. {app.dentist.person.firstName} {app.dentist.person.lastName}
+                    <span className="text-sand-50/80 font-medium">Dr. {app.dentist.person.firstName} {app.dentist.person.lastName}</span>
+                    <span className="text-turq-300 ml-2 font-medium">· Room {app.room}</span>
                     {arrivedTime && <span className="text-turq-300 ml-2 font-medium">· Arrived at {arrivedTime}</span>}
                     {app.confirmedAt && <span className="text-emerald-400 ml-2">· Confirmed</span>}
                     {app.notes && <span className="text-sand-50/40 ml-2">· {app.notes}</span>}
@@ -231,13 +243,20 @@ export default async function CheckInPage() {
                     confirmedAt={app.confirmedAt?.toISOString() ?? null}
                   />
 
-                  <RescheduleModal
+                  <ReassignAppointmentModal
                     appointmentId={app.appointmentId}
+                    currentDentistId={app.dId}
+                    currentDentistName={`Dr. ${app.dentist.person.firstName} ${app.dentist.person.lastName}`}
+                    currentRoom={app.room}
                     currentDate={`${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`}
-                    clinicToday={toDateKey(today)}
                     currentHour={app.hour}
+                    patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
+                    dentists={dentistOptions}
                     openHour={openHour}
                     closeHour={closeHour}
+                    clinicToday={toDateKey(today)}
+                    buttonLabel="Doctor & Room"
+                    compact={true}
                   />
 
                   <SendReminderButton

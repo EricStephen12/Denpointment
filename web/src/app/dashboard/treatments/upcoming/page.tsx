@@ -7,6 +7,7 @@ import Link from "next/link";
 import { isAppointmentUpcoming, formatAppointmentDate, getClinicDay, toDateKey } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
 import RescheduleModal from "@/components/reception/RescheduleModal";
+import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
 import { updateAppointmentNotes } from "@/app/actions/appointments";
 
 export default async function UpcomingAppointmentsPage() {
@@ -38,6 +39,16 @@ export default async function UpcomingAppointmentsPage() {
 
   const openHour  = settings?.openHour  ?? 8;
   const closeHour = settings?.closeHour ?? 18;
+
+  const allDentists = await prisma.dentist.findMany({
+    include: { person: true },
+    orderBy: { person: { lastName: "asc" } },
+  });
+  const dentistOptions = allDentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    defaultRoom: d.roomNumber,
+  }));
 
   const upcoming = appointments.filter((app) =>
     isAppointmentUpcoming(app, now) && app.status !== "cancelled"
@@ -106,7 +117,7 @@ export default async function UpcomingAppointmentsPage() {
                     </Link>
                     <p className="text-xs text-sand-50/45 mt-0.5">
                       {!isDoc && `Dr. ${app.dentist.person.firstName} ${app.dentist.person.lastName} · `}
-                      {dateLabel}
+                      <span className="text-turq-400 font-medium">Room {app.room}</span> · {dateLabel}
                       {app.type && app.type !== "checkup" && (
                         <span className="ml-2 capitalize text-turq-400/70">{app.type.replace("_", " ")}</span>
                       )}
@@ -143,13 +154,19 @@ export default async function UpcomingAppointmentsPage() {
                   )}
                   {(isReceptionist(dbUser) || isAdmin(dbUser)) && (
                     <>
-                      <RescheduleModal
+                      <ReassignAppointmentModal
                         appointmentId={app.appointmentId}
+                        currentDentistId={app.dId}
+                        currentDentistName={`Dr. ${app.dentist.person.firstName} ${app.dentist.person.lastName}`}
+                        currentRoom={app.room}
                         currentDate={`${app.year}-${String(app.month).padStart(2,"0")}-${String(app.day).padStart(2,"0")}`}
-                        clinicToday={clinicToday}
                         currentHour={app.hour}
+                        patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
+                        dentists={dentistOptions}
                         openHour={openHour}
                         closeHour={closeHour}
+                        clinicToday={clinicToday}
+                        buttonLabel="Assign Doctor & Room"
                       />
                       <details className="relative">
                         <summary className="cursor-pointer list-none rounded-lg border border-sand-50/10 px-3 py-2 text-xs text-sand-50/70 hover:text-sand-50">Edit details</summary>

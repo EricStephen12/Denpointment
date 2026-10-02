@@ -29,6 +29,8 @@ interface BookingCalendarProps {
   patients?: { patientId: number; name: string; email: string }[];
   /** Available clinical services for selection */
   services?: BookingService[];
+  /** Available dentists for preferred doctor selection */
+  dentists?: { dentistId: number; name: string; roomNumber: string }[];
   /** Initial pre-selected service name (e.g. from price list click) */
   initialServiceName?: string;
   /** Existing contact phone if already on file */
@@ -64,6 +66,7 @@ export default function BookingCalendar({
   isStaffBooking,
   patients,
   services = [],
+  dentists = [],
   initialServiceName,
   defaultPhone,
   bookAction,
@@ -73,6 +76,8 @@ export default function BookingCalendar({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState(patientId || "");
+  const [selectedDentistId, setSelectedDentistId] = useState("");
+  const [room, setRoom] = useState("");
   const [phone, setPhone] = useState(defaultPhone || "");
 
   // Find initial service matching name if provided
@@ -196,6 +201,8 @@ export default function BookingCalendar({
     formData.set("date", selectedDate);
     formData.set("hour", selectedHour.toString());
     if (selectedServiceId) formData.set("serviceId", selectedServiceId);
+    if (selectedDentistId) formData.set("dentistId", selectedDentistId);
+    if (room) formData.set("room", room);
     if (bookingNotes.trim()) formData.set("notes", bookingNotes.trim());
     if (isStaffBooking && selectedPatientId) formData.set("patientId", selectedPatientId);
     if (!isStaffBooking && phone.trim()) formData.set("phone", phone.trim());
@@ -445,6 +452,48 @@ export default function BookingCalendar({
                           <MapPin className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                           <p className="text-sm text-sand-50/50">{clinicAddress}</p>
                         </div>
+
+                        {/* Preferred Doctor / Dentist Selection */}
+                        {dentists && dentists.length > 0 && (
+                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
+                              Doctor / Dentist
+                            </label>
+                            <select
+                              value={selectedDentistId}
+                              onChange={(e) => {
+                                setSelectedDentistId(e.target.value);
+                                const d = dentists.find((dx) => dx.dentistId.toString() === e.target.value);
+                                if (d && isStaffBooking) setRoom(d.roomNumber.toString());
+                              }}
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 focus:border-turq-400 focus:outline-none transition-colors"
+                            >
+                              <option value="">Any available dentist</option>
+                              {dentists.map((d) => (
+                                <option key={d.dentistId} value={d.dentistId.toString()}>
+                                  Dr. {d.name} (Room {d.roomNumber})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {isStaffBooking && (
+                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
+                              Treatment Room (Optional)
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={50}
+                              value={room}
+                              onChange={(e) => setRoom(e.target.value)}
+                              placeholder="Default dentist room"
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
+                            />
+                          </div>
+                        )}
 
                         {/* Notes for the clinic */}
                         <div className="pt-3 border-t border-sand-50/10 space-y-3">

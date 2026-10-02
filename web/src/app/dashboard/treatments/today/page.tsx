@@ -10,6 +10,7 @@ import { statusMeta } from "@/lib/appointment-status";
 import PrescriptionFields from "@/components/dashboards/PrescriptionFields";
 import VisitStatusSelect from "@/components/dashboards/VisitStatusSelect";
 import TreatmentEditor from "@/components/dashboards/TreatmentEditor";
+import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
 import PrintScheduleButton from "@/components/common/PrintScheduleButton";
 import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 import Link from "next/link";
@@ -51,6 +52,12 @@ export default async function TodaysAppointmentsPage() {
   const gridDentists = staffView
     ? allDentists
     : [{ dentistId: dbUser.dentists?.[0]?.dentistId, person: { firstName: dbUser.firstName, lastName: dbUser.lastName } }];
+
+  const dentistOptions = allDentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    defaultRoom: d.roomNumber,
+  }));
 
   const apptByDentistHour = new Map<string, (typeof appointments)[number]>();
   for (const app of appointments) {
@@ -159,6 +166,22 @@ export default async function TodaysAppointmentsPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <VisitStatusSelect appointmentId={app.appointmentId} status={app.status} />
+                  {staffView && (
+                    <ReassignAppointmentModal
+                      appointmentId={app.appointmentId}
+                      currentDentistId={app.dId}
+                      currentDentistName={`Dr. ${app.dentist.person.firstName} ${app.dentist.person.lastName}`}
+                      currentRoom={app.room}
+                      currentDate={`${app.year}-${String(app.month).padStart(2,"0")}-${String(app.day).padStart(2,"0")}`}
+                      currentHour={app.hour}
+                      patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
+                      dentists={dentistOptions}
+                      openHour={openHour}
+                      closeHour={closeHour}
+                      buttonLabel="Room & Doctor"
+                      compact={true}
+                    />
+                  )}
                   {treatmentCount > 0 ? (
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-turq-600/20 text-turq-300">
                       {treatmentCount} procedure{treatmentCount === 1 ? "" : "s"}

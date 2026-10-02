@@ -91,27 +91,61 @@ export async function bookAppointment(formData: FormData) {
     throw new Error("The clinic is closed on the selected day.");
   }
 
-  // Find an available dentist for this slot (optimized single query, ignores cancelled bookings)
+  // Dentist and room selection
+  const requestedDentistIdRaw = formData.get("dentistId") as string | null;
+  const requestedDentistId = requestedDentistIdRaw ? parseInt(requestedDentistIdRaw, 10) : null;
+  const requestedRoom = ((formData.get("room") as string) || "").trim();
+
   const holidayDateMidnight = new Date(Date.UTC(year, month - 1, day));
-  const assignedDentist = await prisma.dentist.findFirst({
-    where: {
-      holidays: {
-        none: {
-          restDate: holidayDateMidnight,
+
+  let assignedDentist;
+  if (requestedDentistId) {
+    assignedDentist = await prisma.dentist.findFirst({
+      where: {
+        dentistId: requestedDentistId,
+        holidays: {
+          none: { restDate: holidayDateMidnight },
+        },
+        appointments: {
+          none: {
+            year,
+            month,
+            day,
+            hour,
+            status: { not: "cancelled" },
+          },
         },
       },
-      appointments: {
-        none: {
-          year,
-          month,
-          day,
-          hour,
-          status: { not: "cancelled" },
+      include: { person: true },
+    });
+    if (!assignedDentist) {
+      const d = await prisma.dentist.findUnique({
+        where: { dentistId: requestedDentistId },
+        include: { person: true },
+      });
+      const dName = d ? `Dr. ${d.person.lastName}` : "The selected doctor";
+      throw new Error(`${dName} is not available at this time. Please pick another slot or select 'Any available dentist'.`);
+    }
+  } else {
+    // Find any available dentist for this slot (ignores cancelled bookings)
+    assignedDentist = await prisma.dentist.findFirst({
+      where: {
+        holidays: {
+          none: { restDate: holidayDateMidnight },
+        },
+        appointments: {
+          none: {
+            year,
+            month,
+            day,
+            hour,
+            status: { not: "cancelled" },
+          },
         },
       },
-    },
-    include: { person: true },
-  });
+      include: { person: true },
+    });
+  }
 
   if (!assignedDentist) {
     throw new Error("Sorry, no dentists are available at this time. Please pick another slot.");
@@ -142,12 +176,13 @@ export async function bookAppointment(formData: FormData) {
 
   let patient;
   try {
+    const finalRoom = requestedRoom || assignedDentist.roomNumber;
     const createdAppointment = await prisma.appointment.create({
       data: {
         pId: patientId,
         dId: assignedDentist.dentistId,
         year, month, day, hour,
-        room: assignedDentist.roomNumber,
+        room: String(finalRoom),
         type: apptType as any,
         notes: notes || null,
       }
@@ -378,6 +413,116 @@ export async function rescheduleAppointment(formData: FormData) {
   revalidatePath("/dashboard/treatments/today");
   revalidatePath("/dashboard/treatments/upcoming");
   revalidatePath(`/dashboard/patients/${existing.pId}`);
+}
+
+/**
+ * Reassign an appointment to a different dentist, room, and/or date/time.
+ * Accessible to receptionists and practice administrators.
+ */
+export async function reassignAppointment(formData: FormData) {
+  await requireStaff();
+  const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
+  if (!appointmentId) throw new Error("Missing appointment ID.");
+
+  const dentistIdRaw = formData.get("dentistId") as string | null;
+  const dentistId = dentistIdRaw ? parseInt(dentistIdRaw, 10) : null;
+  const roomRaw = ((formData.get("room") as string) || "").trim();
+  const dateStr = (formData.get("date") as string || "").trim();
+  const hourRaw = formData.get("hour") as string | null;
+  const hour = hourRaw ? parseInt(hourRaw, 10) : null;
+  const notes = formData.get("notes") as string | null;
+
+  const existing = await prisma.appointment.findUnique({
+    where: { appointmentId },
+    include: { dentist: { include: { person: true } } },
+  });
+  if (!existing) throw new Error("Appointment not found.");
+
+  const targetDentistId = dentistId || existing.dId;
+  const targetRoom = roomRaw || existing.room;
+
+  let targetYear = existing.year;
+  let targetMonth = existing.month;
+  let targetDay = existing.day;
+  let targetHour = existing.hour;
+
+  if (dateStr) {
+    const dateParts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!dateParts) throw new Error("Invalid date format.");
+    targetYear = parseInt(dateParts[1], 10);
+    targetMonth = parseInt(dateParts[2], 10);
+    targetDay = parseInt(dateParts[3], 10);
+  }
+  if (hour !== null && !Number.isNaN(hour)) {
+    targetHour = hour;
+  }
+
+  // Conflict check for target dentist
+  const conflict = await prisma.appointment.findFirst({
+    where: {
+      dId: targetDentistId,
+      year: targetYear,
+      month: targetMonth,
+      day: targetDay,
+      hour: targetHour,
+      status: { not: "cancelled" },
+      NOT: { appointmentId },
+    },
+  });
+
+  if (conflict) {
+    const dentist = await prisma.dentist.findUnique({
+      where: { dentistId: targetDentistId },
+      include: { person: true },
+    });
+    const dName = dentist ? `Dr. ${dentist.person.lastName}` : "The selected doctor";
+    throw new Error(`${dName} already has an appointment booked at this date and time.`);
+  }
+
+  // Holiday check
+  const holidayDateMidnight = new Date(Date.UTC(targetYear, targetMonth - 1, targetDay));
+  const onHoliday = await prisma.holidayDate.findFirst({
+    where: {
+      restingId: targetDentistId,
+      restDate: holidayDateMidnight,
+    },
+  });
+  if (onHoliday) {
+    throw new Error("The selected doctor is marked as on leave/holiday on this date.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.appointment.update({
+      where: { appointmentId },
+      data: {
+        dId: targetDentistId,
+        room: String(targetRoom),
+        year: targetYear,
+        month: targetMonth,
+        day: targetDay,
+        hour: targetHour,
+        ...(notes !== null ? { notes: notes.trim().slice(0, 500) || null } : {}),
+      },
+    });
+
+    // Update treatorId on linked treatments if dentist changed
+    if (targetDentistId !== existing.dId) {
+      await tx.treatment.updateMany({
+        where: { aId: appointmentId },
+        data: { treatorId: targetDentistId },
+      });
+    }
+  });
+
+  revalidatePath("/dashboard/reception/checkin");
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath("/dashboard/reception/calendar");
+  revalidatePath(`/dashboard/patients/${existing.pId}`);
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard");
+
+  return { success: true };
 }
 
 /** Add a patient to the waiting list */

@@ -123,7 +123,10 @@ export default async function BookAppointmentPage({
   const { patientId, service } = await searchParams;
 
   const [dentists, settings, rawServices] = await Promise.all([
-    prisma.dentist.findMany({ select: { dentistId: true } }),
+    prisma.dentist.findMany({
+      include: { person: true },
+      orderBy: { person: { lastName: "asc" } },
+    }),
     prisma.clinicSettings.findUnique({ where: { id: 1 } }),
     prisma.service.findMany({
       where: { active: true },
@@ -163,6 +166,12 @@ export default async function BookAppointmentPage({
         select: { contactNumber: true },
       })
     : null;
+
+  const bookingDentists = dentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    roomNumber: d.roomNumber,
+  }));
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -213,6 +222,7 @@ export default async function BookAppointmentPage({
           isStaffBooking={staffBooking}
           patients={patients}
           services={rawServices}
+          dentists={bookingDentists}
           initialServiceName={service}
           defaultPhone={userContact?.contactNumber}
           bookAction={bookAppointment}
