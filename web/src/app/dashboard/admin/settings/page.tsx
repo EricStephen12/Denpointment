@@ -11,6 +11,7 @@ import { Plus, DollarSign, Clock, Globe } from 'lucide-react';
 import { formatNaira } from "@/lib/currency";
 import ServiceRowActions from "@/components/admin/ServiceRowActions";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
+import SubmitButton from "@/components/common/SubmitButton";
 
 const WEEKDAYS = [
   { value: 0, label: "Sun" },
@@ -101,10 +102,12 @@ export default async function ClinicSettingsPage() {
                 ))}
               </div>
             </div>
-            <button type="submit"
-              className="bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors">
+            <SubmitButton
+              pendingText="Saving Hours..."
+              className="bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors shadow-md shadow-turq-600/20"
+            >
               Save Business Hours
-            </button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -122,9 +125,13 @@ export default async function ClinicSettingsPage() {
               className="dash-input flex-1" />
             <input type="number" name="price" required min={0} placeholder="Price (₦)"
               className="dash-input sm:w-36" />
-            <button type="submit" className="bg-turq-600 text-ink-950 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors flex items-center gap-1 shrink-0">
-              <Plus className="h-4 w-4" /> Add Procedure
-            </button>
+            <SubmitButton
+              pendingText="Adding..."
+              icon={<Plus className="h-4 w-4" />}
+              className="bg-turq-600 text-ink-950 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors shrink-0 shadow-md shadow-turq-600/20"
+            >
+              Add Procedure
+            </SubmitButton>
           </form>
 
           <div className="dash-table-wrap max-w-5xl">

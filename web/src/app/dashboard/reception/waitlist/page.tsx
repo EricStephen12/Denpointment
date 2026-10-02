@@ -3,9 +3,12 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isReceptionist, isAdmin } from "@/lib/auth";
-import { addToWaitlist, updateWaitlistEntry, updateWaitlistStatus } from "@/app/actions/appointments";
+import { updateWaitlistEntry } from "@/app/actions/appointments";
 import DeleteWaitlistButton from "@/components/reception/DeleteWaitlistButton";
-import { Clock, UserPlus, Calendar, CheckCircle2, XCircle } from "lucide-react";
+import AddToWaitlistForm from "@/components/reception/AddToWaitlistForm";
+import WaitlistStatusButton from "@/components/reception/WaitlistStatusButton";
+import SubmitButton from "@/components/common/SubmitButton";
+import { Clock, Calendar } from "lucide-react";
 
 export default async function WaitlistPage() {
   const dbUser = await getCurrentPerson();
@@ -86,20 +89,8 @@ export default async function WaitlistPage() {
                     >
                       <Calendar className="h-3.5 w-3.5" /> Book Slot
                     </Link>
-                    <form action={updateWaitlistStatus}>
-                      <input type="hidden" name="waitlistId" value={entry.waitlistId} />
-                      <input type="hidden" name="status" value="booked" />
-                      <button type="submit" className="inline-flex items-center gap-1 text-xs border border-turq-500/20 text-turq-400/70 hover:text-turq-400 px-2.5 py-1.5 rounded-lg transition-colors">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Booked
-                      </button>
-                    </form>
-                    <form action={updateWaitlistStatus}>
-                      <input type="hidden" name="waitlistId" value={entry.waitlistId} />
-                      <input type="hidden" name="status" value="expired" />
-                      <button type="submit" className="inline-flex items-center gap-1 text-xs text-sand-50/30 hover:text-red-400 transition-colors px-2 py-1.5">
-                        <XCircle className="h-3.5 w-3.5" /> Mark expired
-                      </button>
-                    </form>
+                    <WaitlistStatusButton waitlistId={entry.waitlistId} status="booked" />
+                    <WaitlistStatusButton waitlistId={entry.waitlistId} status="expired" />
                     <details className="relative">
                       <summary className="cursor-pointer list-none rounded-lg border border-sand-50/10 px-2.5 py-1.5 text-xs text-sand-50/60 hover:text-sand-50">Edit</summary>
                       <form action={updateWaitlistEntry} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-lg border border-sand-50/15 bg-ink-900 p-4 shadow-xl">
@@ -129,10 +120,15 @@ export default async function WaitlistPage() {
                         <label className="grid gap-1 text-xs text-sand-50/60">Notes
                           <input name="notes" maxLength={300} defaultValue={entry.notes ?? ""} className="dash-input" />
                         </label>
-                        <button type="submit" className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950">Save changes</button>
+                        <SubmitButton pendingText="Saving..." className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950 hover:bg-turq-500">
+                          Save changes
+                        </SubmitButton>
                       </form>
                     </details>
-                    <DeleteWaitlistButton waitlistId={entry.waitlistId} />
+                    <DeleteWaitlistButton
+                      waitlistId={entry.waitlistId}
+                      patientName={`${entry.patient.person.firstName} ${entry.patient.person.lastName}`}
+                    />
                   </div>
                 </div>
               ))}
@@ -142,46 +138,16 @@ export default async function WaitlistPage() {
 
         {/* Add to waitlist */}
         <div>
-          <div className="dash-surface p-5">
-            <h2 className="text-sm font-semibold text-sand-50 mb-4 flex items-center gap-2">
-              <UserPlus className="h-4 w-4 text-turq-400" /> Add to Waiting List
-            </h2>
-            <form action={addToWaitlist} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-sand-50/50 mb-1">Patient</label>
-                <select name="patientId" required className="dash-input">
-                  <option value="">Select patient…</option>
-                  {patients.map((p) => (
-                    <option key={p.patientId} value={p.patientId}>
-                      {p.person.firstName} {p.person.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-sand-50/50 mb-1">Requested Date</label>
-                <input type="date" name="requestedDate" required className="dash-input" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-sand-50/50 mb-1">Preferred Dentist (optional)</label>
-                <select name="dentistId" className="dash-input">
-                  <option value="">Any dentist</option>
-                  {dentists.map((d) => (
-                    <option key={d.dentistId} value={d.dentistId}>
-                      Dr. {d.person.firstName} {d.person.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-sand-50/50 mb-1">Notes (optional)</label>
-                <input type="text" name="notes" maxLength={300} className="dash-input" placeholder="e.g. needs early morning slot" />
-              </div>
-              <button type="submit" className="w-full bg-turq-600 hover:bg-turq-500 text-ink-950 py-2.5 rounded-xl text-sm font-semibold transition-colors">
-                Add to Waitlist
-              </button>
-            </form>
-          </div>
+          <AddToWaitlistForm
+            patients={patients.map((p) => ({
+              patientId: p.patientId,
+              name: `${p.person.firstName} ${p.person.lastName}`,
+            }))}
+            dentists={dentists.map((d) => ({
+              dentistId: d.dentistId,
+              name: `Dr. ${d.person.firstName} ${d.person.lastName}`,
+            }))}
+          />
         </div>
       </div>
     </div>

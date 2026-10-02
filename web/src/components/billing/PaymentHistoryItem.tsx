@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { formatNaira } from "@/lib/currency";
 import { voidPayment, deletePayment } from "@/app/actions/billing";
-import { Ban, X, Trash2 } from "lucide-react";
+import { Ban, X, Trash2, Loader2 } from "lucide-react";
 
 type PaymentProps = {
   payment: {
@@ -170,9 +170,16 @@ export default function PaymentHistoryItem({ payment, isVoided = false }: Paymen
             <button
               type="submit"
               disabled={pending}
-              className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+              className="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
-              {pending ? "Deleting…" : "Confirm Delete"}
+              {pending ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Deleting…</span>
+                </>
+              ) : (
+                <span>Confirm Delete</span>
+              )}
             </button>
           </div>
         </form>
@@ -223,9 +230,16 @@ export default function PaymentHistoryItem({ payment, isVoided = false }: Paymen
             <button
               type="submit"
               disabled={pending}
-              className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-ink-950 font-semibold rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 text-ink-950 font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
             >
-              {pending ? "Voiding…" : "Confirm Void"}
+              {pending ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin text-ink-950" />
+                  <span>Voiding…</span>
+                </>
+              ) : (
+                <span>Confirm Void</span>
+              )}
             </button>
           </div>
         </form>

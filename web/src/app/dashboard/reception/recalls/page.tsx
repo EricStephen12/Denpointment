@@ -6,6 +6,7 @@ import { getCurrentPerson, isReceptionist, isAdmin } from "@/lib/auth";
 import { updateRecallStatus, addRecallCallLog } from "@/app/actions/clinical-care";
 import { RefreshCw, Calendar, Phone, ChevronDown } from "lucide-react";
 import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
+import SubmitButton from "@/components/common/SubmitButton";
 
 export default async function RecallsPage() {
   const dbUser = await getCurrentPerson();
@@ -79,16 +80,22 @@ export default async function RecallsPage() {
             <form action={updateRecallStatus}>
               <input type="hidden" name="recallId" value={recall.recallId} />
               <input type="hidden" name="status" value="completed" />
-              <button type="submit" className="inline-flex items-center gap-1 text-xs border border-turq-500/20 text-turq-400/70 hover:text-turq-400 px-2.5 py-1.5 rounded-lg transition-colors">
+              <SubmitButton
+                pendingText="Updating..."
+                className="inline-flex items-center gap-1 text-xs border border-turq-500/20 text-turq-400/70 hover:text-turq-400 px-2.5 py-1.5 rounded-lg transition-colors"
+              >
                 Mark Done
-              </button>
+              </SubmitButton>
             </form>
             <form action={updateRecallStatus}>
               <input type="hidden" name="recallId" value={recall.recallId} />
               <input type="hidden" name="status" value="cancelled" />
-              <button type="submit" className="text-xs text-sand-50/25 hover:text-red-400 px-2 py-1.5 transition-colors">
+              <SubmitButton
+                pendingText="Cancelling..."
+                className="text-xs text-sand-50/25 hover:text-red-400 px-2 py-1.5 transition-colors"
+              >
                 Cancel
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </div>
@@ -122,9 +129,12 @@ export default async function RecallsPage() {
             <option value="Patient declined">Patient declined</option>
           </select>
           <input name="notes" maxLength={300} placeholder="Notes" className="dash-input text-xs py-1 flex-1" />
-          <button type="submit" className="text-xs bg-sand-50/10 hover:bg-sand-50/15 text-sand-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+          <SubmitButton
+            pendingText="Logging..."
+            className="text-xs bg-sand-50/10 hover:bg-sand-50/15 text-sand-50 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+          >
             Log
-          </button>
+          </SubmitButton>
         </form>
       </div>
     );

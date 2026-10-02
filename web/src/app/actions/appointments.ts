@@ -379,6 +379,16 @@ export async function addToWaitlist(formData: FormData) {
   if (!dateParts) throw new Error("Invalid date.");
   const [, y, m, d] = dateParts;
 
+  // Prevent duplicate submissions while an entry is already waiting
+  const existingActive = await prisma.waitlistEntry.findFirst({
+    where: { patientId, status: "waiting" },
+    include: { patient: { include: { person: true } } },
+  });
+  if (existingActive) {
+    const name = `${existingActive.patient.person.firstName} ${existingActive.patient.person.lastName}`;
+    throw new Error(`${name} is already waiting on the list.`);
+  }
+
   await prisma.waitlistEntry.create({
     data: {
       patientId,

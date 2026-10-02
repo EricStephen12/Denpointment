@@ -2,8 +2,10 @@ import React from 'react';
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist } from "@/lib/auth";
-import { addHoliday, deleteHoliday } from "@/app/actions/holidays";
-import { Palmtree, Trash2 } from 'lucide-react';
+import { addHoliday } from "@/app/actions/holidays";
+import DeleteHolidayButton from "@/components/holidays/DeleteHolidayButton";
+import SubmitButton from "@/components/common/SubmitButton";
+import { Palmtree } from 'lucide-react';
 
 import { formatAppointmentDate, getClinicDay } from "@/lib/clinic-date";
 
@@ -49,10 +51,12 @@ export default async function HolidaysPage() {
                 <label htmlFor="reason" className="block text-xs font-medium text-sand-50/50 mb-1">Reason (optional)</label>
                 <input type="text" id="reason" name="reason" maxLength={25} placeholder="e.g. Vacation" className="dash-input" />
               </div>
-              <button type="submit"
-                className="w-full bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors">
+              <SubmitButton
+                pendingText="Adding Holiday..."
+                className="w-full bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors shadow-md shadow-turq-600/20"
+              >
                 Add Holiday
-              </button>
+              </SubmitButton>
             </form>
           </div>
         </div>
@@ -81,12 +85,14 @@ export default async function HolidaysPage() {
                       </td>
                       <td>{h.reason || "—"}</td>
                       <td className="text-right">
-                        <form action={deleteHoliday}>
-                          <input type="hidden" name="holidayId" value={h.holidayId} />
-                          <button type="submit" className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-medium">
-                            <Trash2 className="h-3 w-3" /> Delete
-                          </button>
-                        </form>
+                        <DeleteHolidayButton
+                          holidayId={h.holidayId}
+                          dateLabel={formatAppointmentDate({
+                            year: h.restDate.getUTCFullYear(),
+                            month: h.restDate.getUTCMonth() + 1,
+                            day: h.restDate.getUTCDate(),
+                          })}
+                        />
                       </td>
                     </tr>
                   )) : (

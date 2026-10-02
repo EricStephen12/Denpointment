@@ -6,6 +6,7 @@ import { getCurrentPerson, isAdmin, isReceptionist, isDentist } from "@/lib/auth
 import { registerWalkInPatient } from "@/app/actions/patients";
 import { Search, UserPlus, Calendar, Download } from "lucide-react";
 import DeletePatientButton from "@/components/patients/DeletePatientButton";
+import SubmitButton from "@/components/common/SubmitButton";
 
 const PAGE_SIZE = 50;
 const MAX_TAKE = 500;
@@ -322,12 +323,12 @@ export default async function PatientsPage({
                     <input type="tel" id="emergencyContactPhone" name="emergencyContactPhone" maxLength={20} className="dash-input" />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  className="w-full bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors"
+                <SubmitButton
+                  pendingText="Registering Patient..."
+                  className="w-full bg-turq-600 text-ink-950 py-2.5 px-4 rounded-lg font-semibold text-sm hover:bg-turq-500 transition-colors shadow-md shadow-turq-600/20"
                 >
                   Register &amp; Book Appointment
-                </button>
+                </SubmitButton>
               </form>
             </div>
           </div>

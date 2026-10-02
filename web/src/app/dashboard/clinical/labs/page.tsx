@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isDentist, isAdmin } from "@/lib/auth";
 import { addLabCase, updateLabCase, updateLabCaseStatus } from "@/app/actions/clinical-care";
 import DeleteLabCaseButton from "@/components/clinical/DeleteLabCaseButton";
+import SubmitButton from "@/components/common/SubmitButton";
 import { FlaskConical, Plus } from "lucide-react";
 
 const STATUS_ORDER = ["sent", "in_lab", "received", "fitted", "cancelled"];
@@ -114,10 +115,15 @@ export default async function LabCasesPage() {
               <label className="grid gap-1 text-xs text-sand-50/60">Notes
                 <input name="notes" maxLength={200} defaultValue={lc.notes ?? ""} className="dash-input" />
               </label>
-              <button type="submit" className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950">Save changes</button>
+              <SubmitButton pendingText="Saving..." className="rounded-lg bg-turq-600 px-3 py-2 text-sm font-semibold text-ink-950 hover:bg-turq-500">
+                Save changes
+              </SubmitButton>
             </form>
           </details>
-          <DeleteLabCaseButton labCaseId={lc.labCaseId} />
+          <DeleteLabCaseButton
+            labCaseId={lc.labCaseId}
+            caseTitle={`${lc.itemDescription} (${lc.labName})`}
+          />
         </div>
       )}
     </div>
@@ -196,9 +202,13 @@ export default async function LabCasesPage() {
             <label className="grid gap-1 text-xs text-sand-50/60 sm:col-span-2">Lab Instructions &amp; Shade
               <input name="notes" maxLength={200} placeholder="e.g. Shade A2, high translucency" className="dash-input" />
             </label>
-            <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-turq-600 px-4 py-2.5 text-sm font-semibold text-ink-950 hover:bg-turq-500 sm:col-span-2">
-              <Plus className="h-4 w-4" /> Save Lab Case
-            </button>
+            <SubmitButton
+              pendingText="Sending to Lab..."
+              icon={<Plus className="h-4 w-4" />}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-turq-600 px-4 py-2.5 text-sm font-semibold text-ink-950 hover:bg-turq-500 sm:col-span-2 shadow-md shadow-turq-600/20"
+            >
+              Save Lab Case
+            </SubmitButton>
           </form>
         </details>
       )}

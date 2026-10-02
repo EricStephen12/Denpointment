@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import {
@@ -55,6 +56,7 @@ export default function StaffRoleManager({
   const [activeTab, setActiveTab] = useState<"all" | "staff" | "patients">("staff");
   const [searchQuery, setSearchQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [deletingPersonId, setDeletingPersonId] = useState<number | null>(null);
 
   // Keep local state in sync when server revalidates props
   useEffect(() => {
@@ -235,6 +237,7 @@ export default function StaffRoleManager({
     const formData = new FormData();
     formData.set("personId", String(personId));
 
+    setDeletingPersonId(personId);
     startTransition(async () => {
       try {
         await removeStaffMember(formData);
@@ -243,6 +246,8 @@ export default function StaffRoleManager({
         setStatusMessage({ type: "success", text: `${name}'s account has been removed.` });
       } catch (err: any) {
         setStatusMessage({ type: "error", text: err?.message || "Failed to delete account." });
+      } finally {
+        setDeletingPersonId(null);
       }
     });
   }
@@ -511,16 +516,24 @@ export default function StaffRoleManager({
                             <button
                               type="button"
                               disabled={isPending}
-                              title={`Delete ${m.firstName} ${m.lastName}`}
+                              title={
+                                deletingPersonId === m.personId
+                                  ? "Deleting account..."
+                                  : `Delete ${m.firstName} ${m.lastName}`
+                              }
                               onClick={() =>
                                 handleDeleteAccount(
                                   m.personId,
                                   `${m.firstName} ${m.lastName}`
                                 )
                               }
-                              className="p-1.5 rounded-lg text-sand-50/40 hover:text-red-400 hover:bg-red-950/25 border border-transparent hover:border-red-500/20 transition-all"
+                              className="p-1.5 rounded-lg text-sand-50/40 hover:text-red-400 hover:bg-red-950/25 border border-transparent hover:border-red-500/20 transition-all disabled:opacity-50"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              {deletingPersonId === m.personId ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-red-400" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
                             </button>
                           )}
                         </div>
@@ -699,9 +712,16 @@ export default function StaffRoleManager({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-turq-500 hover:bg-turq-400 text-ink-950 shadow-md shadow-turq-500/20 transition-all disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-turq-500 hover:bg-turq-400 text-ink-950 shadow-md shadow-turq-500/20 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  {isPending ? "Assigning..." : "Assign Permissions"}
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Assigning...</span>
+                    </>
+                  ) : (
+                    <span>Assign Permissions</span>
+                  )}
                 </button>
               </div>
             </form>

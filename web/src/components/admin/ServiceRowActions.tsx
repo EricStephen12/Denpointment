@@ -18,18 +18,22 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
   const [editName, setEditName] = useState(service.name);
   const [editPrice, setEditPrice] = useState(service.price);
   const [isPending, startTransition] = useTransition();
+  const [actionType, setActionType] = useState<"toggle" | "delete" | "edit" | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleToggle = () => {
     const formData = new FormData();
     formData.append("serviceId", String(service.serviceId));
     formData.append("active", String(service.active));
+    setActionType("toggle");
     startTransition(async () => {
       try {
         await toggleServiceActive(formData);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to update status";
         setErrorMessage(msg);
+      } finally {
+        setActionType(null);
       }
     });
   };
@@ -40,6 +44,7 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
     formData.append("serviceId", String(service.serviceId));
     formData.append("name", editName);
     formData.append("price", String(editPrice));
+    setActionType("edit");
     startTransition(async () => {
       try {
         setErrorMessage(null);
@@ -48,6 +53,8 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to update service";
         setErrorMessage(msg);
+      } finally {
+        setActionType(null);
       }
     });
   };
@@ -58,6 +65,7 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
     }
     const formData = new FormData();
     formData.append("serviceId", String(service.serviceId));
+    setActionType("delete");
     startTransition(async () => {
       try {
         setErrorMessage(null);
@@ -65,6 +73,8 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Cannot delete service that is in use.";
         alert(msg);
+      } finally {
+        setActionType(null);
       }
     });
   };
@@ -76,9 +86,16 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
         type="button"
         disabled={isPending}
         onClick={handleToggle}
-        className="text-xs text-sand-50/50 hover:text-turq-400 font-medium transition-colors disabled:opacity-50 cursor-pointer"
+        className="text-xs text-sand-50/50 hover:text-turq-400 font-medium transition-colors disabled:opacity-50 cursor-pointer inline-flex items-center gap-1"
       >
-        {service.active ? "Deactivate" : "Activate"}
+        {actionType === "toggle" && isPending ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin text-turq-400" />
+            <span>Updating...</span>
+          </>
+        ) : (
+          service.active ? "Deactivate" : "Activate"
+        )}
       </button>
 
       {/* Edit button */}
@@ -99,10 +116,14 @@ export default function ServiceRowActions({ service }: ServiceRowActionsProps) {
         type="button"
         disabled={isPending}
         onClick={handleDelete}
-        title={`Delete ${service.name}`}
+        title={actionType === "delete" && isPending ? "Deleting service..." : `Delete ${service.name}`}
         className="text-xs text-red-400/70 hover:text-red-300 font-medium flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
       >
-        <Trash2 className="h-3 w-3" />
+        {actionType === "delete" && isPending ? (
+          <Loader2 className="h-3 w-3 animate-spin text-red-400" />
+        ) : (
+          <Trash2 className="h-3 w-3" />
+        )}
       </button>
 
       {/* Inline edit dropdown modal */}
