@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, hasCapability } from "@/lib/auth";
+import { getCurrentPerson, hasCapability, isAdmin, isReceptionist } from "@/lib/auth";
 import { initializePaystackTransaction } from "@/lib/paystack";
 
 async function requireBillingAccess() {
@@ -510,8 +510,8 @@ export async function deletePatientOwnAppointment(formData: FormData) {
   const person = await getCurrentPerson();
   if (!person) throw new Error("Not authenticated.");
 
-  if (person.patients.length === 0) throw new Error("Not a patient.");
-  const patientId = person.patients[0].patientId;
+  const isStaff = isAdmin(person) || isReceptionist(person);
+  const patientId = person.patients[0]?.patientId;
 
   const appointmentId = parseInt(formData.get("appointmentId") as string, 10);
   if (!appointmentId) throw new Error("Missing appointment ID.");
@@ -526,13 +526,8 @@ export async function deletePatientOwnAppointment(formData: FormData) {
   });
 
   if (!appt) throw new Error("Appointment not found.");
-  if (appt.pId !== patientId) throw new Error("You can only delete your own records.");
-
-  // Patients may not delete future / active appointments — they must cancel instead
-  const { isAppointmentUpcoming } = await import("@/lib/clinic-date");
-  const now = new Date();
-  if (appt.status !== "cancelled" && isAppointmentUpcoming(appt, now)) {
-    throw new Error("You cannot delete an upcoming appointment. Please cancel it first.");
+  if (!isStaff && appt.pId !== patientId) {
+    throw new Error("You can only delete your own records.");
   }
 
   const treatmentIds = appt.treatments.map((t) => t.treatmentId);
@@ -561,7 +556,18 @@ export async function deletePatientOwnAppointment(formData: FormData) {
   });
 
   revalidatePath("/dashboard/appointments");
-  redirect("/dashboard/appointments");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/portal/bills");
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
+  revalidatePath("/dashboard/treatments/today");
+  revalidatePath("/dashboard/treatments/upcoming");
+  revalidatePath("/dashboard/treatments/past");
+  if (appt.pId) {
+    revalidatePath(`/dashboard/patients/${appt.pId}`);
+  }
+
+  return { success: true };
 }
 
 /**

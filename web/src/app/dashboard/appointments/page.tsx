@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isPatient } from "@/lib/auth";
 import { cancelAppointment } from "@/app/actions/appointments";
-import { initiateTreatmentPayment, deletePatientOwnAppointment } from "@/app/actions/billing";
+import { initiateTreatmentPayment } from "@/app/actions/billing";
+import DeletePatientAppointmentButton from "@/components/appointments/DeletePatientAppointmentButton";
 import {
   X,
   CreditCard,
@@ -176,17 +177,22 @@ export default async function AppointmentsPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="mt-4 pt-4 border-t border-sand-50/8 flex items-center justify-end">
+                      <div className="mt-4 pt-4 border-t border-sand-50/8 flex flex-wrap items-center justify-between gap-3">
                         <form action={cancelAppointment}>
                           <input type="hidden" name="appointmentId" value={app.appointmentId} />
                           <button
                             type="submit"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
                           >
                             <X className="h-3.5 w-3.5" />
                             Cancel Appointment
                           </button>
                         </form>
+                        <DeletePatientAppointmentButton
+                          appointmentId={app.appointmentId}
+                          title={`${dateLabel} with Dr. ${app.dentist.person.lastName}`}
+                          label="Delete Visit"
+                        />
                       </div>
                     </div>
                   </div>
@@ -301,6 +307,15 @@ export default async function AppointmentsPage() {
                       No treatment recorded for this visit.
                     </p>
                   )}
+
+                  <div className="mt-4 pt-3 border-t border-sand-50/8 flex items-center justify-end">
+                    <DeletePatientAppointmentButton
+                      appointmentId={app.appointmentId}
+                      title={`${dateLabel} with Dr. ${app.dentist.person.lastName}`}
+                      label="Delete Visit Record"
+                      compact={true}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -336,16 +351,12 @@ export default async function AppointmentsPage() {
                         </p>
                       </div>
                     </div>
-                    <form action={deletePatientOwnAppointment}>
-                      <input type="hidden" name="appointmentId" value={app.appointmentId} />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-sand-50/25 hover:text-red-400 transition-colors cursor-pointer shrink-0"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
-                    </form>
+                    <DeletePatientAppointmentButton
+                      appointmentId={app.appointmentId}
+                      title={`Cancelled visit on ${dateLabel}`}
+                      label="Delete"
+                      compact={true}
+                    />
                   </div>
                 </div>
               );

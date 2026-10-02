@@ -3,27 +3,21 @@
 import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
-import { deleteBillingRecord } from "@/app/actions/billing";
+import { AlertTriangle, X, Loader2, CheckCircle2 } from "lucide-react";
+import { writeOffPatientBalance } from "@/app/actions/billing";
 import { formatNaira } from "@/lib/currency";
 
-interface DeleteBillingRecordButtonProps {
-  appointmentId: number;
+interface WriteOffBalanceButtonProps {
+  patientId: number;
   patientName: string;
-  totalCharge: number;
-  totalPaid: number;
-  label?: string;
-  className?: string;
+  outstanding: number;
 }
 
-export default function DeleteBillingRecordButton({
-  appointmentId,
+export default function WriteOffBalanceButton({
+  patientId,
   patientName,
-  totalCharge,
-  totalPaid,
-  label = "Delete Bill",
-  className,
-}: DeleteBillingRecordButtonProps) {
+  outstanding,
+}: WriteOffBalanceButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,18 +41,18 @@ export default function DeleteBillingRecordButton({
     setError(null);
   };
 
-  const handleDelete = () => {
+  const handleConfirm = () => {
     setError(null);
     const formData = new FormData();
-    formData.set("appointmentId", String(appointmentId));
+    formData.set("patientId", String(patientId));
 
     startTransition(async () => {
       try {
-        await deleteBillingRecord(formData);
+        await writeOffPatientBalance(formData);
         setIsOpen(false);
         router.refresh();
       } catch (err: any) {
-        setError(err?.message || "Failed to delete billing record.");
+        setError(err?.message || "Failed to write off balance.");
       }
     });
   };
@@ -71,21 +65,21 @@ export default function DeleteBillingRecordButton({
       role="dialog"
     >
       <div
-        className="w-full max-w-md bg-ink-900 border border-red-500/40 rounded-2xl shadow-2xl p-6 relative my-auto max-h-[90vh] flex flex-col overflow-y-auto"
+        className="w-full max-w-md bg-ink-900 border border-amber-500/40 rounded-2xl shadow-2xl p-6 relative my-auto max-h-[90vh] flex flex-col overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-sand-50/10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-red-500/15 text-red-400 border border-red-500/25">
+            <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-base font-semibold text-sand-50 font-display">
-                Delete Billing Record
+                Write Off Outstanding Balance
               </h2>
-              <p className="text-xs text-red-400/90 mt-0.5 font-medium">
-                Permanent Removal from Practice Ledger
+              <p className="text-xs text-amber-400/90 mt-0.5 font-medium">
+                Management Courtesy Waiver
               </p>
             </div>
           </div>
@@ -110,28 +104,26 @@ export default function DeleteBillingRecordButton({
         {/* Content */}
         <div className="py-4 space-y-3.5 flex-1">
           <p className="text-xs text-sand-50/80 leading-relaxed">
-            Are you sure you want to permanently delete this billing record for{" "}
+            Are you sure you want to write off the outstanding balance for{" "}
             <span className="font-semibold text-sand-50">{patientName}</span>?
           </p>
 
           <div className="p-3.5 rounded-xl bg-black/50 border border-sand-50/10 text-xs space-y-2">
-            <div className="flex justify-between text-sand-50/60">
-              <span>Visit Total:</span>
-              <span className="font-semibold text-sand-50">{formatNaira(totalCharge)}</span>
+            <div className="flex justify-between text-sand-50/70">
+              <span>Patient Name:</span>
+              <span className="font-medium text-sand-50">{patientName}</span>
             </div>
-            {totalPaid > 0 && (
-              <div className="flex justify-between text-sand-50/60">
-                <span>Recorded Payments:</span>
-                <span className="font-semibold text-emerald-400">{formatNaira(totalPaid)}</span>
-              </div>
-            )}
-            <div className="pt-2 border-t border-sand-50/10 text-[11px] text-red-400/90 leading-normal">
-              ⚠️ Deleting this billing record will completely erase the visit appointment, all linked clinical procedures on this bill, and any recorded payments.
+            <div className="flex justify-between text-sand-50/70">
+              <span>Outstanding to Zero Out:</span>
+              <span className="font-bold text-red-400">{formatNaira(outstanding)}</span>
+            </div>
+            <div className="pt-2 border-t border-sand-50/10 text-[11px] text-amber-300/80 leading-normal">
+              💡 This records a formal waiver in the practice ledger. All clinical visit history and treatment records remain completely intact.
             </div>
           </div>
 
           <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300 font-medium">
-            👉 Please click <strong>"Confirm &amp; Delete Bill"</strong> below to permanently delete.
+            👉 Click <strong>"Confirm &amp; Write Off"</strong> below to clear this balance.
           </div>
         </div>
 
@@ -143,23 +135,23 @@ export default function DeleteBillingRecordButton({
             onClick={handleClose}
             className="px-4 py-2.5 rounded-xl text-xs font-medium text-sand-50/70 hover:text-sand-50 hover:bg-sand-50/10 border border-sand-50/10 transition-colors"
           >
-            Cancel (Keep Bill)
+            Cancel
           </button>
           <button
             type="button"
             disabled={isPending}
-            onClick={handleDelete}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30 transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer"
+            onClick={handleConfirm}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-amber-600 hover:bg-amber-500 text-ink-950 shadow-lg shadow-amber-600/30 transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer"
           >
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Deleting Bill...</span>
+                <span>Writing Off...</span>
               </>
             ) : (
               <>
-                <Trash2 className="h-4 w-4" />
-                <span>Confirm &amp; Delete Bill</span>
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Confirm &amp; Write Off</span>
               </>
             )}
           </button>
@@ -173,14 +165,10 @@ export default function DeleteBillingRecordButton({
       <button
         type="button"
         onClick={handleOpen}
-        title="Delete this entire billing record"
-        className={
-          className ||
-          "inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-medium px-2.5 py-1.5 rounded-lg border border-red-500/20 bg-red-950/20 hover:bg-red-950/40 transition-colors cursor-pointer"
-        }
+        title="Zero out balance via waiver"
+        className="text-xs text-red-400/80 hover:text-red-300 px-2.5 py-1 rounded bg-red-900/20 hover:bg-red-900/30 border border-red-500/20 transition-colors cursor-pointer"
       >
-        <Trash2 className="h-3.5 w-3.5 shrink-0" />
-        <span>{label}</span>
+        Write Off
       </button>
 
       {mounted && modalContent && createPortal(modalContent, document.body)}

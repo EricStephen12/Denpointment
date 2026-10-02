@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cancelAppointment } from "@/app/actions/appointments";
+import DeletePatientAppointmentButton from "@/components/appointments/DeletePatientAppointmentButton";
 import { prisma } from "@/lib/prisma";
 import type { PersonWithRoles } from "@/lib/auth";
 import { isAppointmentUpcoming, relativeAppointmentLabel, CLINIC_TIMEZONE } from "@/lib/clinic-date";
@@ -176,11 +177,17 @@ export default async function PatientDashboard({ user }: { user: PersonWithRoles
                         e.preventDefault();
                       }
                     }}
-                    className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                    className="text-xs font-medium text-amber-400/90 hover:text-amber-300 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                 </form>
+                <DeletePatientAppointmentButton
+                  appointmentId={upcoming.appointmentId}
+                  title={`with Dr. ${upcoming.dentist.person.lastName}`}
+                  label="Delete"
+                  compact={true}
+                />
               </div>
             </div>
           </div>

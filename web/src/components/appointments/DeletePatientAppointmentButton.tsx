@@ -4,26 +4,23 @@ import React, { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Trash2, AlertTriangle, X, Loader2 } from "lucide-react";
-import { deleteBillingRecord } from "@/app/actions/billing";
-import { formatNaira } from "@/lib/currency";
+import { deletePatientOwnAppointment } from "@/app/actions/billing";
 
-interface DeleteBillingRecordButtonProps {
+interface DeletePatientAppointmentButtonProps {
   appointmentId: number;
-  patientName: string;
-  totalCharge: number;
-  totalPaid: number;
+  title?: string;
   label?: string;
   className?: string;
+  compact?: boolean;
 }
 
-export default function DeleteBillingRecordButton({
+export default function DeletePatientAppointmentButton({
   appointmentId,
-  patientName,
-  totalCharge,
-  totalPaid,
-  label = "Delete Bill",
+  title,
+  label = "Delete Appointment",
   className,
-}: DeleteBillingRecordButtonProps) {
+  compact = false,
+}: DeletePatientAppointmentButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +51,11 @@ export default function DeleteBillingRecordButton({
 
     startTransition(async () => {
       try {
-        await deleteBillingRecord(formData);
+        await deletePatientOwnAppointment(formData);
         setIsOpen(false);
         router.refresh();
       } catch (err: any) {
-        setError(err?.message || "Failed to delete billing record.");
+        setError(err?.message || "Failed to delete appointment.");
       }
     });
   };
@@ -82,10 +79,10 @@ export default function DeleteBillingRecordButton({
             </div>
             <div>
               <h2 className="text-base font-semibold text-sand-50 font-display">
-                Delete Billing Record
+                Delete Appointment
               </h2>
               <p className="text-xs text-red-400/90 mt-0.5 font-medium">
-                Permanent Removal from Practice Ledger
+                Remove from your schedule
               </p>
             </div>
           </div>
@@ -110,28 +107,20 @@ export default function DeleteBillingRecordButton({
         {/* Content */}
         <div className="py-4 space-y-3.5 flex-1">
           <p className="text-xs text-sand-50/80 leading-relaxed">
-            Are you sure you want to permanently delete this billing record for{" "}
-            <span className="font-semibold text-sand-50">{patientName}</span>?
+            Are you sure you want to permanently delete this appointment record{title ? ` (${title})` : ""}?
           </p>
 
-          <div className="p-3.5 rounded-xl bg-black/50 border border-sand-50/10 text-xs space-y-2">
-            <div className="flex justify-between text-sand-50/60">
-              <span>Visit Total:</span>
-              <span className="font-semibold text-sand-50">{formatNaira(totalCharge)}</span>
-            </div>
-            {totalPaid > 0 && (
-              <div className="flex justify-between text-sand-50/60">
-                <span>Recorded Payments:</span>
-                <span className="font-semibold text-emerald-400">{formatNaira(totalPaid)}</span>
-              </div>
-            )}
-            <div className="pt-2 border-t border-sand-50/10 text-[11px] text-red-400/90 leading-normal">
-              ⚠️ Deleting this billing record will completely erase the visit appointment, all linked clinical procedures on this bill, and any recorded payments.
-            </div>
+          <div className="p-3.5 rounded-xl bg-black/50 border border-sand-50/10 text-xs space-y-1.5 text-sand-50/70">
+            <p className="text-red-400/90 font-medium text-[11px]">
+              ⚠️ This will completely remove this visit from your appointments list.
+            </p>
+            <p className="text-[11px] text-sand-50/50">
+              Any treatments, notes, or schedule bookings linked to this visit will be deleted.
+            </p>
           </div>
 
           <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-300 font-medium">
-            👉 Please click <strong>"Confirm &amp; Delete Bill"</strong> below to permanently delete.
+            👉 Click <strong>"Confirm &amp; Delete Appointment"</strong> below to proceed.
           </div>
         </div>
 
@@ -143,7 +132,7 @@ export default function DeleteBillingRecordButton({
             onClick={handleClose}
             className="px-4 py-2.5 rounded-xl text-xs font-medium text-sand-50/70 hover:text-sand-50 hover:bg-sand-50/10 border border-sand-50/10 transition-colors"
           >
-            Cancel (Keep Bill)
+            Cancel (Keep)
           </button>
           <button
             type="button"
@@ -154,12 +143,12 @@ export default function DeleteBillingRecordButton({
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Deleting Bill...</span>
+                <span>Deleting...</span>
               </>
             ) : (
               <>
                 <Trash2 className="h-4 w-4" />
-                <span>Confirm &amp; Delete Bill</span>
+                <span>Confirm &amp; Delete Appointment</span>
               </>
             )}
           </button>
@@ -168,16 +157,17 @@ export default function DeleteBillingRecordButton({
     </div>
   ) : null;
 
+  const defaultClasses = compact
+    ? "inline-flex items-center gap-1.5 text-xs font-medium text-sand-50/40 hover:text-red-400 transition-colors cursor-pointer"
+    : "inline-flex items-center gap-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg border border-red-500/20 bg-red-950/20 hover:bg-red-950/40";
+
   return (
     <>
       <button
         type="button"
         onClick={handleOpen}
-        title="Delete this entire billing record"
-        className={
-          className ||
-          "inline-flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 font-medium px-2.5 py-1.5 rounded-lg border border-red-500/20 bg-red-950/20 hover:bg-red-950/40 transition-colors cursor-pointer"
-        }
+        title="Delete this appointment"
+        className={className || defaultClasses}
       >
         <Trash2 className="h-3.5 w-3.5 shrink-0" />
         <span>{label}</span>

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentPerson, isAdmin, isReceptionist } from "@/lib/auth";
 import { formatNaira } from "@/lib/currency";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import { writeOffPatientBalance } from "@/app/actions/billing";
+import WriteOffBalanceButton from "@/components/billing/WriteOffBalanceButton";
 
 export default async function OutstandingPage({
   searchParams,
@@ -179,15 +179,11 @@ export default async function OutstandingPage({
                     >
                       💳 Collect Payment
                     </Link>
-                    <form action={writeOffPatientBalance} className="inline">
-                      <input type="hidden" name="patientId" value={b.patientId} />
-                      <button
-                        type="submit"
-                        className="text-xs text-red-400/70 hover:text-red-300 px-2 py-1 rounded bg-red-900/20 hover:bg-red-900/30 border border-red-500/20 transition-colors"
-                      >
-                        Write Off
-                      </button>
-                    </form>
+                    <WriteOffBalanceButton
+                      patientId={b.patientId}
+                      patientName={b.name}
+                      outstanding={b.outstanding}
+                    />
                   </td>
                 </tr>
               ))}
