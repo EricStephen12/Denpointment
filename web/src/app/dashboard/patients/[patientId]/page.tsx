@@ -11,6 +11,7 @@ import PatientImages from "@/components/dashboards/PatientImages";
 import ClinicalCarePanel from "@/components/dashboards/ClinicalCarePanel";
 import PatientDemographicsEditor from "@/components/patients/PatientDemographicsEditor";
 import DeletePatientButton from "@/components/patients/DeletePatientButton";
+import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
 import { ArrowLeft, Calendar, User, AlertTriangle, Pill, Clock } from "lucide-react";
 import { formatNaira as _fmt } from "@/lib/currency";
 
@@ -77,6 +78,18 @@ export default async function PatientProfilePage({
   });
 
   if (!patient) notFound();
+
+  const [allDentists, settings] = await Promise.all([
+    prisma.dentist.findMany({ include: { person: true } }),
+    prisma.clinicSettings.findUnique({ where: { id: 1 } }),
+  ]);
+  const openHour = settings?.openHour ?? 8;
+  const closeHour = settings?.closeHour ?? 18;
+  const dentistOptions = allDentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    defaultRoom: d.roomNumber,
+  }));
 
   const person = patient.person;
 
@@ -302,16 +315,17 @@ export default async function PatientProfilePage({
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Dentist</th>
+                    <th>Dentist &amp; Room</th>
                     <th>Treatment</th>
                     <th>Charge</th>
                     <th>Status</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {patient.appointments.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="td-empty">No visits recorded yet.</td>
+                      <td colSpan={6} className="td-empty">No visits recorded yet.</td>
                     </tr>
                   ) : (
                     patient.appointments.map((app) => {
@@ -323,22 +337,48 @@ export default async function PatientProfilePage({
                       const total = app.treatments.reduce((sum, t) => sum + t.charge, 0);
                       const allPaid = app.treatments.length > 0 && app.treatments.every((t) => t.paid);
                       const anyUnpaid = app.treatments.some((t) => !t.paid && t.charge > 0);
+                      const canReassign = app.status !== "cancelled" && app.status !== "completed";
                       return (
                         <tr key={app.appointmentId}>
-                          <td className="whitespace-nowrap">
+                          <td className="whitespace-nowrap font-medium text-sand-50">
                             {app.day}/{app.month}/{app.year} · {app.hour}:00
                           </td>
-                          <td>Dr. {app.dentist.person.lastName}</td>
+                          <td>
+                            <span>Dr. {app.dentist.person.lastName}</span>
+                            <span className="text-sand-50/40 text-xs ml-1.5">(Rm {app.room})</span>
+                          </td>
                           <td className="max-w-[200px] truncate">{labels || "—"}</td>
                           <td>{app.treatments.length > 0 ? formatNaira(total) : "—"}</td>
                           <td>
-                            {app.treatments.length === 0 ? (
-                              <span className="text-sand-50/30 text-xs">—</span>
+                            {app.status === "cancelled" ? (
+                              <span className="text-red-400 text-xs font-medium">Cancelled</span>
+                            ) : app.treatments.length === 0 ? (
+                              <span className="text-sand-50/40 text-xs capitalize">{app.status.replace("_", " ")}</span>
                             ) : allPaid ? (
-                              <span className="text-turq-400 text-xs">Paid</span>
+                              <span className="text-turq-400 text-xs font-medium">Paid</span>
                             ) : anyUnpaid ? (
-                              <span className="text-amber-400 text-xs">Unpaid</span>
+                              <span className="text-amber-400 text-xs font-medium">Unpaid</span>
                             ) : null}
+                          </td>
+                          <td>
+                            {canReassign ? (
+                              <ReassignAppointmentModal
+                                appointmentId={app.appointmentId}
+                                currentDentistId={app.dId}
+                                currentDentistName={`Dr. ${app.dentist.person.firstName} ${app.dentist.person.lastName}`}
+                                currentRoom={app.room}
+                                currentDate={`${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`}
+                                currentHour={app.hour}
+                                patientName={`${person.firstName} ${person.lastName}`}
+                                dentists={dentistOptions}
+                                openHour={openHour}
+                                closeHour={closeHour}
+                                buttonLabel="Reassign Doctor & Room"
+                                compact={true}
+                              />
+                            ) : (
+                              <span className="text-sand-50/20 text-xs">—</span>
+                            )}
                           </td>
                         </tr>
                       );

@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { Printer, ArrowLeft } from "lucide-react";
+import React, { useState } from "react";
+import { Printer, ArrowLeft, Receipt } from "lucide-react";
 
 import EmailReceiptButton from "@/components/billing/EmailReceiptButton";
 
@@ -12,9 +12,34 @@ interface PrintToolbarProps {
 }
 
 export default function PrintToolbar({ title, appointmentId, patientEmail }: PrintToolbarProps) {
-  const handlePrint = () => {
+  const [receiptMode, setReceiptMode] = useState(false);
+
+  const handlePrintA4 = () => {
     if (typeof window !== "undefined") {
+      // Ensure we are in A4 mode before printing
+      document.documentElement.removeAttribute("data-receipt-mode");
       window.print();
+    }
+  };
+
+  const handlePrintReceipt = () => {
+    if (typeof window !== "undefined") {
+      // Switch to 80mm receipt mode, then print
+      document.documentElement.setAttribute("data-receipt-mode", "true");
+      setReceiptMode(true);
+      // Small timeout to allow React to re-render the receipt layout
+      setTimeout(() => {
+        window.print();
+        // After printing dialog closes, restore A4 mode
+        window.addEventListener(
+          "afterprint",
+          () => {
+            document.documentElement.removeAttribute("data-receipt-mode");
+            setReceiptMode(false);
+          },
+          { once: true }
+        );
+      }, 150);
     }
   };
 
@@ -40,13 +65,23 @@ export default function PrintToolbar({ title, appointmentId, patientEmail }: Pri
             patientEmail={patientEmail}
           />
         )}
+        {/* 80mm Thermal Receipt */}
         <button
           type="button"
-          onClick={handlePrint}
+          onClick={handlePrintReceipt}
+          className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-ink-950 text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm"
+        >
+          <Receipt className="h-3.5 w-3.5" />
+          <span>Print Receipt</span>
+        </button>
+        {/* A4 / Full Invoice */}
+        <button
+          type="button"
+          onClick={handlePrintA4}
           className="inline-flex items-center gap-1.5 bg-turq-600 hover:bg-turq-500 text-ink-950 text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer shadow-sm"
         >
           <Printer className="h-3.5 w-3.5" />
-          <span>Print / Save PDF</span>
+          <span>Print Invoice</span>
         </button>
         <button
           type="button"

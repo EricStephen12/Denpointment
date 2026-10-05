@@ -2,10 +2,11 @@ import React from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPerson, isReceptionist, isAdmin } from "@/lib/auth";
+import { getCurrentPerson, isReceptionist, isAdmin, isDentist } from "@/lib/auth";
 import { getClinicDay, formatAppointmentDate, addCalendarDays, toDateKey } from "@/lib/clinic-date";
 import { statusMeta } from "@/lib/appointment-status";
 import { LayoutGrid, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
 
 export default async function MultiDentistCalendarPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function MultiDentistCalendarPage({
 }) {
   const dbUser = await getCurrentPerson();
   if (!dbUser) redirect("/");
-  if (!isReceptionist(dbUser) && !isAdmin(dbUser)) redirect("/dashboard");
+  if (!isReceptionist(dbUser) && !isAdmin(dbUser) && !isDentist(dbUser)) redirect("/dashboard");
 
   const { date: dateParam } = await searchParams;
   const today = getClinicDay();
@@ -55,6 +56,12 @@ export default async function MultiDentistCalendarPage({
     const d = h > 12 ? h - 12 : h === 0 ? 12 : h;
     return `${d}:00 ${ampm}`;
   }
+
+  const dentistOptions = dentists.map((d) => ({
+    dentistId: d.dentistId,
+    name: `${d.person.firstName} ${d.person.lastName}`,
+    defaultRoom: d.roomNumber,
+  }));
 
   const isToday = toDateKey(viewDay) === toDateKey(today);
 
@@ -130,13 +137,35 @@ export default async function MultiDentistCalendarPage({
                     const meta = statusMeta(app.status);
                     return (
                       <td key={d.dentistId}>
-                        <Link href={`/dashboard/patients/${app.patient.patientId}`}
-                          className="inline-flex flex-col gap-0.5 group">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.tone} group-hover:opacity-80 transition-opacity`}>
-                            {app.patient.person.firstName} {app.patient.person.lastName}
-                          </span>
-                          <span className="text-[10px] text-sand-50/25">{meta.label}</span>
-                        </Link>
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <Link
+                            href={`/dashboard/patients/${app.patient.patientId}`}
+                            className="inline-flex flex-col gap-0.5 group"
+                          >
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.tone} group-hover:opacity-80 transition-opacity`}>
+                              {app.patient.person.firstName} {app.patient.person.lastName}
+                            </span>
+                            <span className="text-[10px] text-sand-50/40">{meta.label} · Rm {app.room}</span>
+                          </Link>
+
+                          {app.status !== "cancelled" && app.status !== "completed" && (
+                            <ReassignAppointmentModal
+                              appointmentId={app.appointmentId}
+                              currentDentistId={app.dId}
+                              currentDentistName={`Dr. ${d.person.firstName} ${d.person.lastName}`}
+                              currentRoom={app.room}
+                              currentDate={`${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`}
+                              currentHour={app.hour}
+                              patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
+                              dentists={dentistOptions}
+                              openHour={openHour}
+                              closeHour={closeHour}
+                              clinicToday={toDateKey(today)}
+                              buttonLabel="Reassign"
+                              compact={true}
+                            />
+                          )}
+                        </div>
                       </td>
                     );
                   })}

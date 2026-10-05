@@ -296,6 +296,54 @@ export default function BookingCalendar({
         </div>
       )}
 
+      {/* Assign Dentist / Doctor & Room */}
+      {dentists && dentists.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
+              Preferred Doctor / Dentist
+            </label>
+            <span className="text-xs text-sand-50/40">
+              {isStaffBooking ? "Assign specific dentist" : "Optional"}
+            </span>
+          </div>
+          <div className={`grid grid-cols-1 ${isStaffBooking ? "sm:grid-cols-2" : ""} gap-3`}>
+            <select
+              value={selectedDentistId}
+              onChange={(e) => {
+                setSelectedDentistId(e.target.value);
+                const d = dentists.find((dx) => dx.dentistId.toString() === e.target.value);
+                if (d) setRoom(d.roomNumber.toString());
+              }}
+              style={{ colorScheme: "dark" }}
+              className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400"
+            >
+              <option value="" className="bg-ink-900 text-sand-50">
+                Any Available Dentist (Auto-Assigned)
+              </option>
+              {dentists.map((d) => (
+                <option key={d.dentistId} value={d.dentistId.toString()} className="bg-ink-900 text-sand-50">
+                  Dr. {d.name} (Room {d.roomNumber})
+                </option>
+              ))}
+            </select>
+
+            {isStaffBooking && (
+              <div>
+                <input
+                  type="text"
+                  value={room}
+                  onChange={(e) => setRoom(e.target.value)}
+                  placeholder="Operatory Room (e.g. 102)"
+                  maxLength={5}
+                  className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400 w-full"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Calendar ── */}
       <div className="dash-card overflow-hidden">
         {/* Month header */}

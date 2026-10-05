@@ -8,9 +8,45 @@ import { getCurrentPerson, hasCapability } from "@/lib/auth";
 import {
   sendAppointmentConfirmationEmail,
   sendDentistNewAppointmentEmail,
+  sendReceptionistNewAppointmentEmail,
   sendAppointmentCancellationEmail,
+  sendReceptionistAppointmentCancellationEmail,
 } from "@/lib/email";
+import { getSiteContent } from "@/lib/site";
 import { compareCalendarDays, getClinicDay, toDateKey } from "@/lib/clinic-date";
+
+/** Helper to retrieve all active receptionists and front-desk email addresses */
+async function getReceptionRecipients(): Promise<{ email: string; name?: string }[]> {
+  try {
+    const [siteContent, receptionStaff] = await Promise.all([
+      getSiteContent().catch(() => null),
+      prisma.receptionist.findMany({
+        include: { person: true },
+      }).catch(() => []),
+    ]);
+
+    const recipients: { email: string; name?: string }[] = [];
+    if (siteContent?.email && siteContent.email.includes("@")) {
+      recipients.push({ email: siteContent.email, name: "Front Desk" });
+    }
+    for (const r of receptionStaff) {
+      if (
+        r.person?.email &&
+        !recipients.some((x) => x.email.toLowerCase() === r.person.email.toLowerCase())
+      ) {
+        recipients.push({
+          email: r.person.email,
+          name: `${r.person.firstName} ${r.person.lastName}`,
+        });
+      }
+    }
+    return recipients;
+  } catch (err) {
+    console.error("[appointments] Error loading reception recipients:", err);
+    return [];
+  }
+}
+
 
 // Action to book a new appointment.
 // Patients book for themselves; receptionists can book on behalf of any patient.
@@ -202,7 +238,10 @@ export async function bookAppointment(formData: FormData) {
       });
     }
 
-    patient = await prisma.patient.findUnique({ where: { patientId }, include: { person: true } });
+    patient = await prisma.patient.findUnique({
+      where: { patientId },
+      include: { person: { include: { contacts: true } } },
+    });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       throw new Error("This time slot was just booked by someone else. Please pick another.");
@@ -238,6 +277,31 @@ export async function bookAppointment(formData: FormData) {
         serviceName: service?.name,
       }).catch((err) => console.error("[email] dentist booking alert failed:", err));
     }
+
+    // 3. Receptionist / Front Desk booking intake notification
+    // Ensures receptionists receive an email alert for every appointment made so they can prepare
+    getReceptionRecipients().then((recipients) => {
+      const patientPhone =
+        patient?.person.contacts?.[0]?.contactNumber ||
+        ((formData.get("phone") as string) || "").trim() ||
+        undefined;
+
+      for (const recip of recipients) {
+        sendReceptionistNewAppointmentEmail({
+          to: recip.email,
+          receptionistName: recip.name,
+          patientName,
+          patientEmail: patient!.person.email,
+          patientPhone,
+          dentistName,
+          room: assignedDentist.roomNumber,
+          date: bookedDay,
+          hour,
+          serviceName: service?.name,
+          notes: (formData.get("reason") as string) || (formData.get("notes") as string) || undefined,
+        }).catch((err) => console.error("[email] receptionist booking alert failed:", err));
+      }
+    }).catch((err) => console.error("[email] failed fetching receptionists for intake alert:", err));
   }
 
   revalidatePath('/dashboard');
@@ -318,6 +382,25 @@ export async function cancelAppointment(formData: FormData) {
       serviceName,
     }).catch((err) => console.error("[email] dentist cancellation failed:", err));
   }
+
+  // 3. Receptionist / Front Desk schedule alert
+  // Ensures receptionists receive an email alert when any appointment is cancelled so they can offer the slot to waitlist/walk-in patients
+  getReceptionRecipients().then((recipients) => {
+    for (const recip of recipients) {
+      sendReceptionistAppointmentCancellationEmail({
+        to: recip.email,
+        receptionistName: recip.name,
+        patientName: patientPerson ? `${patientPerson.firstName} ${patientPerson.lastName}` : "Patient",
+        patientEmail: patientPerson?.email || "",
+        dentistName: dentistPerson ? `${dentistPerson.firstName} ${dentistPerson.lastName}` : "Assigned Dentist",
+        room: appointment.room,
+        date: dateObj,
+        hour: appointment.hour,
+        serviceName,
+        cancelledBy: isOwner ? "Patient via Portal" : `Staff (${dbPerson.firstName} ${dbPerson.lastName})`,
+      }).catch((err) => console.error("[email] receptionist cancellation alert failed:", err));
+    }
+  }).catch((err) => console.error("[email] failed fetching receptionists for cancellation alert:", err));
 
   revalidatePath('/dashboard/appointments');
   revalidatePath('/dashboard');

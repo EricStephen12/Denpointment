@@ -11,6 +11,7 @@ import {
   Smartphone,
   Monitor,
   Sparkles,
+  Bell,
 } from "lucide-react";
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
 
 export default function EmailTemplatesGallery({ clinicName }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState<
-    "confirmation" | "reminder" | "receipt" | "treatment" | "birthday" | "reset"
+    "confirmation" | "reminder" | "receipt" | "treatment" | "birthday" | "reset" | "reception_intake"
   >("confirmation");
 
   const [deviceView, setDeviceView] = useState<"desktop" | "mobile">("desktop");
@@ -429,6 +430,83 @@ export default function EmailTemplatesGallery({ clinicName }: Props) {
   </div>
 </body>
 </html>`,
+    reception_intake: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:24px 12px;background:#f6f8fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 10px 28px -6px rgba(15,23,42,0.06);">
+    <div style="height:6px;background:linear-gradient(90deg, #0f4c42 0%, #0d9488 50%, #d4af37 100%);"></div>
+    <div style="padding:28px 32px 20px;border-bottom:1px solid #f1f5f9;">
+      <table cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:40px;height:40px;background:linear-gradient(135deg, #0f4c42 0%, #064039 100%);border-radius:12px;text-align:center;vertical-align:middle;">
+            <span style="font-size:20px;line-height:1;">📋</span>
+          </td>
+          <td style="padding-left:14px;">
+            <p style="margin:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;color:#0d5c52;">Front Desk Intake Alert</p>
+            <p style="margin:3px 0 0;font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">${clinicName}</p>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div style="padding:32px 32px 24px;">
+      <div style="margin-bottom:18px;">
+        <span style="display:inline-block;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;background:#e6f7f5;color:#0d5c52;border:1px solid #99ded6;">
+          📋 New Patient Booking · Reception Alert
+        </span>
+      </div>
+      <p style="margin:0 0 12px;font-size:16px;font-weight:700;color:#0f172a;">Hello <strong>Reception Team</strong>,</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#334155;line-height:1.7;">
+        A new patient appointment has just been booked. Here are the intake details for front-desk reception and room preparation:
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin:22px 0;">
+        <tr>
+          <td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#64748b;width:34%;border-bottom:1px solid #edf2f7;">Patient Name</td>
+          <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#0d5c52;border-bottom:1px solid #edf2f7;">
+            <span style="background:#e6f7f5;color:#0d5c52;padding:3px 10px;border-radius:6px;font-size:13px;border:1px solid #99ded6;">Ada Okafor · +234 802 345 6789</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#64748b;border-bottom:1px solid #edf2f7;">Email</td>
+          <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #edf2f7;">ada.okafor@example.com</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#64748b;border-bottom:1px solid #edf2f7;">Procedure</td>
+          <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#0f172a;border-bottom:1px solid #edf2f7;">Scaling &amp; Polishing</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#64748b;border-bottom:1px solid #edf2f7;">Date &amp; Time</td>
+          <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#0f172a;border-bottom:1px solid #edf2f7;">Thursday, 15 October 2026 at 10:00 AM</td>
+        </tr>
+        <tr>
+          <td style="padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:#64748b;">Doctor &amp; Room</td>
+          <td style="padding:12px 16px;font-size:14px;font-weight:700;color:#0f172a;">Dr. Eric Stephen · Room 102</td>
+        </tr>
+      </table>
+      <div style="background:#f0fdf4;border-left:4px solid #16a34a;border-radius:0 10px 10px 0;padding:14px 18px;margin:22px 0;">
+        <p style="margin:0;font-size:13px;color:#166534;line-height:1.65;">
+          <strong>Front Desk Checklist:</strong><br/>
+          • Review patient medical chart &amp; intake notes in the system.<br/>
+          • Ensure Room 102 is prepped and Dr. Eric Stephen is notified.<br/>
+          • Check in the patient upon clinic arrival.
+        </p>
+      </div>
+      <div style="text-align:center;margin:28px 0 12px;">
+        <a href="#" style="background:linear-gradient(135deg, #0d5c52 0%, #064039 100%);color:#ffffff;text-decoration:none;padding:13px 32px;border-radius:10px;font-weight:700;font-size:14px;display:inline-block;box-shadow:0 4px 14px rgba(13,92,82,0.25);">
+          Open Reception Desk →
+        </a>
+      </div>
+    </div>
+    <div style="background:#fafbfc;border-top:1px solid #edf2f7;padding:22px 32px;">
+      <p style="margin:0;font-size:12px;font-weight:700;color:#334155;">${clinicName} — Automated Reception Intake Dispatch</p>
+      <p style="margin:3px 0 0;font-size:11px;color:#64748b;line-height:1.6;">
+        Real-time notification dispatched to receptionist accounts and clinic front desk.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
   };
 
   return (
@@ -512,6 +590,19 @@ export default function EmailTemplatesGallery({ clinicName }: Props) {
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>Password Reset</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedTemplate("reception_intake")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              selectedTemplate === "reception_intake"
+                ? "bg-turq-600 text-ink-950 font-semibold"
+                : "text-sand-50/60 hover:text-sand-50 hover:bg-sand-50/5"
+            }`}
+          >
+            <Bell className="w-3.5 h-3.5" />
+            <span>Reception Alert</span>
           </button>
         </div>
 

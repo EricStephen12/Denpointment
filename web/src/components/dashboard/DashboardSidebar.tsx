@@ -191,11 +191,12 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
           {role === "admin" && (
             <>
               <SectionLabel label="Daily Clinic Flow" />
-              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Calendar & Schedule" stepNum={1} />
-              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={2} />
-              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Treatments" stepNum={3} />
-              <NavItem href="/dashboard/admin/billing" icon={CreditCard} label="Billing & Payments" stepNum={4} />
-              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recalls & Follow-up" stepNum={5} />
+              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits & Reassign" stepNum={1} />
+              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Calendar & Schedule" stepNum={2} />
+              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={3} />
+              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Treatments" stepNum={4} />
+              <NavItem href="/dashboard/admin/billing" icon={CreditCard} label="Billing & Payments" stepNum={5} />
+              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recalls & Follow-up" stepNum={6} />
 
               <SectionLabel label="Practice Management" />
               <NavItem href="/dashboard/patients" icon={Users} label="Patient Registry" />
@@ -214,11 +215,12 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
           {role === "receptionist" && (
             <>
               <SectionLabel label="Front Desk Flow" />
-              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={1} />
-              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Multi-Dentist Calendar" stepNum={2} />
-              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Appointments" stepNum={3} />
-              <NavItem href="/dashboard/book" icon={CalendarPlus} label="Book Appointment" stepNum={4} />
-              <NavItem href="/dashboard/reception/waitlist" icon={ClipboardList} label="Waiting List" stepNum={5} />
+              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits & Reassign" stepNum={1} />
+              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={2} />
+              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Multi-Dentist Calendar" stepNum={3} />
+              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Appointments" stepNum={4} />
+              <NavItem href="/dashboard/book" icon={CalendarPlus} label="Book Appointment" stepNum={5} />
+              <NavItem href="/dashboard/reception/waitlist" icon={ClipboardList} label="Waiting List" stepNum={6} />
 
               <SectionLabel label="Patients & Cash Desk" />
               <NavItem href="/dashboard/patients" icon={Users} label="Patient Registry" />

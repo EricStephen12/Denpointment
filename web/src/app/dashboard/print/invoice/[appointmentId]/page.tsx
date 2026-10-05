@@ -53,6 +53,7 @@ export default async function PrintInvoicePage({
   const totalRefunds  = appt.payments.filter((p) => p.type === "refund").reduce((s, p) => s + p.amount, 0);
   const outstanding   = Math.max(totalCharge - totalPayments - totalDisc, 0);
   const isSettled     = outstanding === 0 && totalCharge > 0;
+  const lastPayment   = appt.payments.filter((p) => p.type === "payment").at(-1);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 font-sans">
@@ -63,7 +64,31 @@ export default async function PrintInvoicePage({
         patientEmail={person.email}
       />
 
-      <div className="max-w-[720px] mx-auto px-8 py-12 print:py-6 mt-14 print:mt-0">
+      {/*
+        ─── A4 INVOICE ────────────────────────────────────────────────────────────
+        Hidden when data-receipt-mode="true" is set on <html>
+      */}
+      <style>{`
+        @media print {
+          html[data-receipt-mode="true"] .a4-invoice { display: none !important; }
+          html:not([data-receipt-mode="true"]) .receipt-80mm { display: none !important; }
+
+          /* 80mm receipt page size */
+          html[data-receipt-mode="true"] {
+            size: 80mm auto;
+          }
+          @page {
+            margin: 0;
+          }
+        }
+        /* On screen, always show A4; receipt is screen-preview-hidden unless requested */
+        .receipt-80mm { display: none; }
+        html[data-receipt-mode="true"] .receipt-80mm { display: block; }
+        html[data-receipt-mode="true"] .a4-invoice { display: none; }
+      `}</style>
+
+      {/* ── A4 Layout ── */}
+      <div className="a4-invoice max-w-[720px] mx-auto px-8 py-12 print:py-6 mt-14 print:mt-0">
         {/* Clinic header */}
         <div className="flex items-start justify-between border-b-2 border-gray-900 pb-5 mb-6">
           <div>
@@ -197,6 +222,116 @@ export default async function PrintInvoicePage({
         <div className="border-t border-gray-200 pt-6 text-center">
           <p className="text-sm text-gray-500">Thank you for choosing {site.clinicName}</p>
           <p className="text-xs text-gray-400 mt-1">{site.address} · {site.phone}</p>
+        </div>
+      </div>
+
+      {/*
+        ─── 80mm THERMAL RECEIPT ──────────────────────────────────────────────────
+        Rendered at exactly 80mm width. Shown only when data-receipt-mode="true".
+      */}
+      <div
+        className="receipt-80mm"
+        style={{
+          width: "80mm",
+          margin: "0 auto",
+          fontFamily: "monospace",
+          fontSize: "11px",
+          color: "#000",
+          padding: "4mm 3mm",
+        }}
+      >
+        {/* Clinic name */}
+        <div style={{ textAlign: "center", marginBottom: "3mm" }}>
+          <p style={{ fontWeight: "bold", fontSize: "13px", margin: 0 }}>{site.clinicName}</p>
+          <p style={{ margin: "1mm 0 0" }}>{site.address}</p>
+          <p style={{ margin: 0 }}>Tel: {site.phone}</p>
+          {site.email && <p style={{ margin: 0 }}>{site.email}</p>}
+        </div>
+
+        <p style={{ borderTop: "1px dashed #000", margin: "2mm 0" }} />
+
+        {/* Receipt label + number */}
+        <div style={{ textAlign: "center", marginBottom: "2mm" }}>
+          <p style={{ fontWeight: "bold", fontSize: "12px", margin: 0 }}>RECEIPT</p>
+          <p style={{ margin: "0.5mm 0 0" }}>#{String(appointmentId).padStart(6, "0")} · {dateStr}</p>
+        </div>
+
+        <p style={{ borderTop: "1px dashed #000", margin: "2mm 0" }} />
+
+        {/* Patient */}
+        <div style={{ marginBottom: "2mm" }}>
+          <p style={{ margin: 0 }}>Patient: <strong>{person.firstName} {person.lastName}</strong></p>
+          {phone && <p style={{ margin: 0 }}>Tel: {phone}</p>}
+          <p style={{ margin: 0 }}>Dr. {dentist.firstName} {dentist.lastName}</p>
+        </div>
+
+        <p style={{ borderTop: "1px dashed #000", margin: "2mm 0" }} />
+
+        {/* Items */}
+        {appt.treatments.map((t) => (
+          <div key={t.treatmentId} style={{ display: "flex", justifyContent: "space-between", marginBottom: "1mm" }}>
+            <span style={{ maxWidth: "55mm", wordBreak: "break-word" }}>
+              {t.action}{t.toothNumber ? ` (T${t.toothNumber})` : ""}
+            </span>
+            <span style={{ whiteSpace: "nowrap", marginLeft: "2mm" }}>{formatNaira(t.charge)}</span>
+          </div>
+        ))}
+
+        <p style={{ borderTop: "1px dashed #000", margin: "2mm 0" }} />
+
+        {/* Totals */}
+        <div style={{ marginBottom: "1mm" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Subtotal</span><span>{formatNaira(totalCharge)}</span>
+          </div>
+          {totalDisc > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Discount</span><span>-{formatNaira(totalDisc)}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <span>Paid</span><span>-{formatNaira(totalPayments)}</span>
+          </div>
+          {totalRefunds > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Refunded</span><span>+{formatNaira(totalRefunds)}</span>
+            </div>
+          )}
+        </div>
+
+        <p style={{ borderTop: "2px solid #000", margin: "2mm 0 1mm" }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "13px" }}>
+          <span>BALANCE DUE</span>
+          <span>{formatNaira(outstanding)}</span>
+        </div>
+        <div style={{ textAlign: "center", marginTop: "1mm" }}>
+          <span
+            style={{
+              fontWeight: "bold",
+              fontSize: "12px",
+              color: isSettled ? "#15803d" : "#b91c1c",
+            }}
+          >
+            {isSettled ? "✓ FULLY PAID" : "⚠ OUTSTANDING"}
+          </span>
+        </div>
+
+        {/* Last payment method */}
+        {lastPayment && (
+          <div style={{ textAlign: "center", marginTop: "1.5mm", fontSize: "10px" }}>
+            Payment via {lastPayment.method.replace("_", " ")}
+            {lastPayment.reference ? ` · Ref: ${lastPayment.reference}` : ""}
+          </div>
+        )}
+
+        <p style={{ borderTop: "1px dashed #000", margin: "3mm 0 2mm" }} />
+
+        {/* Footer */}
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontWeight: "bold", margin: 0 }}>Thank you!</p>
+          <p style={{ margin: "0.5mm 0 0", fontSize: "10px" }}>Please keep this receipt for your records.</p>
+          <p style={{ margin: "0.5mm 0 0", fontSize: "10px" }}>{site.clinicName} · {site.phone}</p>
         </div>
       </div>
     </div>

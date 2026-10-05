@@ -11,6 +11,7 @@ import SendReminderButton from "@/components/reception/SendReminderButton";
 import CheckInActions from "@/components/reception/CheckInActions";
 import {
   CalendarCheck,
+  Calendar,
   Clock,
   Phone,
   Download,
@@ -102,6 +103,12 @@ export default async function CheckInPage() {
           >
             Multi-Dentist Calendar
           </Link>
+          <Link
+            href="/dashboard/treatments/upcoming"
+            className="inline-flex items-center gap-1.5 text-xs bg-turq-600/20 hover:bg-turq-600/30 text-turq-300 border border-turq-500/30 px-3 py-1.5 rounded-lg transition-colors font-medium"
+          >
+            <Calendar className="h-3.5 w-3.5" /> Upcoming Visits &amp; Reassign
+          </Link>
           <a
             href={`/api/export/schedule?date=${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`}
             className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/60 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
@@ -131,13 +138,21 @@ export default async function CheckInPage() {
       {appointments.length === 0 ? (
         <div className="text-center py-16 text-sand-50/40 border border-dashed border-sand-50/10 rounded-2xl">
           <p className="font-semibold text-sand-50 mb-1">No appointments scheduled for today.</p>
-          <p className="text-xs text-sand-50/40 mb-4">Book in a patient or view upcoming dates.</p>
-          <Link
-            href="/dashboard/book"
-            className="inline-flex items-center gap-2 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 font-semibold px-4 py-2 rounded-xl transition-colors"
-          >
-            Book Patient
-          </Link>
+          <p className="text-xs text-sand-50/40 mb-5">Book in a patient or view upcoming dates to reassign or prepare visits.</p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/dashboard/book"
+              className="inline-flex items-center gap-2 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              Book Patient
+            </Link>
+            <Link
+              href="/dashboard/treatments/upcoming"
+              className="inline-flex items-center gap-2 text-xs border border-turq-500/30 bg-turq-600/20 hover:bg-turq-600/30 text-turq-300 font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <Calendar className="h-3.5 w-3.5" /> View Upcoming Visits &amp; Reassign
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

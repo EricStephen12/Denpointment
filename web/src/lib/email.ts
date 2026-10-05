@@ -133,12 +133,13 @@ function baseLayout(
 }
 
 // ─── Status Badge helper ──────────────────────────────────────────────────────
-function statusBadge(text: string, type: "confirmed" | "reminder" | "paid" | "care" = "confirmed"): string {
+function statusBadge(text: string, type: "confirmed" | "reminder" | "paid" | "care" | "cancelled" = "confirmed"): string {
   const styles = {
     confirmed: "background:#e6f7f5;color:#0d5c52;border:1px solid #99ded6;",
     reminder: "background:#fffbeb;color:#92400e;border:1px solid #fde68a;",
     paid: "background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;",
     care: "background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;",
+    cancelled: "background:#fef2f2;color:#991b1b;border:1px solid #fecaca;",
   }[type];
 
   return `
@@ -513,6 +514,106 @@ export async function sendDentistNewAppointmentEmail(params: {
     to,
     `New Appointment: ${patientName} — ${label} at ${hour}:00`,
     baseLayout(name, "#1a7a6a", content, `${name} — automated schedule alert`),
+  );
+}
+
+/** Front desk / Receptionist booking intake alert notification */
+export async function sendReceptionistNewAppointmentEmail(params: {
+  to: string;
+  receptionistName?: string;
+  patientName: string;
+  patientEmail: string;
+  patientPhone?: string;
+  dentistName: string;
+  room: string;
+  date: CalendarDay;
+  hour: number;
+  serviceName?: string;
+  notes?: string | null;
+}) {
+  const {
+    to,
+    receptionistName,
+    patientName,
+    patientEmail,
+    patientPhone,
+    dentistName,
+    room,
+    date,
+    hour,
+    serviceName,
+    notes,
+  } = params;
+  const name = await clinicName();
+  const label = formatAppointmentDate(date);
+
+  const content = `
+    ${statusBadge("📋 New Patient Booking", "confirmed")}
+    ${greeting(receptionistName || "Reception Team")}
+    ${para("A new appointment has just been booked. Here are the intake details for front-desk preparation:")}
+    ${detailTable([
+      { label: "Patient", value: `${patientName} (${patientEmail}${patientPhone ? ` · ${patientPhone}` : ""})`, highlight: true },
+      ...(serviceName ? [{ label: "Procedure", value: serviceName }] : []),
+      { label: "Date & Time", value: `${label} at ${hour}:00 (${hour >= 12 ? "PM" : "AM"})` },
+      { label: "Doctor & Room", value: `Dr. ${dentistName} · Room ${room}` },
+      ...(notes ? [{ label: "Intake Notes", value: notes }] : []),
+    ])}
+    ${calloutBox("<strong>Front Desk Checklist:</strong><br/>• Confirm patient chart & dental history before arrival.<br/>• Ensure Room " + room + " is prepped for Dr. " + dentistName + ".<br/>• Guide patient through check-in upon arrival at the clinic.")}
+  `;
+
+  await sendEmail(
+    to,
+    `New Booking Alert: ${patientName} with Dr. ${dentistName} — ${label} at ${hour}:00`,
+    baseLayout(name, "#0f4c42", content, `${name} — Front Desk Intake Notification`),
+  );
+}
+
+/** Front desk / Receptionist appointment cancellation alert notification */
+export async function sendReceptionistAppointmentCancellationEmail(params: {
+  to: string;
+  receptionistName?: string;
+  patientName: string;
+  patientEmail: string;
+  dentistName: string;
+  room: string;
+  date: CalendarDay;
+  hour: number;
+  serviceName?: string;
+  cancelledBy?: string;
+}) {
+  const {
+    to,
+    receptionistName,
+    patientName,
+    patientEmail,
+    dentistName,
+    room,
+    date,
+    hour,
+    serviceName,
+    cancelledBy,
+  } = params;
+  const name = await clinicName();
+  const label = formatAppointmentDate(date);
+
+  const content = `
+    ${statusBadge("❌ Appointment Cancelled", "cancelled")}
+    ${greeting(receptionistName || "Reception Team")}
+    ${para("An appointment has just been cancelled on the clinic schedule. The slot has been freed on the calendar:")}
+    ${detailTable([
+      { label: "Patient", value: `${patientName} (${patientEmail})` },
+      ...(serviceName ? [{ label: "Procedure", value: serviceName }] : []),
+      { label: "Date & Time", value: `${label} at ${hour}:00 (${hour >= 12 ? "PM" : "AM"})` },
+      { label: "Doctor & Room", value: `Dr. ${dentistName} · Room ${room}` },
+      ...(cancelledBy ? [{ label: "Cancelled By", value: cancelledBy }] : []),
+    ])}
+    ${calloutBox("<strong>Front Desk Action Items:</strong><br/>• Room " + room + " at " + hour + ":00 is now OPEN for booking.<br/>• You can offer this time slot to a patient on the waiting list.<br/>• Daily intake sheet has been updated automatically.")}
+  `;
+
+  await sendEmail(
+    to,
+    `Cancellation Notice: ${patientName} with Dr. ${dentistName} — ${label} at ${hour}:00`,
+    baseLayout(name, "#ef4444", content, `${name} — Front Desk Schedule Update`),
   );
 }
 
