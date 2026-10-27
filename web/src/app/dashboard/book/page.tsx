@@ -7,7 +7,6 @@ import { getSiteContent } from "@/lib/site";
 import { Calendar } from 'lucide-react';
 import Link from "next/link";
 import BookingCalendar from "@/components/dashboards/BookingCalendar";
-import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 import {
   addCalendarDays,
   getClinicDay,
@@ -175,12 +174,10 @@ export default async function BookAppointmentPage({
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
-      {staffBooking && <ClinicWorkflowTracker currentStep={1} />}
-
       <div className="mb-6 animate-fade-up">
         <div className="flex items-center justify-between gap-4 mb-2">
           <p className="text-xs font-medium text-turq-400 uppercase tracking-widest">
-            {staffBooking ? "Staff Booking · Step 1" : "Your Next Visit"}
+            {staffBooking ? "Staff Booking" : "Your Next Visit"}
           </p>
           {staffBooking && (
             <Link
@@ -191,18 +188,12 @@ export default async function BookAppointmentPage({
             </Link>
           )}
         </div>
-        <h1 className="text-3xl md:text-4xl font-display text-sand-50 leading-tight">
-          Book an Appointment
+        <h1 className="text-2xl md:text-3xl font-display text-sand-50">
+          Book Appointment
         </h1>
-        <p className="mt-2 text-sand-50/50 text-sm">
-          {staffBooking
-            ? "Book a visit on behalf of a patient."
-            : "Pick a day that works for you — we'll handle the rest."}
-        </p>
-        <p className="text-xs text-sand-50/30 mt-3">
-          Open {openHour > 12 ? openHour - 12 : openHour}:00{openHour >= 12 ? " PM" : " AM"} –{" "}
-          {closeHour > 12 ? closeHour - 12 : closeHour}:00{closeHour >= 12 ? " PM" : " AM"},{" "}
-          {workingDayNames}.
+        <p className="text-xs text-sand-50/40 mt-1 font-mono">
+          Hours: {openHour > 12 ? openHour - 12 : openHour}:00{openHour >= 12 ? "PM" : "AM"} –{" "}
+          {closeHour > 12 ? closeHour - 12 : closeHour}:00{closeHour >= 12 ? "PM" : "AM"} ({workingDayNames})
         </p>
       </div>
 

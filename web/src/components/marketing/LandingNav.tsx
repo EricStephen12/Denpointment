@@ -127,7 +127,6 @@ export default function LandingNav({
           <div className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-8 md:gap-10 py-6 px-4">
             {[
               { href: "/#services", label: "Services" },
-              { href: "/#pricing", label: "Price List" },
               { href: "/#visit", label: "Visit / Map" },
               { href: "/#team", label: "The Doctors" },
               { href: "/#testimonials", label: "Testimonials" },

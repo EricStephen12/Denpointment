@@ -24,7 +24,6 @@ import { prisma } from "@/lib/prisma";
 import type { PersonWithRoles } from "@/lib/auth";
 import { getClinicDay, formatAppointmentDate } from "@/lib/clinic-date";
 import { formatNaira } from "@/lib/currency";
-import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 
 export default async function AdminDashboard({ user }: { user?: PersonWithRoles } = {}) {
   const today = getClinicDay();
@@ -181,17 +180,82 @@ export default async function AdminDashboard({ user }: { user?: PersonWithRoles 
         </div>
       </header>
 
-      {/* ── 2. THE 5-STEP CONNECTED DAILY WORKFLOW BAR ── */}
-      <section aria-label="Daily Clinic Workflow">
-        <ClinicWorkflowTracker
-          counts={{
-            booked: bookedCount,
-            checkedIn: checkedInCount,
-            inChair: inChairCount,
-            needBilling: needBillingCount,
-            recallsDue: openRecalls,
-          }}
-        />
+      {/* ── 2. EXECUTIVE KPI CARDS ROW ── */}
+      <section aria-label="Key Clinic Metrics" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Today's Visits */}
+        <div className="dash-surface p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-sand-50/50 uppercase tracking-wider">Today's Visits</span>
+            <div className="p-2 rounded-lg bg-turq-500/10 text-turq-400">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-display text-sand-50 tabular-nums">{bookedCount}</span>
+              <span className="text-xs text-turq-400 font-medium">{checkedInCount} checked in</span>
+            </div>
+            <p className="text-[11px] text-sand-50/40 mt-1">
+              {completedToday.length} completed · {inChairCount} in chair
+            </p>
+          </div>
+        </div>
+
+        {/* Metric 2: Active Patients */}
+        <div className="dash-surface p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-sand-50/50 uppercase tracking-wider">Active Patients</span>
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+              <Users className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-display text-sand-50 tabular-nums">{totalPatients.toLocaleString()}</span>
+              <span className="text-xs text-sand-50/50">registered</span>
+            </div>
+            <p className="text-[11px] text-sand-50/40 mt-1">
+              {waitlistCount} waiting list · {openRecalls} recalls due
+            </p>
+          </div>
+        </div>
+
+        {/* Metric 3: Total Revenue */}
+        <div className="dash-surface p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-sand-50/50 uppercase tracking-wider">Total Revenue</span>
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-display text-sand-50 tabular-nums">{formatNaira(totalRevenue)}</span>
+            </div>
+            <p className="text-[11px] text-sand-50/40 mt-1">
+              Practice lifetime receipts recorded
+            </p>
+          </div>
+        </div>
+
+        {/* Metric 4: Pending Invoices / Unpaid */}
+        <div className="dash-surface p-4 flex flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-sand-50/50 uppercase tracking-wider">Pending Balances</span>
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold font-display text-sand-50 tabular-nums">{unpaidCount}</span>
+              <span className="text-xs text-amber-400/80">unpaid charges</span>
+            </div>
+            <p className="text-[11px] text-sand-50/40 mt-1">
+              {needBillingCount > 0 ? `${needBillingCount} visits awaiting billing` : "All visits billed today"}
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* ── 3. TODAY'S LIVE QUEUE & QUICK ACTIONS ── */}
@@ -237,7 +301,7 @@ export default async function AdminDashboard({ user }: { user?: PersonWithRoles 
                       <th className="py-2.5 px-3">Patient</th>
                       <th className="py-2.5 px-3">Doctor</th>
                       <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3 text-right">Next Action</th>
+                      <th className="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-sand-50/5">
@@ -278,7 +342,6 @@ export default async function AdminDashboard({ user }: { user?: PersonWithRoles 
                               className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${action.tone}`}
                             >
                               <span>{action.label}</span>
-                              <ArrowRight className="h-3 w-3" />
                             </Link>
                           </td>
                         </tr>

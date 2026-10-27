@@ -45,7 +45,6 @@ export default function MarketingFooter({
             <h4 className="text-turq-300 text-xs tracking-[0.3em] uppercase mb-8">Explore</h4>
             <ul className="space-y-4 text-sm tracking-wide text-sand-50/70">
               <li><Link href="/#services" className="hover:text-turq-400 transition-colors">Services</Link></li>
-              <li><Link href="/#pricing" className="hover:text-turq-400 transition-colors">Price List</Link></li>
               <li><Link href="/#team" className="hover:text-turq-400 transition-colors">Our Dentists</Link></li>
               <li><Link href="/#testimonials" className="hover:text-turq-400 transition-colors">Testimonials</Link></li>
             </ul>

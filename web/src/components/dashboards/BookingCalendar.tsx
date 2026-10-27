@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Tag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Loader2, Tag, UserCheck, Stethoscope, Phone, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { formatNaira } from "@/lib/currency";
 import { compareCalendarDays, formatAppointmentDate, type CalendarDay } from "@/lib/clinic-date";
@@ -49,13 +49,22 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
+
 function toDateKey(y: number, m: number, d: number): string {
   return `${y}-${pad(m + 1)}-${pad(d)}`;
 }
+
 function formatTime(h: number): string {
   const ampm = h >= 12 ? "PM" : "AM";
   const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
   return `${display}:00 ${ampm}`;
+}
+
+/** Clean up any redundant "Dr." or "Dentist" prefixes in provider names */
+function formatDentistName(rawName: string): string {
+  if (!rawName) return "";
+  const clean = rawName.replace(/^(Dr\.?|Dentist)\s+/gi, "").trim();
+  return clean ? `Dr. ${clean}` : rawName;
 }
 
 export default function BookingCalendar({
@@ -93,7 +102,7 @@ export default function BookingCalendar({
       if (match) return match.serviceId.toString();
     }
     const consultation = services.find(
-      (s) => s.name.toLowerCase() === "consultation"
+      (s) => s.name.toLowerCase() === "consultation",
     );
     return consultation ? consultation.serviceId.toString() : services[0].serviceId.toString();
   }, [services, initialServiceName]);
@@ -104,8 +113,12 @@ export default function BookingCalendar({
     [services, selectedServiceId],
   );
 
-  const [bookingNotes, setBookingNotes] = useState("");
+  const selectedDentist = useMemo(
+    () => dentists.find((d) => d.dentistId.toString() === selectedDentistId),
+    [dentists, selectedDentistId],
+  );
 
+  const [bookingNotes, setBookingNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -193,7 +206,7 @@ export default function BookingCalendar({
     if (isStaffBooking && !selectedPatientId) return;
 
     if (!isStaffBooking && !phone.trim()) {
-      setError("Please enter your phone number so we can confirm your appointment.");
+      setError("Please enter your contact phone number to confirm your booking.");
       return;
     }
 
@@ -212,7 +225,6 @@ export default function BookingCalendar({
       try {
         await bookAction(formData);
       } catch (err) {
-        // Next.js redirect() throws a special error — let it through.
         if (
           typeof err === "object" &&
           err !== null &&
@@ -232,11 +244,10 @@ export default function BookingCalendar({
   const hasAnySlots = Object.keys(slots).length > 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {!hasAnySlots && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-900/20 px-4 py-3 text-sm text-amber-200">
-          No bookable slots right now. The clinic needs at least one dentist on staff
-          (Dashboard → Staff), and open hours must include working days.
+          No bookable slots currently available. Please check clinic schedule settings.
         </div>
       )}
 
@@ -246,108 +257,114 @@ export default function BookingCalendar({
         </div>
       )}
 
-      {/* Staff: patient selector */}
-      {isStaffBooking && patients && (
-        <div className="space-y-2">
-          <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
-            Patient
-          </label>
-          <select
-            value={selectedPatientId}
-            onChange={(e) => setSelectedPatientId(e.target.value)}
-            style={{ colorScheme: "dark" }}
-            className="input-premium !bg-ink-900 !text-sand-50"
-          >
-            <option value="" className="bg-ink-900 text-sand-50">Select a patient…</option>
-            {patients.map((p) => (
-              <option key={p.patientId} value={p.patientId} className="bg-ink-900 text-sand-50">
-                {p.name} ({p.email})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Procedure / Treatment Selector */}
-      {services && services.length > 0 && (
-        <div id="booking-procedure-selector" className="space-y-2 scroll-mt-20">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
-              Procedure / Reason for Visit
+      {/* ── STEP 1: Clinical Procedure & Dentist Setup ── */}
+      <div className="dash-card p-5 space-y-4">
+        {/* Staff: patient selector */}
+        {isStaffBooking && patients && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-turq-400 uppercase tracking-widest flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-turq-400" />
+              Patient
             </label>
-            {selectedService && (
-              <span className="text-xs font-display text-turq-300">
-                {formatNaira(selectedService.price)}
-              </span>
-            )}
-          </div>
-          <select
-            value={selectedServiceId}
-            onChange={(e) => setSelectedServiceId(e.target.value)}
-            style={{ colorScheme: "dark" }}
-            className="input-premium !bg-ink-900 !text-sand-50 py-3.5 text-sm font-medium border-sand-50/15 focus:border-turq-400"
-          >
-            {services.map((s) => (
-              <option key={s.serviceId} value={s.serviceId} className="bg-ink-900 text-sand-50 py-2">
-                {s.name} — {formatNaira(s.price)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Assign Dentist / Doctor & Room */}
-      {dentists && dentists.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-semibold text-turq-300 uppercase tracking-widest">
-              Preferred Doctor / Dentist
-            </label>
-            <span className="text-xs text-sand-50/40">
-              {isStaffBooking ? "Assign specific dentist" : "Optional"}
-            </span>
-          </div>
-          <div className={`grid grid-cols-1 ${isStaffBooking ? "sm:grid-cols-2" : ""} gap-3`}>
             <select
-              value={selectedDentistId}
-              onChange={(e) => {
-                setSelectedDentistId(e.target.value);
-                const d = dentists.find((dx) => dx.dentistId.toString() === e.target.value);
-                if (d) setRoom(d.roomNumber.toString());
-              }}
+              value={selectedPatientId}
+              onChange={(e) => setSelectedPatientId(e.target.value)}
               style={{ colorScheme: "dark" }}
-              className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400"
+              className="input-premium !bg-ink-900 !text-sand-50"
             >
-              <option value="" className="bg-ink-900 text-sand-50">
-                Any Available Dentist (Auto-Assigned)
-              </option>
-              {dentists.map((d) => (
-                <option key={d.dentistId} value={d.dentistId.toString()} className="bg-ink-900 text-sand-50">
-                  Dr. {d.name} (Room {d.roomNumber})
+              <option value="" className="bg-ink-900 text-sand-50">Select a patient…</option>
+              {patients.map((p) => (
+                <option key={p.patientId} value={p.patientId} className="bg-ink-900 text-sand-50">
+                  {p.name} ({p.email})
                 </option>
               ))}
             </select>
-
-            {isStaffBooking && (
-              <div>
-                <input
-                  type="text"
-                  value={room}
-                  onChange={(e) => setRoom(e.target.value)}
-                  placeholder="Operatory Room (e.g. 102)"
-                  maxLength={5}
-                  className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400 w-full"
-                />
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Calendar ── */}
+        {/* Procedure / Treatment Selector */}
+        {services && services.length > 0 && (
+          <div id="booking-procedure-selector" className="space-y-1.5 scroll-mt-20">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-turq-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Tag className="h-3.5 w-3.5 text-turq-400" />
+                Procedure
+              </label>
+              {selectedService && (
+                <span className="text-xs font-display text-turq-300">
+                  {formatNaira(selectedService.price)}
+                </span>
+              )}
+            </div>
+            <select
+              value={selectedServiceId}
+              onChange={(e) => setSelectedServiceId(e.target.value)}
+              style={{ colorScheme: "dark" }}
+              className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400"
+            >
+              {services.map((s) => (
+                <option key={s.serviceId} value={s.serviceId} className="bg-ink-900 text-sand-50 py-2">
+                  {s.name} — {formatNaira(s.price)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Attending Dentist Selection (Single clear selection) */}
+        {dentists && dentists.length > 0 && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-turq-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Stethoscope className="h-3.5 w-3.5 text-turq-400" />
+                Dentist
+              </label>
+              <span className="text-xs text-sand-50/40">
+                {isStaffBooking ? "Assign provider" : "Optional"}
+              </span>
+            </div>
+            <div className={`grid grid-cols-1 ${isStaffBooking ? "sm:grid-cols-2" : ""} gap-3`}>
+              <select
+                value={selectedDentistId}
+                onChange={(e) => {
+                  setSelectedDentistId(e.target.value);
+                  const d = dentists.find((dx) => dx.dentistId.toString() === e.target.value);
+                  if (d) setRoom(d.roomNumber.toString());
+                }}
+                style={{ colorScheme: "dark" }}
+                className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400"
+              >
+                <option value="" className="bg-ink-900 text-sand-50">
+                  Any Available Dentist
+                </option>
+                {dentists.map((d) => (
+                  <option key={d.dentistId} value={d.dentistId.toString()} className="bg-ink-900 text-sand-50">
+                    {formatDentistName(d.name)} {d.roomNumber ? `(Room ${d.roomNumber})` : ""}
+                  </option>
+                ))}
+              </select>
+
+              {isStaffBooking && (
+                <div>
+                  <input
+                    type="text"
+                    value={room}
+                    onChange={(e) => setRoom(e.target.value)}
+                    placeholder="Operatory Room"
+                    maxLength={10}
+                    className="input-premium !bg-ink-900 !text-sand-50 py-3 text-sm font-medium border-sand-50/15 focus:border-turq-400 w-full"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── STEP 2: Calendar & Times ── */}
       <div className="dash-card overflow-hidden">
         {/* Month header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-sand-50/8">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-sand-50/8">
           <button
             onClick={goToPrevMonth}
             disabled={!canGoPrev}
@@ -356,7 +373,7 @@ export default function BookingCalendar({
           >
             <ChevronLeft className="h-5 w-5 text-sand-50" />
           </button>
-          <h2 className="font-display text-xl text-sand-50">
+          <h2 className="font-display text-lg text-sand-50">
             {MONTHS[viewMonth]} {viewYear}
           </h2>
           <button
@@ -369,7 +386,7 @@ export default function BookingCalendar({
         </div>
 
         {/* Day-of-week headers */}
-        <div className="grid grid-cols-7 px-4 pt-4 pb-2">
+        <div className="grid grid-cols-7 px-4 pt-3 pb-1">
           {DAYS.map((d) => (
             <div key={d} className="text-center text-[11px] font-semibold text-sand-50/30 uppercase tracking-wider">
               {d}
@@ -378,7 +395,7 @@ export default function BookingCalendar({
         </div>
 
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1 px-4 pb-5">
+        <div className="grid grid-cols-7 gap-1 px-4 pb-4">
           {calendarDays.map((cell, i) => {
             const key = toDateKey(cell.year, cell.month, cell.day);
             const cellDay = { year: cell.year, month: cell.month + 1, day: cell.day };
@@ -394,7 +411,7 @@ export default function BookingCalendar({
                 onClick={() => !isDisabled && handleDayClick(key)}
                 disabled={isDisabled}
                 className={`
-                  relative aspect-square flex flex-col items-center justify-center rounded-2xl text-sm font-medium transition-all duration-200
+                  relative aspect-square flex flex-col items-center justify-center rounded-xl text-sm font-medium transition-all duration-150
                   ${!cell.isCurrentMonth ? "text-sand-50/15" : ""}
                   ${cell.isCurrentMonth && isPast ? "text-sand-50/20 cursor-not-allowed" : ""}
                   ${cell.isCurrentMonth && !isPast && !isAvailable ? "text-sand-50/25 cursor-not-allowed" : ""}
@@ -403,16 +420,15 @@ export default function BookingCalendar({
                     : ""
                   }
                   ${isSelected
-                    ? "bg-turq-600 text-ink-950 shadow-lg shadow-turq-600/25 scale-105"
+                    ? "bg-turq-600 text-ink-950 font-semibold shadow-md shadow-turq-600/25 scale-105"
                     : ""
                   }
-                  ${isToday && !isSelected ? "ring-2 ring-turq-400/40 ring-inset" : ""}
+                  ${isToday && !isSelected ? "ring-1.5 ring-turq-400/50 ring-inset" : ""}
                 `}
               >
                 {cell.day}
-                {/* Availability dot */}
                 {cell.isCurrentMonth && isAvailable && !isPast && !isSelected && (
-                  <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-turq-500" />
+                  <span className="absolute bottom-1 w-1 h-1 rounded-full bg-turq-500" />
                 )}
               </button>
             );
@@ -420,150 +436,137 @@ export default function BookingCalendar({
         </div>
       </div>
 
-      {/* ── Time Slots ── */}
+      {/* ── Time Slots & Summary ── */}
       <AnimatePresence mode="wait">
         {selectedDate && (
           <motion.div
             key={selectedDate}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
           >
             {/* Selected date label */}
-            <p className="text-sm font-medium text-sand-50/50 mb-4">
-              {friendlyDate}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-wider text-sand-50/40 font-medium">
+                Available Times on {friendlyDate}
+              </p>
+            </div>
 
             {availableHours.length > 0 ? (
-              <div className="space-y-6">
-                <div>
-                  <p className="text-xs font-medium text-sand-50/40 uppercase tracking-widest mb-3">
-                    Available Times
-                  </p>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
-                    {availableHours.map((h) => (
-                      <motion.button
-                        key={h}
-                        onClick={() => setSelectedHour(h)}
-                        whileTap={{ scale: 0.96 }}
-                        className={`
-                          py-3 px-4 rounded-2xl text-sm font-medium transition-all duration-200 cursor-pointer
-                          ${selectedHour === h
-                            ? "bg-turq-600 text-ink-950 shadow-lg shadow-turq-600/25 scale-[1.03]"
-                            : "bg-ink-900 border border-sand-50/10 text-sand-50/70 hover:border-turq-400/50 hover:text-turq-300 hover:shadow-sm"
-                          }
-                        `}
-                      >
-                        {formatTime(h)}
-                      </motion.button>
-                    ))}
-                  </div>
+              <div className="space-y-5">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {availableHours.map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => setSelectedHour(h)}
+                      className={`
+                        py-2.5 px-3 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer
+                        ${selectedHour === h
+                          ? "bg-turq-600 text-ink-950 font-semibold shadow-md shadow-turq-600/20 scale-[1.02]"
+                          : "bg-sand-50/5 border border-sand-50/10 text-sand-50/70 hover:border-turq-400/40 hover:text-turq-300"
+                        }
+                      `}
+                    >
+                      {formatTime(h)}
+                    </button>
+                  ))}
                 </div>
 
-                {/* Booking summary + submit */}
+                {/* ── STEP 3: Single Clean Review Card & Submission ── */}
                 <AnimatePresence>
                   {selectedHour !== null && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.25 }}
+                      transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="bg-turq-600/10 border border-turq-600/20 rounded-2xl p-5 space-y-3">
-                        <p className="text-xs font-medium text-turq-400 uppercase tracking-widest">
-                          Booking Summary
-                        </p>
-                        {selectedService && (
-                          <div className="flex items-start gap-3 pb-3 border-b border-sand-50/10">
-                            <Tag className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
-                            <div className="flex-1 flex items-baseline justify-between gap-2">
+                      <div className="bg-sand-50/[0.03] border border-turq-500/25 rounded-2xl p-5 space-y-4">
+                        <div className="flex items-center justify-between border-b border-sand-50/8 pb-3">
+                          <p className="text-xs font-semibold text-turq-400 uppercase tracking-widest">
+                            Appointment Summary
+                          </p>
+                          {selectedService && (
+                            <span className="text-xs font-display text-turq-300">
+                              {formatNaira(selectedService.price)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Readable summary list — no duplicate dropdowns */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          {selectedService && (
+                            <div className="flex items-start gap-2.5">
+                              <Tag className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
                               <div>
-                                <p className="text-xs uppercase tracking-wider text-sand-50/50">Procedure</p>
-                                <p className="text-sm font-medium text-sand-50">{selectedService.name}</p>
+                                <p className="text-sand-50/40">Procedure</p>
+                                <p className="font-medium text-sand-50">{selectedService.name}</p>
                               </div>
-                              <span className="text-sm font-display text-turq-300">
-                                {formatNaira(selectedService.price)}
-                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex items-start gap-2.5">
+                            <Clock className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sand-50/40">Schedule</p>
+                              <p className="font-medium text-sand-50">{friendlyDate}</p>
+                              <p className="text-sand-50/60 font-mono text-[11px]">{formatTime(selectedHour)}</p>
                             </div>
                           </div>
-                        )}
-                        <div className="flex items-start gap-3">
-                          <Clock className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-sand-50">{friendlyDate}</p>
-                            <p className="text-sm text-sand-50/50">{formatTime(selectedHour!)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <MapPin className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
-                          <p className="text-sm text-sand-50/50">{clinicAddress}</p>
-                        </div>
 
-                        {/* Preferred Doctor / Dentist Selection */}
-                        {dentists && dentists.length > 0 && (
-                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
-                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
-                              Doctor / Dentist
-                            </label>
-                            <select
-                              value={selectedDentistId}
-                              onChange={(e) => {
-                                setSelectedDentistId(e.target.value);
-                                const d = dentists.find((dx) => dx.dentistId.toString() === e.target.value);
-                                if (d && isStaffBooking) setRoom(d.roomNumber.toString());
-                              }}
-                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 focus:border-turq-400 focus:outline-none transition-colors"
-                            >
-                              <option value="">Any available dentist</option>
-                              {dentists.map((d) => (
-                                <option key={d.dentistId} value={d.dentistId.toString()}>
-                                  Dr. {d.name} (Room {d.roomNumber})
-                                </option>
-                              ))}
-                            </select>
+                          <div className="flex items-start gap-2.5">
+                            <Stethoscope className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sand-50/40">Attending Dentist</p>
+                              <p className="font-medium text-sand-50">
+                                {selectedDentist
+                                  ? formatDentistName(selectedDentist.name)
+                                  : "Any Available Dentist"}
+                              </p>
+                              {selectedDentist && (room || selectedDentist.roomNumber) && (
+                                <p className="text-sand-50/60 text-[11px]">
+                                  Operatory Room {room || selectedDentist.roomNumber}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        )}
 
-                        {isStaffBooking && (
-                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
-                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
-                              Treatment Room (Optional)
-                            </label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={50}
-                              value={room}
-                              onChange={(e) => setRoom(e.target.value)}
-                              placeholder="Default dentist room"
-                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
-                            />
-                          </div>
-                        )}
-
-                        {/* Notes for the clinic */}
-                        <div className="pt-3 border-t border-sand-50/10 space-y-3">
-                          <div>
-                            <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium mb-1.5">
-                              Notes for the clinic (optional)
-                            </label>
-                            <input
-                              type="text"
-                              value={bookingNotes}
-                              onChange={(e) => setBookingNotes(e.target.value)}
-                              maxLength={300}
-                              placeholder="e.g. walk-in, nervous patient, referred by Dr. X"
-                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
-                            />
+                          <div className="flex items-start gap-2.5">
+                            <MapPin className="h-4 w-4 text-turq-400 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sand-50/40">Location</p>
+                              <p className="font-medium text-sand-50 truncate max-w-[200px]" title={clinicAddress}>
+                                {clinicAddress}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
+                        {/* Optional notes */}
+                        <div className="pt-2 border-t border-sand-50/8 space-y-1.5">
+                          <label className="block text-xs uppercase tracking-wider text-sand-50/50 font-medium flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-sand-50/40" />
+                            Notes for Clinic (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={bookingNotes}
+                            onChange={(e) => setBookingNotes(e.target.value)}
+                            maxLength={250}
+                            placeholder="e.g., toothache on upper left, routine clean, first-time patient"
+                            className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-3.5 py-2 text-xs text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
+                          />
+                        </div>
+
+                        {/* Patient phone if patient booking */}
                         {!isStaffBooking && (
-                          <div className="pt-3 border-t border-sand-50/10 space-y-1.5">
-                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium">
-                              Contact Phone Number
+                          <div className="pt-2 border-t border-sand-50/8 space-y-1.5">
+                            <label className="block text-xs uppercase tracking-wider text-sand-50/70 font-medium flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-turq-400" />
+                              Contact Phone
                             </label>
                             <input
                               type="tel"
@@ -571,37 +574,34 @@ export default function BookingCalendar({
                               onChange={(e) => setPhone(e.target.value)}
                               placeholder="+234 801 234 5678"
                               required
-                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-4 py-2.5 text-sm text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
+                              className="w-full bg-sand-50/5 border border-sand-50/15 rounded-xl px-3.5 py-2 text-xs text-sand-50 placeholder:text-sand-50/30 focus:border-turq-400 focus:outline-none transition-colors"
                             />
-                            <p className="text-[11px] text-sand-50/40">
-                              We&apos;ll send your booking confirmation & reminder to this number.
-                            </p>
                           </div>
                         )}
-                      </div>
 
-                      <button
-                        onClick={handleSubmit}
-                        disabled={isPending || (isStaffBooking && !selectedPatientId)}
-                        className="mt-4 w-full bg-turq-600 text-ink-950 py-4 rounded-full font-medium text-sm hover:bg-turq-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        {isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Booking…
-                          </>
-                        ) : (
-                          "Confirm Booking"
-                        )}
-                      </button>
+                        <button
+                          onClick={handleSubmit}
+                          disabled={isPending || (isStaffBooking && !selectedPatientId)}
+                          className="w-full bg-turq-600 text-ink-950 py-3 rounded-xl font-medium text-xs hover:bg-turq-500 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md shadow-turq-600/20"
+                        >
+                          {isPending ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              Confirming Booking…
+                            </>
+                          ) : (
+                            "Confirm Appointment"
+                          )}
+                        </button>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="dash-card p-6 text-center">
-                <p className="text-sand-50/40 text-sm">
-                  No open slots on this day — try another date.
+              <div className="dash-card p-5 text-center">
+                <p className="text-sand-50/40 text-xs">
+                  No open appointment slots on this date. Please select another day.
                 </p>
               </div>
             )}
@@ -611,3 +611,4 @@ export default function BookingCalendar({
     </div>
   );
 }
+

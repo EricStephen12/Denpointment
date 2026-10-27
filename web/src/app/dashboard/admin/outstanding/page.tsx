@@ -79,116 +79,160 @@ export default async function OutstandingPage({
   const grandTotal = balances.reduce((s, b) => s + b.outstanding, 0);
 
   return (
-    <div>
+    <div className="space-y-6">
       <AdminPageHeader
-        section="Finance"
-        title="Outstanding balances"
-        description={`${balances.length} patients have a balance to follow up. Total outstanding: ${formatNaira(grandTotal)}.`}
-        action={<div className="flex items-center gap-2">
-          <Link href="/dashboard/admin/outstanding" className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${sort !== "name" ? "bg-turq-600 text-ink-950 border-turq-600" : "border-sand-50/15 text-sand-50/50"}`}>
-            By Amount
-          </Link>
-          <Link href="/dashboard/admin/outstanding?sort=name" className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${sort === "name" ? "bg-turq-600 text-ink-950 border-turq-600" : "border-sand-50/15 text-sand-50/50"}`}>
-            By Name
-          </Link>
-        </div>}
+        section="Financials"
+        title="Outstanding Balances"
+        description={`${balances.length} patients with unsettled invoices totaling ${formatNaira(grandTotal)}.`}
+        action={
+          <div className="inline-flex p-1 rounded-xl bg-black/40 border border-sand-50/10">
+            <Link
+              href="/dashboard/admin/outstanding"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                sort !== "name"
+                  ? "bg-white/[0.09] text-white shadow-sm font-semibold"
+                  : "text-sand-50/50 hover:text-sand-50"
+              }`}
+            >
+              Highest Amount
+            </Link>
+            <Link
+              href="/dashboard/admin/outstanding?sort=name"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                sort === "name"
+                  ? "bg-white/[0.09] text-white shadow-sm font-semibold"
+                  : "text-sand-50/50 hover:text-sand-50"
+              }`}
+            >
+              Patient Name
+            </Link>
+          </div>
+        }
       />
 
       {/* KPI Stats Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
-        <div className="dash-surface p-4 border border-red-500/20 bg-red-950/20 rounded-2xl">
-          <p className="text-[10px] uppercase tracking-wider text-red-400/80 font-medium">Total Clinic Receivables</p>
-          <p className="text-2xl font-bold font-display text-red-400 mt-1">{formatNaira(grandTotal)}</p>
-          <p className="text-xs text-sand-50/40 mt-0.5">Uncollected patient revenue</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="dash-surface p-5 rounded-2xl border border-red-500/20 bg-red-950/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-red-400/80">
+            Total Receivables
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-red-400 tabular-nums">
+              {formatNaira(grandTotal)}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Uncollected patient revenue</p>
+          </div>
         </div>
-        <div className="dash-surface p-4 border border-sand-50/10 rounded-2xl">
-          <p className="text-[10px] uppercase tracking-wider text-sand-50/50 font-medium">Debtor Patients</p>
-          <p className="text-2xl font-bold font-display text-sand-50 mt-1">{balances.length}</p>
-          <p className="text-xs text-sand-50/40 mt-0.5">Patients requiring follow-up</p>
+
+        <div className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/50">
+            Accounts with Balance
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-sand-50 tabular-nums">
+              {balances.length}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Patients requiring payment follow-up</p>
+          </div>
         </div>
-        <div className="dash-surface p-4 border border-sand-50/10 rounded-2xl">
-          <p className="text-[10px] uppercase tracking-wider text-sand-50/50 font-medium">Unpaid Visits</p>
-          <p className="text-2xl font-bold font-display text-sand-50 mt-1">
-            {balances.reduce((s, b) => s + b.unpaidVisits, 0)}
-          </p>
-          <p className="text-xs text-sand-50/40 mt-0.5">Appointments awaiting settlement</p>
+
+        <div className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/50">
+            Unpaid Visits
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-sand-50 tabular-nums">
+              {balances.reduce((s, b) => s + b.unpaidVisits, 0)}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Appointments awaiting settlement</p>
+          </div>
         </div>
       </div>
 
-      {/* Debt Management Guidance */}
-      <div className="dash-surface p-4 mb-6 border border-turq-500/20 bg-turq-500/5 rounded-2xl">
-        <h2 className="text-sm font-semibold text-sand-50 flex items-center gap-2">
-          💡 How to manage and resolve outstanding patient balances
-        </h2>
-        <p className="text-xs text-sand-50/70 mt-1 leading-relaxed">
-          Click <strong className="text-turq-300">Collect Payment</strong> to open the patient's billing invoice where you can record a cash/card/transfer payment or grant a management courtesy discount/waiver. Click <strong className="text-turq-300">File</strong> to review their individual visit treatments and clinical notes.
-        </p>
-      </div>
-
+      {/* Balances Table */}
       {balances.length === 0 ? (
-        <div className="text-center py-16 text-sand-50/30 border border-dashed border-sand-50/10 rounded-2xl">
-          No outstanding balances. All accounts are settled!
+        <div className="text-center py-16 text-sand-50/40 border border-dashed border-sand-50/10 rounded-2xl">
+          <p className="text-sm font-medium text-sand-50/60">No outstanding balances</p>
+          <p className="text-xs text-sand-50/40 mt-1">All patient billing accounts are settled.</p>
         </div>
       ) : (
-        <div className="dash-table-wrap">
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th>Patient</th>
-                <th>Phone</th>
-                <th>Unpaid Visits</th>
-                <th>Total Billed</th>
-                <th>Collected</th>
-                <th className="text-right">Outstanding</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {balances.map((b) => (
-                <tr key={b.patientId}>
-                  <td className="td-primary">
-                    <Link href={`/dashboard/patients/${b.patientId}`} className="hover:text-turq-400 transition-colors font-medium">
-                      {b.name}
-                    </Link>
-                  </td>
-                  <td className="text-sand-50/70">
-                    {b.phone !== "—" ? (
-                      <a href={`tel:${b.phone}`} className="hover:text-turq-300 transition-colors">
-                        {b.phone}
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td>
-                    <span className="text-amber-400 font-medium">{b.unpaidVisits}</span>
-                  </td>
-                  <td>{formatNaira(b.totalCharge)}</td>
-                  <td className="text-turq-400">{formatNaira(b.totalPaid + b.totalDisc)}</td>
-                  <td className="text-right font-semibold text-red-400">{formatNaira(b.outstanding)}</td>
-                  <td className="text-right space-x-2 whitespace-nowrap">
-                    <Link
-                      href={`/dashboard/patients/${b.patientId}`}
-                      className="text-xs text-sand-50/60 hover:text-sand-50 px-2 py-1 rounded bg-sand-50/5 hover:bg-sand-50/10 border border-sand-50/10 transition-colors"
-                    >
-                      File
-                    </Link>
-                    <Link
-                      href={`/dashboard/admin/billing?q=${encodeURIComponent(b.name)}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 transition-colors"
-                    >
-                      💳 Collect Payment
-                    </Link>
-                    <WriteOffBalanceButton
-                      patientId={b.patientId}
-                      patientName={b.name}
-                      outstanding={b.outstanding}
-                    />
-                  </td>
+        <div className="dash-surface rounded-2xl border border-sand-50/10 overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-sand-50/10 bg-white/[0.02] text-[10px] uppercase font-bold text-sand-50/40 tracking-wider">
+                  <th className="py-3 px-4">Patient</th>
+                  <th className="py-3 px-4">Phone</th>
+                  <th className="py-3 px-4">Unpaid Visits</th>
+                  <th className="py-3 px-4">Total Billed</th>
+                  <th className="py-3 px-4">Total Paid</th>
+                  <th className="py-3 px-4 text-right">Outstanding</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-sand-50/5">
+                {balances.map((b) => (
+                  <tr key={b.patientId} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="py-3 px-4">
+                      <Link
+                        href={`/dashboard/patients/${b.patientId}`}
+                        className="font-medium text-sand-50 hover:text-turq-300 transition-colors block"
+                      >
+                        {b.name}
+                      </Link>
+                      <span className="text-[10px] text-sand-50/40 truncate block max-w-[180px]">
+                        {b.email || "No email"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sand-50/70">
+                      {b.phone !== "—" ? (
+                        <a href={`tel:${b.phone}`} className="hover:text-turq-300 transition-colors">
+                          {b.phone}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                        {b.unpaidVisits} visit{b.unpaidVisits !== 1 ? "s" : ""}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sand-50/80 tabular-nums">
+                      {formatNaira(b.totalCharge)}
+                    </td>
+                    <td className="py-3 px-4 text-turq-400/90 tabular-nums">
+                      {formatNaira(b.totalPaid + b.totalDisc)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold text-red-400 tabular-nums">
+                      {formatNaira(b.outstanding)}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="inline-flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/patients/${b.patientId}`}
+                          className="text-[11px] font-medium text-sand-50/60 hover:text-sand-50 px-2.5 py-1 rounded-lg border border-sand-50/15 hover:border-sand-50/30 transition-colors"
+                        >
+                          Record
+                        </Link>
+                        <Link
+                          href={`/dashboard/admin/billing?q=${encodeURIComponent(b.name)}`}
+                          className="text-[11px] font-semibold text-ink-950 bg-turq-500 hover:bg-turq-400 px-3 py-1 rounded-lg transition-colors shadow-sm"
+                        >
+                          Collect Payment
+                        </Link>
+                        <WriteOffBalanceButton
+                          patientId={b.patientId}
+                          patientName={b.name}
+                          outstanding={b.outstanding}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

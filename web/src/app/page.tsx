@@ -9,7 +9,6 @@ import FAQSection from "@/components/marketing/FAQSection";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 import TeamSection from "@/components/marketing/TeamSection";
 import Testimonials from "@/components/marketing/Testimonials";
-import PriceListSection from "@/components/marketing/PriceListSection";
 import WhatsAppWidget from "@/components/common/WhatsAppWidget";
 
 export const revalidate = 3600;
@@ -195,9 +194,6 @@ export default async function Home() {
           </div>
         </Reveal>
       </section>
-
-      {/* ── 5. Full Clinical Fee Schedule ── */}
-      <PriceListSection />
 
       <TeamSection />
       <Testimonials rating={site.rating} reviewCount={site.reviewCount} />

@@ -7,6 +7,7 @@ import { getClinicDay, formatAppointmentDate, addCalendarDays, toDateKey } from 
 import { statusMeta } from "@/lib/appointment-status";
 import { LayoutGrid, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import ReassignAppointmentModal from "@/components/reception/ReassignAppointmentModal";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 export default async function MultiDentistCalendarPage({
   searchParams,
@@ -66,129 +67,171 @@ export default async function MultiDentistCalendarPage({
   const isToday = toDateKey(viewDay) === toDateKey(today);
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="dash-icon-badge">
-            <LayoutGrid className="h-5 w-5 text-turq-400" />
-          </div>
-          <div>
-            <h1 className="dash-title font-display">Multi-Dentist Calendar</h1>
-            <p className="dash-body mt-0.5">{formatAppointmentDate(viewDay)}{isToday ? " · Today" : ""}</p>
-          </div>
-        </div>
-        {/* Day nav */}
-        <div className="flex items-center gap-2">
-          <Link href={`/dashboard/reception/calendar?date=${prevKey}`}
-            className="p-2 border border-sand-50/15 rounded-lg text-sand-50/50 hover:text-sand-50 hover:border-sand-50/30 transition-colors">
-            <ChevronLeft className="h-4 w-4" />
-          </Link>
-          {!isToday && (
-            <Link href="/dashboard/reception/calendar"
-              className="text-xs px-3 py-1.5 border border-sand-50/15 rounded-lg text-sand-50/50 hover:text-turq-400 transition-colors">
-              Today
+    <div className="space-y-6">
+      <AdminPageHeader
+        section="Operations"
+        title="Appointments & Schedule"
+        description={`Multi-doctor schedule matrix for ${formatAppointmentDate(viewDay)}${isToday ? " (Today)" : ""}.`}
+        action={
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Day Nav Toolbar */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-black/40 border border-sand-50/10 text-xs">
+              <Link
+                href={`/dashboard/reception/calendar?date=${prevKey}`}
+                className="p-1.5 rounded-lg text-sand-50/50 hover:text-sand-50 hover:bg-white/[0.04] transition-colors"
+                title="Previous Day"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+              {!isToday && (
+                <Link
+                  href="/dashboard/reception/calendar"
+                  className="px-2.5 py-1 text-xs font-semibold text-turq-400 hover:text-turq-300 transition-colors"
+                >
+                  Today
+                </Link>
+              )}
+              <Link
+                href={`/dashboard/reception/calendar?date=${nextKey}`}
+                className="p-1.5 rounded-lg text-sand-50/50 hover:text-sand-50 hover:bg-white/[0.04] transition-colors"
+                title="Next Day"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+
+            <a
+              href={`/api/export/schedule?date=${toDateKey(viewDay)}`}
+              className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/70 hover:text-turq-400 px-3.5 py-2 rounded-xl transition-colors bg-white/[0.02]"
+            >
+              <Download className="h-3.5 w-3.5" /> Export Day CSV
+            </a>
+
+            <Link
+              href="/dashboard/book"
+              className="inline-flex items-center gap-2 bg-turq-500 hover:bg-turq-400 text-ink-950 font-semibold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all shadow-sm active:scale-[0.98]"
+            >
+              <span>+ Book Visit</span>
             </Link>
-          )}
-          <Link href={`/dashboard/reception/calendar?date=${nextKey}`}
-            className="p-2 border border-sand-50/15 rounded-lg text-sand-50/50 hover:text-sand-50 hover:border-sand-50/30 transition-colors">
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-          <a
-            href={`/api/export/schedule?date=${toDateKey(viewDay)}`}
-            className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/40 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </a>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
-      {dentists.length === 0 ? (
-        <p className="text-sm text-sand-50/40">No dentists registered yet.</p>
-      ) : (
-        <div className="dash-table-wrap">
-          <table className="dash-table">
-            <thead>
-              <tr>
-                <th className="w-20">Time</th>
-                {dentists.map((d) => (
-                  <th key={d.dentistId}>
-                    Dr. {d.person.firstName} {d.person.lastName}
-                    <span className="text-sand-50/30 font-normal ml-1">· Rm {d.roomNumber}</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {hours.map((h) => (
-                <tr key={h}>
-                  <td className="font-medium text-sand-50/50 whitespace-nowrap">{fmt(h)}</td>
-                  {dentists.map((d) => {
-                    const app = apptMap.get(`${d.dentistId}-${h}`);
-                    if (!app) return (
-                      <td key={d.dentistId}>
-                        <Link
-                          href={`/dashboard/book?date=${toDateKey(viewDay)}&hour=${h}`}
-                          className="text-xs text-sand-50/15 hover:text-turq-400 hover:underline transition-colors"
-                        >
-                          Free
-                        </Link>
-                      </td>
-                    );
-                    const meta = statusMeta(app.status);
-                    return (
-                      <td key={d.dentistId}>
-                        <div className="flex flex-col gap-1.5 items-start">
-                          <Link
-                            href={`/dashboard/patients/${app.patient.patientId}`}
-                            className="inline-flex flex-col gap-0.5 group"
-                          >
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${meta.tone} group-hover:opacity-80 transition-opacity`}>
-                              {app.patient.person.firstName} {app.patient.person.lastName}
-                            </span>
-                            <span className="text-[10px] text-sand-50/40">{meta.label} · Rm {app.room}</span>
-                          </Link>
-
-                          {app.status !== "cancelled" && app.status !== "completed" && (
-                            <ReassignAppointmentModal
-                              appointmentId={app.appointmentId}
-                              currentDentistId={app.dId}
-                              currentDentistName={`Dr. ${d.person.firstName} ${d.person.lastName}`}
-                              currentRoom={app.room}
-                              currentDate={`${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`}
-                              currentHour={app.hour}
-                              patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
-                              dentists={dentistOptions}
-                              openHour={openHour}
-                              closeHour={closeHour}
-                              clinicToday={toDateKey(today)}
-                              buttonLabel="Reassign"
-                              compact={true}
-                            />
-                          )}
-                        </div>
-                      </td>
-                    );
-                  })}
+      {/* Schedule Matrix Container */}
+      <div className="dash-surface rounded-2xl border border-sand-50/10 overflow-hidden shadow-xl">
+        {dentists.length === 0 ? (
+          <div className="py-16 text-center text-xs text-sand-50/40">
+            No doctors registered yet. Add staff under Practice Management &gt; Staff &amp; Permissions.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-sand-50/10 bg-white/[0.02] text-[10px] uppercase font-bold text-sand-50/40 tracking-wider">
+                  <th className="py-3.5 px-4 w-24">Time</th>
+                  {dentists.map((d) => (
+                    <th key={d.dentistId} className="py-3.5 px-4 min-w-[200px]">
+                      <div className="font-semibold text-sand-50 text-xs">
+                        Dr. {d.person.firstName} {d.person.lastName}
+                      </div>
+                      <span className="text-[10px] font-normal text-sand-50/40">
+                        Room {d.roomNumber || "1"}
+                      </span>
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody className="divide-y divide-sand-50/5">
+                {hours.map((h) => (
+                  <tr key={h} className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3 px-4 font-semibold text-sand-50/60 tabular-nums whitespace-nowrap bg-white/[0.01]">
+                      {fmt(h)}
+                    </td>
+                    {dentists.map((d) => {
+                      const app = apptMap.get(`${d.dentistId}-${h}`);
+                      if (!app) {
+                        return (
+                          <td key={d.dentistId} className="py-3 px-4">
+                            <Link
+                              href={`/dashboard/book?date=${toDateKey(viewDay)}&hour=${h}`}
+                              className="inline-block text-[11px] text-sand-50/20 hover:text-turq-400 hover:border-turq-500/30 border border-dashed border-sand-50/10 rounded-lg px-2.5 py-1 transition-colors"
+                            >
+                              + Available
+                            </Link>
+                          </td>
+                        );
+                      }
+                      const meta = statusMeta(app.status);
+                      return (
+                        <td key={d.dentistId} className="py-3 px-4">
+                          <div className="p-2 rounded-xl bg-white/[0.02] border border-sand-50/10 flex flex-col gap-1.5 items-start">
+                            <Link
+                              href={`/dashboard/patients/${app.patient.patientId}`}
+                              className="group block"
+                            >
+                              <span className="text-xs font-semibold text-sand-50 group-hover:text-turq-300 transition-colors block">
+                                {app.patient.person.firstName} {app.patient.person.lastName}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className={`inline-block px-2 py-0.2 rounded-full text-[10px] font-semibold border ${meta.tone}`}>
+                                  {meta.label}
+                                </span>
+                                <span className="text-[10px] text-sand-50/40">
+                                  Rm {app.room}
+                                </span>
+                              </div>
+                            </Link>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 mt-4">
-        {[
-          { label: "Scheduled", tone: "bg-sand-50/8 text-sand-50/50" },
-          { label: "Checked in", tone: "bg-amber-900/40 text-amber-300" },
-          { label: "In chair", tone: "bg-sky-900/40 text-sky-300" },
-          { label: "Completed", tone: "bg-turq-600/20 text-turq-300" },
-          { label: "No-show", tone: "bg-red-900/40 text-red-300" },
-        ].map(({ label, tone }) => (
-          <span key={label} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${tone}`}>
-            {label}
+                            {app.status !== "cancelled" && app.status !== "completed" && (
+                              <ReassignAppointmentModal
+                                appointmentId={app.appointmentId}
+                                currentDentistId={app.dId}
+                                currentDentistName={`Dr. ${d.person.firstName} ${d.person.lastName}`}
+                                currentRoom={app.room}
+                                currentDate={`${app.year}-${String(app.month).padStart(2, "0")}-${String(app.day).padStart(2, "0")}`}
+                                currentHour={app.hour}
+                                patientName={`${app.patient.person.firstName} ${app.patient.person.lastName}`}
+                                dentists={dentistOptions}
+                                openHour={openHour}
+                                closeHour={closeHour}
+                                clinicToday={toDateKey(today)}
+                                buttonLabel="Reassign"
+                                compact={true}
+                              />
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Legend Footer */}
+        <div className="p-4 border-t border-sand-50/10 bg-white/[0.01] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <span className="text-sand-50/40 text-[11px] uppercase tracking-wider font-semibold">
+            Status Legend:
           </span>
-        ))}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { label: "Scheduled", tone: "bg-sand-50/8 text-sand-50/50 border-sand-50/10" },
+              { label: "Checked in", tone: "bg-blue-500/10 text-blue-300 border-blue-500/20" },
+              { label: "In chair", tone: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" },
+              { label: "Completed", tone: "bg-turq-500/10 text-turq-300 border-turq-500/20" },
+              { label: "No-show", tone: "bg-red-500/10 text-red-300 border-red-500/20" },
+            ].map(({ label, tone }) => (
+              <span
+                key={label}
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${tone}`}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

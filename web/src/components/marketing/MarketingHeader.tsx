@@ -10,7 +10,6 @@ import { logoutAction } from "@/app/actions/auth";
 
 const LINKS = [
   { href: "/#services", label: "Services" },
-  { href: "/#pricing", label: "Price List" },
   { href: "/#team", label: "Our Dentists" },
   { href: "/#testimonials", label: "Reviews" },
   { href: "/contact", label: "Contact" },

@@ -90,41 +90,29 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
     icon: Icon,
     label,
     badge,
-    stepNum,
   }: {
     href: string;
     icon: React.ComponentType<{ className?: string }>;
     label: string;
     badge?: string;
-    stepNum?: number;
   }) => {
     const active = isActive(href);
     return (
       <Link
         href={href}
         onClick={onClose}
-        className={`group relative flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs md:text-[13px] font-medium transition-all duration-150 ${
+        className={`group relative flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl text-xs md:text-[13px] font-medium transition-all duration-150 ${
           active
             ? "bg-turq-500/15 text-sand-50 font-semibold border-l-2 border-turq-400 pl-3 shadow-sm"
             : "text-sand-50/65 hover:text-sand-50 hover:bg-white/[0.04]"
         }`}
       >
         <span className="flex items-center gap-2.5 min-w-0">
-          {stepNum ? (
-            <span
-              className={`inline-flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold shrink-0 transition-colors ${
-                active ? "bg-turq-400 text-ink-950" : "bg-sand-50/10 text-sand-50/60 group-hover:text-sand-50"
-              }`}
-            >
-              {stepNum}
-            </span>
-          ) : (
-            <Icon
-              className={`h-4 w-4 shrink-0 transition-colors ${
-                active ? "text-turq-400" : "text-sand-50/40 group-hover:text-sand-50/80"
-              }`}
-            />
-          )}
+          <Icon
+            className={`h-4 w-4 shrink-0 transition-colors ${
+              active ? "text-turq-400" : "text-sand-50/40 group-hover:text-sand-50/80"
+            }`}
+          />
           <span className="truncate">{label}</span>
         </span>
         {badge && (
@@ -182,7 +170,7 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
           </button>
         </div>
 
-        {/* Nav Items (STRICTLY SCOPED TO THIS EXACT ROLE - ZERO OVERLAPS) */}
+        {/* Nav Items */}
         <div className="flex-1 overflow-y-auto px-3.5 py-3 space-y-1 custom-scrollbar">
           {/* Overview */}
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Overview" />
@@ -190,43 +178,47 @@ export default function DashboardSidebar({ user, clinicName, isOpen, onClose }: 
           {/* ══════════════ 1. ADMIN ONLY ══════════════ */}
           {role === "admin" && (
             <>
-              <SectionLabel label="Daily Clinic Flow" />
-              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits & Reassign" stepNum={1} />
-              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Calendar & Schedule" stepNum={2} />
-              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={3} />
-              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Treatments" stepNum={4} />
-              <NavItem href="/dashboard/admin/billing" icon={CreditCard} label="Billing & Payments" stepNum={5} />
-              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recalls & Follow-up" stepNum={6} />
+              <SectionLabel label="Clinic Operations" />
+              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Appointments & Schedule" />
+              <NavItem href="/dashboard/patients" icon={Users} label="Patient Registry" />
+              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" />
+              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Treatments" />
+              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits" />
+
+              <SectionLabel label="Financials & Billing" />
+              <NavItem href="/dashboard/admin/billing" icon={CreditCard} label="Billing & Payments" />
+              <NavItem href="/dashboard/admin/outstanding" icon={AlertCircle} label="Outstanding Balances" />
+              <NavItem href="/dashboard/admin/reports" icon={BarChart2} label="Financial Reports" />
 
               <SectionLabel label="Practice Management" />
-              <NavItem href="/dashboard/patients" icon={Users} label="Patient Registry" />
               <NavItem href="/dashboard/admin/staff" icon={Users} label="Staff & Permissions" />
               <NavItem href="/dashboard/admin/settings" icon={Settings} label="Hours & Pricing" />
-              <NavItem href="/dashboard/admin/reports" icon={BarChart2} label="Financial Reports" />
-              <NavItem href="/dashboard/admin/outstanding" icon={AlertCircle} label="Outstanding Balances" />
-              <NavItem href="/dashboard/admin/site" icon={Globe} label="Website & Branding" />
-              <NavItem href="/dashboard/admin/automations" icon={Zap} label="Reminders & Campaigns" />
               <NavItem href="/dashboard/clinical/labs" icon={FlaskConical} label="Dental Lab Cases" />
+              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recalls & Follow-up" />
               <NavItem href="/dashboard/reception/waitlist" icon={ClipboardList} label="Waiting List" />
+
+              <SectionLabel label="Settings & Site" />
+              <NavItem href="/dashboard/admin/site" icon={Globe} label="Website & Branding" />
+              <NavItem href="/dashboard/admin/automations" icon={Zap} label="Reminders & Automations" />
             </>
           )}
 
           {/* ══════════════ 2. RECEPTIONIST ONLY ══════════════ */}
           {role === "receptionist" && (
             <>
-              <SectionLabel label="Front Desk Flow" />
-              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits & Reassign" stepNum={1} />
-              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" stepNum={2} />
-              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Multi-Dentist Calendar" stepNum={3} />
-              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Appointments" stepNum={4} />
-              <NavItem href="/dashboard/book" icon={CalendarPlus} label="Book Appointment" stepNum={5} />
-              <NavItem href="/dashboard/reception/waitlist" icon={ClipboardList} label="Waiting List" stepNum={6} />
+              <SectionLabel label="Front Desk" />
+              <NavItem href="/dashboard/reception/calendar" icon={LayoutGrid} label="Appointments & Calendar" />
+              <NavItem href="/dashboard/reception/checkin" icon={CalendarCheck} label="Check-In Desk" />
+              <NavItem href="/dashboard/book" icon={CalendarPlus} label="Book Appointment" />
+              <NavItem href="/dashboard/treatments/today" icon={Clock} label="Today's Visits" />
+              <NavItem href="/dashboard/treatments/upcoming" icon={Calendar} label="Upcoming Visits" />
+              <NavItem href="/dashboard/reception/waitlist" icon={ClipboardList} label="Waiting List" />
 
               <SectionLabel label="Patients & Cash Desk" />
               <NavItem href="/dashboard/patients" icon={Users} label="Patient Registry" />
               <NavItem href="/dashboard/admin/billing" icon={CreditCard} label="Invoicing & Payments" />
               <NavItem href="/dashboard/admin/outstanding" icon={AlertCircle} label="Outstanding Balances" />
-              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recall Call List" />
+              <NavItem href="/dashboard/reception/recalls" icon={RefreshCw} label="Recall List" />
             </>
           )}
 

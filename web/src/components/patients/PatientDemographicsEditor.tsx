@@ -192,12 +192,12 @@ export default function PatientDemographicsEditor({ patientId, canEdit, canViewC
     : [];
 
   return (
-    <div className="dash-surface p-5 space-y-5">
+    <div className="bg-ink-900 border border-sand-50/10 rounded-2xl p-6 shadow-xl space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-3 border-b border-sand-50/10">
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-turq-400" />
-          <h2 className="text-sm font-semibold text-sand-50">Patient Details</h2>
+          <h2 className="text-sm font-semibold text-sand-50">Patient Details &amp; Contacts</h2>
         </div>
         {canEdit && !editing && (
           <button

@@ -21,7 +21,7 @@ import {
   User,
 } from "lucide-react";
 import PrintScheduleButton from "@/components/common/PrintScheduleButton";
-import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
+import AdminPageHeader from "@/components/admin/AdminPageHeader";
 
 export default async function CheckInPage() {
   const dbUser = await getCurrentPerson();
@@ -74,62 +74,43 @@ export default async function CheckInPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── 1. WORKFLOW TRACKER BANNER (STEP 2: CHECK-IN) ── */}
-      <ClinicWorkflowTracker
-        currentStep={2}
-        counts={{
-          booked: total,
-          checkedIn: arrived,
-          inChair,
-          needBilling: completed,
-        }}
+      <AdminPageHeader
+        section="Operations"
+        title="Check-In Desk"
+        description={`Real-time patient reception and waiting lounge arrivals for ${todayLabel}.`}
+        action={
+          <div className="flex flex-wrap items-center gap-2.5">
+            <PrintScheduleButton />
+            <a
+              href={`/api/export/schedule?date=${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`}
+              className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/70 hover:text-turq-400 px-3.5 py-2 rounded-xl transition-colors bg-white/[0.02]"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </a>
+            <Link
+              href="/dashboard/book"
+              className="inline-flex items-center gap-2 bg-turq-500 hover:bg-turq-400 text-ink-950 font-semibold px-4 py-2 rounded-xl text-xs sm:text-sm transition-all shadow-sm active:scale-[0.98]"
+            >
+              <span>+ Book Patient</span>
+            </Link>
+          </div>
+        }
       />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="dash-icon-badge">
-            <CalendarCheck className="h-5 w-5 text-turq-400" />
-          </div>
-          <div>
-            <h1 className="dash-title font-display">Check-in Desk</h1>
-            <p className="dash-body mt-0.5">{todayLabel} — manage arrivals in real time</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            href="/dashboard/reception/calendar"
-            className="text-xs text-sand-50/70 hover:text-turq-400 border border-sand-50/15 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            Multi-Dentist Calendar
-          </Link>
-          <Link
-            href="/dashboard/treatments/upcoming"
-            className="inline-flex items-center gap-1.5 text-xs bg-turq-600/20 hover:bg-turq-600/30 text-turq-300 border border-turq-500/30 px-3 py-1.5 rounded-lg transition-colors font-medium"
-          >
-            <Calendar className="h-3.5 w-3.5" /> Upcoming Visits &amp; Reassign
-          </Link>
-          <a
-            href={`/api/export/schedule?date=${today.year}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`}
-            className="inline-flex items-center gap-1.5 text-xs border border-sand-50/15 hover:border-turq-400/30 text-sand-50/60 hover:text-turq-400 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </a>
-          <PrintScheduleButton />
-        </div>
-      </div>
-
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Total Booked", value: total, color: "text-sand-50" },
-          { label: "Arrived / Waiting", value: arrived, color: "text-turq-400" },
-          { label: "Awaiting Arrival", value: pending, color: "text-amber-400" },
-          { label: "No-Show", value: noShows, color: "text-red-400" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="dash-surface p-4 text-center">
-            <p className={`text-3xl font-display ${color}`}>{value}</p>
-            <p className="text-[10px] uppercase tracking-wider text-sand-50/40 mt-1 font-semibold">{label}</p>
+          { label: "Total Booked", value: total, sub: "Visits today", color: "text-sand-50" },
+          { label: "Arrived / In Clinic", value: arrived, sub: "Checked in & in-chair", color: "text-turq-400" },
+          { label: "Awaiting Arrival", value: pending, sub: "Scheduled visits", color: "text-amber-400" },
+          { label: "No-Show", value: noShows, sub: "Missed appointments", color: "text-red-400" },
+        ].map(({ label, value, sub, color }) => (
+          <div key={label} className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">{label}</span>
+            <div className="mt-2">
+              <p className={`text-2xl font-display font-bold tabular-nums ${color}`}>{value}</p>
+              <p className="text-xs text-sand-50/40 mt-0.5">{sub}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -217,29 +198,27 @@ export default async function CheckInPage() {
 
                 {/* Connected Workflow Next Actions & CheckIn Controls */}
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {/* Connected Step 3 handoff when patient is checked in */}
+                  {/* Hand off when patient is checked in */}
                   {isCheckedIn && (
                     <Link
                       href="/dashboard/treatments/today"
-                      className="inline-flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
-                      title="Step 3: Hand off patient to surgery chair"
+                      className="inline-flex items-center gap-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                      title="Hand off patient to surgery chair"
                     >
                       <Stethoscope className="h-3.5 w-3.5" />
-                      <span>Send to Chair (Step 3)</span>
-                      <ArrowRight className="h-3 w-3" />
+                      <span>Send to Chair</span>
                     </Link>
                   )}
 
-                  {/* Connected Step 4 handoff when completed */}
+                  {/* Payment handoff when completed */}
                   {isCompleted && (
                     <Link
                       href={`/dashboard/admin/billing?q=${encodeURIComponent(app.patient.person.lastName)}`}
-                      className="inline-flex items-center gap-1 text-xs bg-amber-500 hover:bg-amber-400 text-ink-950 font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                      title="Step 4: Collect payment"
+                      className="inline-flex items-center gap-1.5 text-xs bg-amber-500 hover:bg-amber-400 text-ink-950 font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                      title="Collect payment"
                     >
                       <CreditCard className="h-3.5 w-3.5" />
-                      <span>Collect Payment (Step 4)</span>
-                      <ArrowRight className="h-3 w-3" />
+                      <span>Collect Payment</span>
                     </Link>
                   )}
 

@@ -11,9 +11,8 @@ import PaymentHistoryItem from "@/components/billing/PaymentHistoryItem";
 import DeleteBillingRecordButton from "@/components/billing/DeleteBillingRecordButton";
 import DeleteTreatmentProcedureButton from "@/components/billing/DeleteTreatmentProcedureButton";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
-import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 import EmailReceiptButton from "@/components/billing/EmailReceiptButton";
-import { Printer, RefreshCw, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Printer, RefreshCw, CheckCircle2 } from "lucide-react";
 
 export default async function BillingPage({
   searchParams,
@@ -87,29 +86,21 @@ export default async function BillingPage({
 
   return (
     <div className="space-y-6">
-      {/* ── 1. WORKFLOW TRACKER BANNER (STEP 4: BILLING & PAYMENTS) ── */}
-      <ClinicWorkflowTracker
-        currentStep={4}
-        counts={{
-          needBilling: unpaidApptCount,
-        }}
-      />
-
       <AdminPageHeader
-        section="Finance"
-        title="Billing and Payments"
+        section="Financials"
+        title="Billing & Invoicing"
         description="Review visit charges, record cash/card/transfer payments, and print patient receipts."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/dashboard/admin/settings#pricing"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sand-50/15 px-3 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-sand-50/15 px-3.5 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
             >
-              🏷️ Procedure Fee Schedule
+              Procedure Fee Catalog
             </Link>
             <Link
               href="/dashboard/admin/outstanding"
-              className="rounded-lg border border-sand-50/15 px-3 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
+              className="rounded-xl border border-sand-50/15 px-3.5 py-2 text-xs font-medium text-sand-50/70 transition-colors hover:border-turq-400/30 hover:text-turq-400"
             >
               Outstanding Balances
             </Link>
@@ -117,70 +108,70 @@ export default async function BillingPage({
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Billed",      value: formatNaira(totalBilled),      color: "text-sand-50" },
-          { label: "Collected",         value: formatNaira(totalCollected),    color: "text-turq-400" },
+          { label: "Collected",         value: formatNaira(totalCollected),    color: "text-emerald-400" },
           { label: "Outstanding",       value: formatNaira(totalOutstanding),  color: "text-red-400" },
           { label: "Unpaid Visits",     value: unpaidApptCount.toString(),     color: "text-amber-400" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="dash-surface p-4">
-            <p className={`text-2xl font-display font-bold ${color}`}>{value}</p>
-            <p className="text-[10px] uppercase tracking-wider text-sand-50/40 mt-1 font-semibold">{label}</p>
+          <div key={label} className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">{label}</span>
+            <p className={`text-2xl font-display font-bold mt-2 tabular-nums ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
-      {/* Filters with Today's Checkout Tab */}
-      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-        <form method="get" className="flex flex-1 gap-2">
+      {/* Search and Filter Segmented Controls */}
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <form method="get" className="flex flex-1 gap-2 max-w-md">
           <input
             type="text"
             name="q"
             defaultValue={query}
             placeholder="Search patient name…"
-            className="dash-input flex-1 min-w-[200px]"
+            className="dash-input flex-1 text-xs"
           />
           {filter && <input type="hidden" name="filter" value={filter} />}
           <button
             type="submit"
-            className="px-4 py-2 bg-turq-600 hover:bg-turq-500 text-ink-950 font-semibold rounded-xl text-xs transition-colors shrink-0"
+            className="px-4 py-2 bg-turq-500 hover:bg-turq-400 text-ink-950 font-semibold rounded-xl text-xs transition-colors shrink-0 shadow-sm"
           >
             Search
           </button>
         </form>
 
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-ink-900 border border-sand-50/10 text-xs">
+        <div className="inline-flex p-1 rounded-xl bg-black/40 border border-sand-50/10 text-xs">
           <Link
             href="/dashboard/admin/billing?filter=today"
-            className={`px-3 py-1.5 rounded-lg transition-colors font-medium ${
+            className={`px-3 py-1.5 rounded-lg transition-all font-medium ${
               showToday
-                ? "bg-turq-500/20 text-turq-300 border border-turq-500/30"
-                : "text-sand-50/60 hover:text-sand-50"
+                ? "bg-white/[0.09] text-white shadow-sm font-semibold"
+                : "text-sand-50/50 hover:text-sand-50"
             }`}
           >
             Today's Visits ({todayCompletedCount})
           </Link>
           <Link
             href="/dashboard/admin/billing"
-            className={`px-3 py-1.5 rounded-lg transition-colors font-medium ${
+            className={`px-3 py-1.5 rounded-lg transition-all font-medium ${
               !showAll && !showToday
-                ? "bg-turq-500/20 text-turq-300 border border-turq-500/30"
-                : "text-sand-50/60 hover:text-sand-50"
+                ? "bg-white/[0.09] text-white shadow-sm font-semibold"
+                : "text-sand-50/50 hover:text-sand-50"
             }`}
           >
             Unpaid Only
           </Link>
           <Link
             href="/dashboard/admin/billing?filter=all"
-            className={`px-3 py-1.5 rounded-lg transition-colors font-medium ${
+            className={`px-3 py-1.5 rounded-lg transition-all font-medium ${
               showAll
-                ? "bg-turq-500/20 text-turq-300 border border-turq-500/30"
-                : "text-sand-50/60 hover:text-sand-50"
+                ? "bg-white/[0.09] text-white shadow-sm font-semibold"
+                : "text-sand-50/50 hover:text-sand-50"
             }`}
           >
-            All History
+            All Invoices
           </Link>
         </div>
       </div>
@@ -344,7 +335,7 @@ export default async function BillingPage({
                   <div className="px-5 py-3 bg-white/[0.02] flex flex-wrap items-center justify-between gap-3 text-xs border-t border-sand-50/5">
                     <span className="text-sand-50/50 flex items-center gap-1.5">
                       <CheckCircle2 className="h-3.5 w-3.5 text-turq-400" />
-                      Payment recorded for this visit. Next steps:
+                      Payment recorded for this visit:
                     </span>
                     <div className="flex items-center gap-2">
                       <EmailReceiptButton
@@ -364,8 +355,7 @@ export default async function BillingPage({
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300 hover:text-purple-200 border border-purple-500/25 bg-purple-500/10 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        <span>Set 6-Month Recall (Step 5)</span>
-                        <ArrowRight className="h-3 w-3" />
+                        <span>Set Recall</span>
                       </Link>
                     </div>
                   </div>

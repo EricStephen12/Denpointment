@@ -1,35 +1,21 @@
 export default function DashboardLoading() {
   return (
-    <div className="space-y-12 animate-pulse">
-      {/* Greeting skeleton */}
-      <div className="space-y-4">
-        <div className="h-3 w-32 bg-turq-400/20 rounded-full" />
-        <div className="h-10 md:h-12 w-72 bg-sand-50/10 rounded-xl" />
-        <div className="h-4 w-48 bg-sand-50/5 rounded-lg" />
+    <div className="relative w-full min-h-[320px] flex flex-col items-center justify-center py-16 animate-fade-in">
+      {/* Non-intrusive hairline top progress indicator */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-[2.5px] bg-ink-950/80 overflow-hidden backdrop-blur-sm">
+        <div className="h-full bg-gradient-to-r from-transparent via-turq-400 to-transparent w-2/5 animate-pulse mx-auto" />
       </div>
 
-      {/* KPI Stats Grid skeleton */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-sand-50/10 border border-sand-50/10 rounded-2xl overflow-hidden">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-ink-900 p-8 flex flex-col gap-4">
-            <div className="h-3 w-24 bg-sand-50/10 rounded-full" />
-            <div className="h-8 w-16 bg-sand-50/20 rounded-lg" />
-          </div>
-        ))}
-      </div>
-
-      {/* Main card skeleton */}
-      <div className="p-8 rounded-2xl bg-sand-50/5 border border-sand-50/10 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <div className="h-4 w-40 bg-sand-50/20 rounded-md" />
-            <div className="h-3 w-64 bg-sand-50/10 rounded-md" />
-          </div>
-          <div className="h-9 w-28 bg-turq-600/20 rounded-full" />
-        </div>
-        <div className="h-24 bg-sand-50/5 rounded-xl border border-sand-50/5" />
+      {/* Subtle, calm loading badge without heavy screen-shaking skeletons */}
+      <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-sand-50/[0.04] border border-sand-50/10 text-sand-50/60 text-xs font-mono tracking-wide">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-turq-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-turq-500" />
+        </span>
+        <span>Loading clinic workspace…</span>
       </div>
     </div>
   );
 }
+
 

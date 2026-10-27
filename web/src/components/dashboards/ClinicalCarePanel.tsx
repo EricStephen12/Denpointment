@@ -219,15 +219,15 @@ export default function ClinicalCarePanel({
   }
 
   return (
-    <div id="clinical-care" className="dash-surface p-5 space-y-5 scroll-mt-24">
-      <div>
-        <h2 className="text-sm font-semibold text-sand-50">Clinical care</h2>
-        <p className="text-xs text-sand-50/40 mt-1">
-          Allergies, treatment plans, perio, consents, recalls, insurance, and lab cases
+    <div id="clinical-care" className="bg-ink-900 border border-sand-50/10 rounded-2xl p-6 shadow-xl space-y-6 scroll-mt-24">
+      <div className="pb-3 border-b border-sand-50/10">
+        <h2 className="text-base font-bold font-display text-sand-50">Clinical Care &amp; Chart Documentation</h2>
+        <p className="text-xs text-sand-50/50 mt-0.5">
+          Comprehensive patient medical records: allergies, active treatment plans, periodontal charting, signed consents, recalls, insurance, and external dental labs
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b border-sand-50/10 pb-2">
+      <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-ink-950 border border-sand-50/10">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -236,10 +236,10 @@ export default function ClinicalCarePanel({
               setTab(t.id);
               setError(null);
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               tab === t.id
-                ? "bg-turq-600 text-ink-950"
-                : "text-sand-50/55 hover:bg-sand-50/8"
+                ? "bg-turq-500 text-ink-950 shadow-sm"
+                : "text-sand-50/60 hover:text-sand-50 hover:bg-sand-50/5"
             }`}
           >
             {t.label}

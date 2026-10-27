@@ -17,7 +17,6 @@ import {
   Stethoscope,
 } from "lucide-react";
 import { formatAppointmentDate } from "@/lib/clinic-date";
-import ClinicWorkflowTracker from "@/components/dashboard/ClinicWorkflowTracker";
 
 export default async function BookingSuccessPage({
   searchParams,
@@ -84,9 +83,6 @@ export default async function BookingSuccessPage({
 
   return (
     <div className="max-w-2xl mx-auto pt-4 space-y-6 animate-fade-up">
-      {/* Workflow Tracker Banner */}
-      <ClinicWorkflowTracker currentStep={1} />
-
       <div className="text-center pt-2">
         <div className="w-16 h-16 bg-turq-600/20 rounded-full flex items-center justify-center mx-auto mb-4 relative">
           <div className="absolute inset-0 rounded-full bg-turq-400/20 animate-ping" style={{ animationDuration: "3s" }} />
@@ -184,7 +180,7 @@ export default async function BookingSuccessPage({
                   Open Check-in Desk
                 </p>
                 <p className="text-[10px] text-sand-50/50">
-                  Step 2: Mark arrival when patient walks in
+                  Mark arrival when patient walks in
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 text-sand-50/40 group-hover:translate-x-0.5 transition-transform" />

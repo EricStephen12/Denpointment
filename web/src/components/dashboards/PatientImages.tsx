@@ -32,11 +32,11 @@ export default function PatientImages({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div id="clinical-images" className="dash-surface p-5 space-y-5 scroll-mt-24">
-      <div>
-        <h2 className="text-sm font-semibold text-sand-50">Photos &amp; X-rays</h2>
-        <p className="text-xs text-sand-50/40 mt-1">
-          Clinical images stored for this patient
+    <div id="clinical-images" className="bg-ink-900 border border-sand-50/10 rounded-2xl p-6 shadow-xl space-y-6 scroll-mt-24">
+      <div className="pb-3 border-b border-sand-50/10">
+        <h2 className="text-base font-bold font-display text-sand-50">Photos &amp; Diagnostic X-Rays</h2>
+        <p className="text-xs text-sand-50/50 mt-0.5">
+          Clinical dental imagery, intraoral photography, and radiography records
         </p>
       </div>
 

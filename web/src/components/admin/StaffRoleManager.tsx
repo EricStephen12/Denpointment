@@ -281,50 +281,61 @@ export default function StaffRoleManager({
       )}
 
       <AdminPageHeader
-        section="Practice setup"
-        title="Staff and access"
-        description="Invite team members, assign clinic roles, and manage dentist rooms."
-        action={<button
-          type="button"
-          onClick={() => {
-            setNewEmail("");
-            setNewFirstName("");
-            setNewLastName("");
-            setNewRole("dentist");
-            setNewRoom("1");
-            setIsAddModalOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 bg-turq-500 hover:bg-turq-400 text-ink-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-turq-500/10 hover:shadow-turq-500/20 active:scale-[0.98]"
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>Add team member</span>
-        </button>}
-        />
+        section="Management"
+        title="Staff & Permissions"
+        description="Invite clinic personnel, configure role access permissions, and assign surgery rooms."
+        action={
+          <button
+            type="button"
+            onClick={() => {
+              setNewEmail("");
+              setNewFirstName("");
+              setNewLastName("");
+              setNewRole("dentist");
+              setNewRoom("1");
+              setIsAddModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 bg-turq-500 hover:bg-turq-400 text-ink-950 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-[0.98]"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Add Team Member</span>
+          </button>
+        }
+      />
 
       {/* Overview Stat Badges */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="p-4 rounded-xl bg-sand-50/[0.02] border border-sand-50/10">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">
             Clinic Staff
-          </div>
-          <div className="text-2xl font-bold text-sand-50 mt-1 font-display">
-            {staffCount}
-          </div>
-        </div>
-        <div className="p-4 rounded-xl bg-sand-50/[0.02] border border-sand-50/10">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">
-            Active Providers
-          </div>
-          <div className="text-2xl font-bold text-turq-400 mt-1 font-display">
-            {dentistsCount}
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-sand-50 tabular-nums">
+              {staffCount}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Personnel with system access</p>
           </div>
         </div>
-        <div className="p-4 rounded-xl bg-sand-50/[0.02] border border-sand-50/10">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">
+        <div className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-turq-400/80">
+            Active Doctors
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-turq-400 tabular-nums">
+              {dentistsCount}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Practicing dentists registered</p>
+          </div>
+        </div>
+        <div className="dash-surface p-5 rounded-2xl border border-sand-50/10 flex flex-col justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-sand-50/40">
             Total Members
-          </div>
-          <div className="text-2xl font-bold text-sand-50/80 mt-1 font-display">
-            {membersList.length}
+          </span>
+          <div className="mt-2">
+            <p className="text-2xl font-bold font-display text-sand-50/80 tabular-nums">
+              {membersList.length}
+            </p>
+            <p className="text-xs text-sand-50/40 mt-1">Combined accounts in database</p>
           </div>
         </div>
       </div>
