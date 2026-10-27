@@ -43,6 +43,9 @@ import {
   ClipboardList,
   Stethoscope,
   Calendar,
+  Smile,
+  MapPin,
+  Compass,
 } from "lucide-react";
 
 export type ChartFinding = {
@@ -95,6 +98,7 @@ export default function Odontogram({
   treatmentPlanItems = [],
 }: Props) {
   const [notation, setNotation] = useState<ChartNotationSystem>("palmer");
+  const [viewMode, setViewMode] = useState<"quadrants" | "mouth">("quadrants");
   const [dentition, setDentition] = useState<"adult" | "primary">("adult");
   const [selected, setSelected] = useState<number | null>(11);
   const [condition, setCondition] = useState<ToothCondition>("healthy");
@@ -311,6 +315,36 @@ export default function Odontogram({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+                    {/* View Mode: 4-Quadrant vs Actual Mouth */}
+          <div className="flex items-center gap-1 bg-ink-950 border border-sand-50/10 p-1 rounded-xl text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode("quadrants")}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "quadrants"
+                  ? "bg-turq-500 text-ink-950 shadow-sm"
+                  : "text-sand-50/60 hover:text-sand-50"
+              }`}
+              title="4-Quadrant View (Palmer Quadrants with Complete Root Morphology)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>4-Quadrant View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("mouth")}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "mouth"
+                  ? "bg-turq-500 text-ink-950 shadow-sm"
+                  : "text-sand-50/60 hover:text-sand-50"
+              }`}
+              title="Actual Mouth View (Curved Anatomical Arch in Mouth)"
+            >
+              <Smile className="w-3.5 h-3.5" />
+              <span>Mouth View</span>
+            </button>
+          </div>
+
           {/* Charting System / Notation Selector */}
           <div className="flex items-center gap-1 bg-ink-950 border border-sand-50/10 p-1 rounded-xl text-xs">
             <button
@@ -401,8 +435,9 @@ export default function Odontogram({
         ))}
       </div>
 
-      {/* ── Standard Dental Arch Chart (Maxillary & Mandibular Arches) ── */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-ink-950 to-ink-950/90 border border-sand-50/10 shadow-inner overflow-x-auto space-y-6">
+      {/* ── Main Dental Chart: 4-Quadrant View OR Actual Mouth View ── */}
+      {viewMode === "quadrants" ? (
+        <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-ink-950 to-ink-950/90 border border-sand-50/10 shadow-inner overflow-x-auto space-y-6">
         {/* Maxillary (Upper Arch) */}
         <div>
           <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-sand-50/50 font-semibold mb-2 px-2">
@@ -515,6 +550,15 @@ export default function Odontogram({
           </div>
         </div>
       </div>
+      ) : (
+        <CurvedActualMouthView
+          dentition={dentition}
+          notation={notation}
+          byTooth={byTooth}
+          selected={selected}
+          onSelect={selectTooth}
+        />
+      )}
 
       {/* ── Active Selected Tooth Workspace ── */}
       {selected != null && (
@@ -575,9 +619,9 @@ export default function Odontogram({
 
           {canEdit && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Column 1: Quick 1-Click Condition Ribbon */}
-                <div className="lg:col-span-7 space-y-2">
+                <div className="lg:col-span-5 space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-sand-50/50 block">
                     1. Tooth Condition Diagnosis
                   </span>
@@ -590,7 +634,7 @@ export default function Odontogram({
                           type="button"
                           onClick={() => handleQuickApplyCondition(c.value)}
                           disabled={pending}
-                          className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all text-left cursor-pointer ${
+                          className={`px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all text-left cursor-pointer ${
                             isActive
                               ? "bg-sand-50/15 border-turq-400 text-sand-50 shadow-md ring-1 ring-turq-400"
                               : "bg-ink-900 border-sand-50/10 text-sand-50/70 hover:text-sand-50 hover:border-sand-50/30"
@@ -606,29 +650,39 @@ export default function Odontogram({
                     })}
                   </div>
 
-                  <div className="pt-2">
+                  <div className="pt-1.5">
                     <input
                       type="text"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Clinical notes (e.g. distal marginal ridge breakdown, cold sensitivity)"
+                      placeholder="Clinical notes (e.g. marginal ridge breakdown, cold sensitivity)"
                       className="w-full px-3.5 py-2 bg-ink-900 border border-sand-50/10 rounded-xl text-xs text-sand-50 placeholder:text-sand-50/30 focus:outline-none focus:border-turq-500"
                     />
                   </div>
                 </div>
 
                 {/* Column 2: 5-Surface Clinical Target Diagram (M-O-D-B-L) */}
-                <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 rounded-2xl bg-ink-900/60 border border-sand-50/10 space-y-2">
+                <div className="lg:col-span-3 flex flex-col items-center justify-center p-3 rounded-2xl bg-ink-900/60 border border-sand-50/10 space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-sand-50/50">
-                    2. Surface Mapping
+                    2. Surface Target
                   </span>
                   <FiveSurfaceOdontogramTarget
                     surfaces={surfaces}
                     onToggle={toggleSurface}
                   />
-                  <span className="text-[11px] text-sand-50/40">
-                    Selected Surfaces: <strong className="text-sand-50">{surfaces.length > 0 ? surfaces.join("-") : "Whole Tooth"}</strong>
+                  <span className="text-[11px] text-sand-50/40 text-center">
+                    Surfaces: <strong className="text-sand-50">{surfaces.length > 0 ? surfaces.join("-") : "Whole"}</strong>
                   </span>
+                </div>
+
+                {/* Column 3: In-Mouth Real-Life Location Visualizer */}
+                <div className="lg:col-span-4">
+                  <InMouthToothLocator
+                    toothNumber={selected}
+                    notation={notation}
+                    dentition={dentition}
+                    onOpenFullMouthView={() => setViewMode("mouth")}
+                  />
                 </div>
               </div>
 
@@ -1313,5 +1367,870 @@ function FiveSurfaceOdontogramTarget({
         L (Lingual)
       </button>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Helper: In-Mouth Anatomical Real-Life Location Info
+// -----------------------------------------------------------------------------
+
+function getInMouthLocationInfo(toothNumber: number, notation: ChartNotationSystem) {
+  const quad = Math.floor(toothNumber / 10);
+  const pos = toothNumber % 10;
+  const isUpper = quad === 1 || quad === 2 || quad === 5 || quad === 6;
+  const isRight = quad === 1 || quad === 4 || quad === 5 || quad === 8;
+  const anatomy = getToothAnatomy(toothNumber);
+  const label = getToothLabel(toothNumber, notation);
+
+  const jaw = isUpper ? "Maxillary (Upper Jaw)" : "Mandibular (Lower Jaw)";
+  const jawShort = isUpper ? "Top Jaw" : "Bottom Jaw";
+  const side = isRight ? "Patient's Right" : "Patient's Left";
+  const quadrantLabel = isUpper
+    ? (isRight ? "Upper Right Quadrant (UR)" : "Upper Left Quadrant (UL)")
+    : (isRight ? "Lower Right Quadrant (LR)" : "Lower Left Quadrant (LL)");
+
+  let locationSummary = "";
+  let role = "";
+  if (pos === 1) {
+    locationSummary = isUpper
+      ? "Center front tooth in upper smile line"
+      : "Center front tooth in lower smile line";
+    role = "Cutting & Biting; aesthetic central smile tooth";
+  } else if (pos === 2) {
+    locationSummary = isUpper
+      ? "Upper front tooth, adjacent to center"
+      : "Lower front tooth, adjacent to center";
+    role = "Cutting & shearing food";
+  } else if (pos === 3) {
+    locationSummary = isUpper
+      ? "Upper corner tooth (Canine / Eye tooth)"
+      : "Lower corner tooth (Canine / Cuspid)";
+    role = "Tearing food & canine guidance protection";
+  } else if (pos === 4 || pos === 5) {
+    locationSummary = isUpper
+      ? `Upper mid-jaw cheek tooth (${pos === 4 ? "1st" : "2nd"} Premolar)`
+      : `Lower mid-jaw cheek tooth (${pos === 4 ? "1st" : "2nd"} Premolar)`;
+    role = "Crushing food; transitional bicuspid";
+  } else {
+    const molarName = pos === 6 ? "1st Molar" : pos === 7 ? "2nd Molar" : "3rd Molar (Wisdom)";
+    locationSummary = isUpper
+      ? `Upper deep back chewing molar (${molarName})`
+      : `Lower deep back chewing molar (${molarName})`;
+    role = "Heavy chewing & grinding; primary occlusal anchor";
+  }
+
+  let opposingNumber: number | null = null;
+  if (quad === 1) opposingNumber = 40 + pos;
+  else if (quad === 2) opposingNumber = 30 + pos;
+  else if (quad === 3) opposingNumber = 20 + pos;
+  else if (quad === 4) opposingNumber = 10 + pos;
+
+  const opposingLabel = opposingNumber ? getToothLabel(opposingNumber, notation).fullLabel : null;
+
+  return {
+    jaw,
+    jawShort,
+    side,
+    quadrantLabel,
+    locationSummary,
+    role,
+    opposingLabel,
+    posFromMidline: `${pos}${pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th"} tooth from midline`,
+    displayLabel: label.fullLabel,
+    anatomyName: anatomy.name,
+    isUpper,
+    isRight,
+    pos,
+  };
+}
+
+// Mini arch coordinates for the 240x160 schematic
+function getMiniArchCoordinates(teeth: readonly number[], isUpper: boolean) {
+  const count = teeth.length;
+  const half = (count - 1) / 2;
+  return teeth.map((tooth, idx) => {
+    const norm = half === 0 ? 0 : (idx - half) / half;
+    const x = Math.round(120 + norm * 92);
+    const y = isUpper
+      ? Math.round(24 + Math.pow(Math.abs(norm), 1.6) * 44)
+      : Math.round(140 - Math.pow(Math.abs(norm), 1.6) * 44);
+    return { tooth, x, y };
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Component: InMouthToothLocator
+// Realistic mini mouth schematic showing the exact spot of the selected tooth
+// -----------------------------------------------------------------------------
+
+function InMouthToothLocator({
+  toothNumber,
+  notation,
+  dentition,
+  onOpenFullMouthView,
+}: {
+  toothNumber: number;
+  notation: ChartNotationSystem;
+  dentition: "adult" | "primary";
+  onOpenFullMouthView?: () => void;
+}) {
+  const info = getInMouthLocationInfo(toothNumber, notation);
+
+  const upperTeeth =
+    dentition === "adult"
+      ? [...UPPER_RIGHT, ...UPPER_LEFT]
+      : [...PRIMARY_UPPER_RIGHT, ...PRIMARY_UPPER_LEFT];
+  const lowerTeeth =
+    dentition === "adult"
+      ? [...LOWER_RIGHT, ...LOWER_LEFT]
+      : [...PRIMARY_LOWER_RIGHT, ...PRIMARY_LOWER_LEFT];
+
+  const upperDots = getMiniArchCoordinates(upperTeeth, true);
+  const lowerDots = getMiniArchCoordinates(lowerTeeth, false);
+
+  const selectedDot =
+    upperDots.find((d) => d.tooth === toothNumber) ||
+    lowerDots.find((d) => d.tooth === toothNumber);
+
+  return (
+    <div className="p-3.5 rounded-2xl bg-ink-900/80 border border-sand-50/10 space-y-2.5 h-full flex flex-col justify-between">
+      <div className="flex items-center justify-between gap-2 border-b border-sand-50/10 pb-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-turq-400 flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5" />
+          <span>In-Mouth Location</span>
+        </span>
+        {onOpenFullMouthView && (
+          <button
+            type="button"
+            onClick={onOpenFullMouthView}
+            className="text-[10px] font-bold text-sand-50/70 hover:text-turq-300 flex items-center gap-1 px-2 py-0.5 rounded-md bg-sand-50/5 hover:bg-turq-500/10 border border-sand-50/10 hover:border-turq-500/30 transition-all cursor-pointer"
+            title="Switch main view to full curved mouth arch"
+          >
+            <Smile className="w-3 h-3" />
+            <span>Full Mouth Arch</span>
+          </button>
+        )}
+      </div>
+
+      {/* Mini Anatomical Oral Cavity Map */}
+      <div className="relative bg-ink-950/90 rounded-xl p-2 border border-sand-50/[0.08] flex flex-col items-center justify-center">
+        <svg
+          viewBox="0 0 240 164"
+          className="w-full max-w-[220px] h-auto overflow-visible select-none"
+        >
+          {/* Subtle Mouth Cavity Outer Glow */}
+          <path
+            d="M 28 82 C 28 20, 212 20, 212 82 C 212 144, 28 144, 28 82 Z"
+            fill="#180b13"
+            stroke="#4a1528"
+            strokeWidth="1.2"
+            strokeDasharray="2 3"
+            opacity="0.6"
+          />
+
+          {/* Gingiva / Gum Arch Lines */}
+          <path
+            d="M 32 68 Q 120 18 208 68"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            opacity="0.3"
+          />
+          <path
+            d="M 32 96 Q 120 146 208 96"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            opacity="0.3"
+          />
+
+          {/* Midline Indicator */}
+          <line
+            x1="120"
+            y1="10"
+            x2="120"
+            y2="154"
+            stroke="#2dd4bf"
+            strokeWidth="1"
+            strokeDasharray="2 2"
+            opacity="0.3"
+          />
+
+          {/* Arch Orientation Labels */}
+          <text
+            x="120"
+            y="14"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="7"
+            fontFamily="monospace"
+            opacity="0.4"
+          >
+            TOP JAW (MAXILLA)
+          </text>
+          <text
+            x="120"
+            y="158"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="7"
+            fontFamily="monospace"
+            opacity="0.4"
+          >
+            BOTTOM JAW (MANDIBLE)
+          </text>
+
+          <text
+            x="16"
+            y="85"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="6.5"
+            fontWeight="bold"
+            opacity="0.5"
+          >
+            R
+          </text>
+          <text
+            x="224"
+            y="85"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="6.5"
+            fontWeight="bold"
+            opacity="0.5"
+          >
+            L
+          </text>
+
+          {/* Upper Teeth Dots */}
+          {upperDots.map((d) => {
+            const isMatch = d.tooth === toothNumber;
+            return (
+              <circle
+                key={d.tooth}
+                cx={d.x}
+                cy={d.y}
+                r={isMatch ? 5.5 : 3}
+                fill={isMatch ? "#2dd4bf" : "#f1f5f9"}
+                fillOpacity={isMatch ? 1 : 0.35}
+                stroke={isMatch ? "#ffffff" : "#64748b"}
+                strokeWidth={isMatch ? 2 : 0.5}
+                className={isMatch ? "animate-pulse" : ""}
+              />
+            );
+          })}
+
+          {/* Lower Teeth Dots */}
+          {lowerDots.map((d) => {
+            const isMatch = d.tooth === toothNumber;
+            return (
+              <circle
+                key={d.tooth}
+                cx={d.x}
+                cy={d.y}
+                r={isMatch ? 5.5 : 3}
+                fill={isMatch ? "#2dd4bf" : "#f1f5f9"}
+                fillOpacity={isMatch ? 1 : 0.35}
+                stroke={isMatch ? "#ffffff" : "#64748b"}
+                strokeWidth={isMatch ? 2 : 0.5}
+                className={isMatch ? "animate-pulse" : ""}
+              />
+            );
+          })}
+
+          {/* Selected Tooth Spotlight Callout Marker */}
+          {selectedDot && (
+            <g>
+              <circle
+                cx={selectedDot.x}
+                cy={selectedDot.y}
+                r={10}
+                fill="none"
+                stroke="#2dd4bf"
+                strokeWidth="1.5"
+                opacity="0.75"
+                strokeDasharray="2 2"
+              />
+              <line
+                x1={selectedDot.x}
+                y1={selectedDot.y}
+                x2={selectedDot.x > 120 ? selectedDot.x - 18 : selectedDot.x + 18}
+                y2={info.isUpper ? selectedDot.y + 18 : selectedDot.y - 18}
+                stroke="#2dd4bf"
+                strokeWidth="1.2"
+              />
+              <circle
+                cx={selectedDot.x > 120 ? selectedDot.x - 18 : selectedDot.x + 18}
+                cy={info.isUpper ? selectedDot.y + 18 : selectedDot.y - 18}
+                r="2.5"
+                fill="#2dd4bf"
+              />
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* Anatomical & Plain Language Location Card */}
+      <div className="space-y-1 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-sand-50 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-turq-400 inline-block" />
+            <span>{info.jawShort} · {info.side}</span>
+          </span>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-turq-500/10 text-turq-300 border border-turq-500/20 font-bold">
+            {info.posFromMidline}
+          </span>
+        </div>
+
+        <p className="text-[11px] text-sand-50/70 font-medium">
+          {info.locationSummary}
+        </p>
+
+        <p className="text-[10px] text-sand-50/45 leading-tight">
+          Role: {info.role}
+        </p>
+
+        {info.opposingLabel && (
+          <p className="text-[10px] text-turq-400/80 pt-0.5">
+            Opposing bite: <strong>{info.opposingLabel}</strong>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Helper: Dental Arch Coordinates for Panoramic Actual Mouth View
+// -----------------------------------------------------------------------------
+
+function getArchToothCoordinates(
+  teeth: readonly number[],
+  isUpper: boolean
+): { tooth: number; x: number; y: number; angle: number }[] {
+  const count = teeth.length;
+  const half = (count - 1) / 2;
+
+  return teeth.map((tooth, idx) => {
+    // norm: -1 (patient right back) -> 0 (incisors) -> +1 (patient left back)
+    const norm = half === 0 ? 0 : (idx - half) / half;
+    const x = Math.round(380 + norm * 280);
+
+    let y: number;
+    let angle: number;
+
+    if (isUpper) {
+      // Maxillary Arch: front incisors at top crest (y=80), molars curve down to y=220
+      y = Math.round(80 + Math.pow(Math.abs(norm), 1.6) * 145);
+      angle = Math.round(norm * 65);
+    } else {
+      // Mandibular Arch: front incisors at bottom crest (y=490), molars curve up to y=350
+      y = Math.round(490 - Math.pow(Math.abs(norm), 1.6) * 140);
+      angle = Math.round(-norm * 65);
+    }
+
+    return { tooth, x, y, angle };
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Component: CurvedActualMouthView
+// Authentic Open-Mouth Dental Arch view (Maxilla roof + Mandible floor with gums)
+// -----------------------------------------------------------------------------
+
+function CurvedActualMouthView({
+  dentition,
+  notation,
+  byTooth,
+  selected,
+  onSelect,
+}: {
+  dentition: "adult" | "primary";
+  notation: ChartNotationSystem;
+  byTooth: Map<number, ChartFinding>;
+  selected: number | null;
+  onSelect: (n: number) => void;
+}) {
+  const upperTeeth =
+    dentition === "adult"
+      ? [...UPPER_RIGHT, ...UPPER_LEFT]
+      : [...PRIMARY_UPPER_RIGHT, ...PRIMARY_UPPER_LEFT];
+  const lowerTeeth =
+    dentition === "adult"
+      ? [...LOWER_RIGHT, ...LOWER_LEFT]
+      : [...PRIMARY_LOWER_RIGHT, ...PRIMARY_LOWER_LEFT];
+
+  const upperCoords = getArchToothCoordinates(upperTeeth, true);
+  const lowerCoords = getArchToothCoordinates(lowerTeeth, false);
+
+  return (
+    <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#140b13] via-[#0d0910] to-[#140b13] border border-sand-50/10 shadow-2xl space-y-4">
+      {/* View Header with Orientation Indicators */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2 text-xs border-b border-sand-50/10 pb-3">
+        <div>
+          <h3 className="font-bold text-sand-50 flex items-center gap-2">
+            <Smile className="w-4 h-4 text-turq-400" />
+            <span>Actual Human Mouth View (Curved Dental Arches)</span>
+          </h3>
+          <p className="text-[11px] text-sand-50/50">
+            Open-mouth perspective showing teeth arranged in natural maxillary and mandibular arches. Click any tooth to select.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 text-[11px] font-mono text-sand-50/60 shrink-0">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-turq-400" />
+            <span>Patient Right (UR / LR)</span>
+          </span>
+          <span className="text-turq-400 font-bold">⏐ Midline ⏐</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-turq-400" />
+            <span>Patient Left (UL / LL)</span>
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Canvas for Full Curved Open-Mouth Arch */}
+      <div className="relative w-full overflow-x-auto py-2">
+        <svg
+          viewBox="0 0 760 570"
+          className="w-full min-w-[680px] max-w-4xl mx-auto h-auto select-none"
+        >
+          <defs>
+            {/* Natural Enamel Gradients */}
+            <linearGradient id="mouthEnamelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="60%" stopColor="#F8FAFC" />
+              <stop offset="100%" stopColor="#CBD5E1" />
+            </linearGradient>
+
+            <linearGradient id="mouthCrownGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#FDE68A" />
+              <stop offset="50%" stopColor="#F59E0B" />
+              <stop offset="100%" stopColor="#B45309" />
+            </linearGradient>
+
+            <linearGradient id="mouthFillingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#BAE6FD" />
+              <stop offset="100%" stopColor="#0284C7" />
+            </linearGradient>
+
+            <linearGradient id="palateBgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#2c101d" />
+              <stop offset="100%" stopColor="#140810" />
+            </linearGradient>
+
+            <linearGradient id="tongueBgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#140810" />
+              <stop offset="100%" stopColor="#280f1b" />
+            </linearGradient>
+          </defs>
+
+          {/* ── Upper Arch Palate (Roof of Mouth) ── */}
+          <path
+            d="M 90 230 C 130 50, 630 50, 670 230 C 580 200, 180 200, 90 230 Z"
+            fill="url(#palateBgGrad)"
+            stroke="#501b2f"
+            strokeWidth="1.5"
+            opacity="0.8"
+          />
+          {/* Subtle Palate Rugae Folds */}
+          <path
+            d="M 330 110 Q 380 95 430 110"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            opacity="0.25"
+          />
+          <path
+            d="M 320 135 Q 380 120 440 135"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            opacity="0.2"
+          />
+          <text
+            x="380"
+            y="42"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="10"
+            fontFamily="monospace"
+            fontWeight="bold"
+            letterSpacing="2"
+            opacity="0.4"
+          >
+            ▲ MAXILLARY (UPPER ARCH) · ROOF OF MOUTH ▲
+          </text>
+
+          {/* Upper Gingival Gum Border (Behind teeth) */}
+          <path
+            d="M 80 235 Q 380 40 680 235"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="16"
+            strokeLinecap="round"
+            opacity="0.25"
+          />
+
+          {/* ── Lower Arch Sublingual Floor & Tongue ── */}
+          <path
+            d="M 100 350 C 140 520, 620 520, 660 350 C 560 380, 200 380, 100 350 Z"
+            fill="url(#tongueBgGrad)"
+            stroke="#501b2f"
+            strokeWidth="1.5"
+            opacity="0.8"
+          />
+          {/* Subtle Tongue Contour */}
+          <ellipse
+            cx="380"
+            cy="440"
+            rx="90"
+            ry="45"
+            fill="#be185d"
+            fillOpacity="0.08"
+            stroke="#be185d"
+            strokeWidth="1"
+            strokeDasharray="2 3"
+            opacity="0.3"
+          />
+          <text
+            x="380"
+            y="535"
+            textAnchor="middle"
+            fill="#e2e8f0"
+            fontSize="10"
+            fontFamily="monospace"
+            fontWeight="bold"
+            letterSpacing="2"
+            opacity="0.4"
+          >
+            ▼ MANDIBULAR (LOWER ARCH) · TONGUE & FLOOR OF MOUTH ▼
+          </text>
+
+          {/* Lower Gingival Gum Border */}
+          <path
+            d="M 90 345 Q 380 535 670 345"
+            fill="none"
+            stroke="#be185d"
+            strokeWidth="16"
+            strokeLinecap="round"
+            opacity="0.25"
+          />
+
+          {/* ── Occlusal Opening & Midline Reference ── */}
+          <line
+            x1="380"
+            y1="50"
+            x2="380"
+            y2="520"
+            stroke="#2dd4bf"
+            strokeWidth="1.2"
+            strokeDasharray="3 3"
+            opacity="0.35"
+          />
+          <text
+            x="380"
+            y="288"
+            textAnchor="middle"
+            fill="#2dd4bf"
+            fontSize="9"
+            fontFamily="monospace"
+            fontWeight="bold"
+            letterSpacing="1"
+            opacity="0.6"
+          >
+            ⏐ OCCLUSAL OPENING ⏐
+          </text>
+
+          {/* ── Render Upper Teeth Nodes ── */}
+          {upperCoords.map((item) => (
+            <CurvedArchToothNode
+              key={item.tooth}
+              tooth={item.tooth}
+              x={item.x}
+              y={item.y}
+              angle={item.angle}
+              isUpper={true}
+              notation={notation}
+              finding={byTooth.get(item.tooth)}
+              isSelected={selected === item.tooth}
+              onSelect={onSelect}
+            />
+          ))}
+
+          {/* ── Render Lower Teeth Nodes ── */}
+          {lowerCoords.map((item) => (
+            <CurvedArchToothNode
+              key={item.tooth}
+              tooth={item.tooth}
+              x={item.x}
+              y={item.y}
+              angle={item.angle}
+              isUpper={false}
+              notation={notation}
+              finding={byTooth.get(item.tooth)}
+              isSelected={selected === item.tooth}
+              onSelect={onSelect}
+            />
+          ))}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Component: CurvedArchToothNode
+// Single clickable tooth on the curved dental arch with realistic crown morphology
+// -----------------------------------------------------------------------------
+
+function CurvedArchToothNode({
+  tooth,
+  x,
+  y,
+  angle,
+  isUpper,
+  notation,
+  finding,
+  isSelected,
+  onSelect,
+}: {
+  tooth: number;
+  x: number;
+  y: number;
+  angle: number;
+  isUpper: boolean;
+  notation: ChartNotationSystem;
+  finding?: ChartFinding;
+  isSelected: boolean;
+  onSelect: (n: number) => void;
+}) {
+  const anatomy = getToothAnatomy(tooth);
+  const display = getToothLabel(tooth, notation);
+  const condition = finding?.condition ?? "healthy";
+
+  const isMissing = condition === "missing";
+  const isCaries = condition === "caries";
+  const isFilling = condition === "filling";
+  const isCrown = condition === "crown";
+  const isRootCanal = condition === "root_canal";
+  const isExtractPlanned = condition === "extraction_planned";
+
+  // Dimensions by anatomical kind
+  let w = 28;
+  let h = 26;
+  if (anatomy.kind === "molar") {
+    w = 34;
+    h = 30;
+  } else if (anatomy.kind === "premolar") {
+    w = 27;
+    h = 24;
+  } else if (anatomy.kind === "canine") {
+    w = 25;
+    h = 25;
+  } else {
+    // incisor
+    w = 24;
+    h = 20;
+  }
+
+  // Base fill color
+  let fillColor = "url(#mouthEnamelGrad)";
+  let strokeColor = "#94a3b8";
+  if (isCrown) {
+    fillColor = "url(#mouthCrownGrad)";
+    strokeColor = "#d97706";
+  } else if (isFilling) {
+    fillColor = "url(#mouthFillingGrad)";
+    strokeColor = "#0284c7";
+  } else if (isMissing) {
+    fillColor = "#334155";
+    strokeColor = "#475569";
+  }
+
+  // Label position relative to tooth
+  const labelYOffset = isUpper ? -h / 2 - 10 : h / 2 + 14;
+
+  return (
+    <g
+      transform={`translate(${x}, ${y})`}
+      onClick={() => onSelect(tooth)}
+      className="cursor-pointer group"
+      role="button"
+      tabIndex={0}
+      aria-label={`${display.fullLabel} - ${anatomy.name}`}
+    >
+      <title>
+        {`${display.fullLabel} · ${anatomy.name} (${conditionMeta(condition).label})`}
+      </title>
+
+      {/* Selected Halo / Radiance Ring */}
+      {isSelected && (
+        <g>
+          <circle
+            cx={0}
+            cy={0}
+            r={w / 2 + 8}
+            fill="#2dd4bf"
+            fillOpacity="0.15"
+            stroke="#2dd4bf"
+            strokeWidth="2.5"
+            className="animate-pulse"
+          />
+          {/* Floating Selected Tag */}
+          <g transform={`translate(0, ${isUpper ? -h / 2 - 24 : h / 2 + 26})`}>
+            <rect
+              x="-26"
+              y="-7"
+              width="52"
+              height="14"
+              rx="4"
+              fill="#0d9488"
+              stroke="#2dd4bf"
+              strokeWidth="1"
+            />
+            <text
+              x="0"
+              y="3.5"
+              textAnchor="middle"
+              fill="#ffffff"
+              fontSize="7.5"
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              SELECTED
+            </text>
+          </g>
+        </g>
+      )}
+
+      {/* Rotated Tooth Crown Body along Dental Arch Tangent */}
+      <g transform={`rotate(${angle})`}>
+        {/* Crown Occlusal Silhouette */}
+        {anatomy.kind === "molar" ? (
+          <rect
+            x={-w / 2}
+            y={-h / 2}
+            width={w}
+            height={h}
+            rx={6}
+            fill={fillColor}
+            fillOpacity={isMissing ? 0.3 : 1}
+            stroke={isSelected ? "#2dd4bf" : strokeColor}
+            strokeWidth={isSelected ? 2 : 1.2}
+            className="transition-all group-hover:stroke-turq-400"
+          />
+        ) : anatomy.kind === "premolar" ? (
+          <rect
+            x={-w / 2}
+            y={-h / 2}
+            width={w}
+            height={h}
+            rx={5}
+            fill={fillColor}
+            fillOpacity={isMissing ? 0.3 : 1}
+            stroke={isSelected ? "#2dd4bf" : strokeColor}
+            strokeWidth={isSelected ? 2 : 1.2}
+            className="transition-all group-hover:stroke-turq-400"
+          />
+        ) : anatomy.kind === "canine" ? (
+          <polygon
+            points={`0,${-h / 2} ${w / 2},0 0,${h / 2} ${-w / 2},0`}
+            fill={fillColor}
+            fillOpacity={isMissing ? 0.3 : 1}
+            stroke={isSelected ? "#2dd4bf" : strokeColor}
+            strokeWidth={isSelected ? 2 : 1.2}
+            className="transition-all group-hover:stroke-turq-400"
+          />
+        ) : (
+          /* Incisor */
+          <rect
+            x={-w / 2}
+            y={-h / 2}
+            width={w}
+            height={h}
+            rx={3}
+            fill={fillColor}
+            fillOpacity={isMissing ? 0.3 : 1}
+            stroke={isSelected ? "#2dd4bf" : strokeColor}
+            strokeWidth={isSelected ? 2 : 1.2}
+            className="transition-all group-hover:stroke-turq-400"
+          />
+        )}
+
+        {/* Anatomical Occlusal Groove Fissures */}
+        {!isMissing && anatomy.kind === "molar" && (
+          <path
+            d="M -7 -4 Q 0 0 7 -4 M 0 -7 L 0 7 M -6 4 Q 0 0 6 4"
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
+        )}
+        {!isMissing && anatomy.kind === "premolar" && (
+          <line
+            x1="-5"
+            y1="0"
+            x2="5"
+            y2="0"
+            stroke="#94a3b8"
+            strokeWidth="0.8"
+            opacity="0.6"
+          />
+        )}
+
+        {/* Caries Pathology Marker */}
+        {isCaries && (
+          <circle cx="0" cy="0" r="4.5" fill="#ef4444" stroke="#ffffff" strokeWidth="1" />
+        )}
+
+        {/* Root Canal Access Point */}
+        {isRootCanal && (
+          <circle cx="0" cy="0" r="3.5" fill="#a855f7" stroke="#ffffff" strokeWidth="1" />
+        )}
+
+        {/* Missing Strikethrough */}
+        {isMissing && (
+          <g stroke="#ef4444" strokeWidth="2" strokeLinecap="round">
+            <line x1={-w / 3} y1={-h / 3} x2={w / 3} y2={h / 3} />
+            <line x1={w / 3} y1={-h / 3} x2={-w / 3} y2={h / 3} />
+          </g>
+        )}
+
+        {/* Extraction Planned */}
+        {isExtractPlanned && (
+          <line
+            x1={-w / 2.5}
+            y1={h / 2.5}
+            x2={w / 2.5}
+            y2={-h / 2.5}
+            stroke="#f59e0b"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
+        )}
+      </g>
+
+      {/* Tooth Notation Number Badge (always upright for readability) */}
+      <text
+        x="0"
+        y={labelYOffset}
+        textAnchor="middle"
+        fill={isSelected ? "#2dd4bf" : "#f8fafc"}
+        fontSize="10"
+        fontWeight="bold"
+        fontFamily="monospace"
+        className="transition-colors group-hover:fill-turq-300"
+      >
+        {display.label}
+      </text>
+    </g>
   );
 }
