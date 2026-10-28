@@ -30,7 +30,6 @@ import { TOOTH_SURFACES, type ToothSurface } from "@/lib/tooth-surfaces";
 import {
   Check,
   X,
-  Sparkles,
   AlertCircle,
   Trash2,
   Loader2,

@@ -7,6 +7,7 @@ import { formatNaira } from "@/lib/currency";
 import { formatAppointmentDate } from "@/lib/clinic-date";
 import { initiateTreatmentPayment } from "@/app/actions/billing";
 import { CreditCard, CheckCircle2, Receipt, ArrowRight } from "lucide-react";
+import VerifyPaystackButton from "@/components/billing/VerifyPaystackButton";
 
 export default async function MyBillsPage() {
   const dbUser = await getCurrentPerson();
@@ -112,17 +113,29 @@ export default async function MyBillsPage() {
                       <div className="flex items-center gap-3 shrink-0">
                         <span className="text-sm font-medium text-sand-50">{formatNaira(t.charge)}</span>
                         {!t.paid ? (
-                          <form action={initiateTreatmentPayment}>
-                            <input type="hidden" name="treatmentId" value={t.treatmentId} />
-                            <button
-                              type="submit"
-                              className="inline-flex items-center gap-1 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 px-3 py-1.5 rounded-full font-semibold transition-colors"
-                            >
-                              <CreditCard className="h-3 w-3" /> Pay
-                            </button>
-                          </form>
+                          <div className="flex items-center gap-2">
+                            <form action={initiateTreatmentPayment}>
+                              <input type="hidden" name="treatmentId" value={t.treatmentId} />
+                              <button
+                                type="submit"
+                                className="inline-flex items-center gap-1 text-xs bg-turq-600 hover:bg-turq-500 text-ink-950 px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer"
+                              >
+                                <CreditCard className="h-3 w-3" /> Pay Online
+                              </button>
+                            </form>
+                            {t.paystackRef && (
+                              <VerifyPaystackButton
+                                reference={t.paystackRef}
+                                label="Verify"
+                                compact={true}
+                              />
+                            )}
+                          </div>
                         ) : (
-                          <CheckCircle2 className="h-4 w-4 text-turq-400/60" />
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400 font-medium">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                            <span>Paid</span>
+                          </span>
                         )}
                       </div>
                     </li>

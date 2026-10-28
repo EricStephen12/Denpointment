@@ -10,7 +10,7 @@ import {
   KeyRound,
   Smartphone,
   Monitor,
-  Sparkles,
+  Mail,
   Bell,
 } from "lucide-react";
 
@@ -652,7 +652,7 @@ export default function EmailTemplatesGallery({ clinicName }: Props) {
             <span className="text-[11px] font-mono text-sand-50/30">
               {deviceView === "mobile" ? "iPhone Mail · 380px" : "Gmail Client · Desktop"}
             </span>
-            <Sparkles className="w-3.5 h-3.5 text-turq-400/60" />
+            <Mail className="w-3.5 h-3.5 text-sand-50/40" />
           </div>
 
           {/* Rendered Email Frame */}

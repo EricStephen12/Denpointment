@@ -64,6 +64,26 @@ export async function initiateTreatmentPayment(formData: FormData) {
   redirect(authorization_url);
 }
 
+/**
+ * Reconciles any Paystack payment directly on-demand via Paystack's official API.
+ * Usable by both patients and staff without requiring any webhooks.
+ */
+export async function reconcilePaystackPaymentAction(reference: string) {
+  if (!reference) {
+    return { success: false, message: "Reference is required." };
+  }
+
+  const { reconcilePaystackPayment } = await import("@/lib/paystack");
+  const result = await reconcilePaystackPayment(reference);
+
+  revalidatePath("/dashboard/portal/bills");
+  revalidatePath("/dashboard/admin/billing");
+  revalidatePath("/dashboard/admin/outstanding");
+  revalidatePath("/dashboard/appointments");
+
+  return result;
+}
+
 // ─── Phase 4: Full payment recording ─────────────────────────────────────────
 
 async function requireBillingStaff() {

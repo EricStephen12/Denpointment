@@ -22,7 +22,7 @@ import {
   Tag,
   Loader2,
   ExternalLink,
-  Sparkles,
+  Eye,
 } from "lucide-react";
 import EmailTemplatesGallery from "@/components/automations/EmailTemplatesGallery";
 
@@ -245,7 +245,7 @@ export default function AutomationsManager({
               : "text-sand-50/60 hover:text-sand-50 hover:bg-sand-50/5"
           }`}
         >
-          <Sparkles className="w-4 h-4 text-turq-400" />
+          <Eye className="w-4 h-4 text-turq-400" />
           <span>Live Email Previews</span>
         </button>
       </div>

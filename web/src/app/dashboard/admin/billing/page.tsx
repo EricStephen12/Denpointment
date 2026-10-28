@@ -12,6 +12,8 @@ import DeleteBillingRecordButton from "@/components/billing/DeleteBillingRecordB
 import DeleteTreatmentProcedureButton from "@/components/billing/DeleteTreatmentProcedureButton";
 import AdminPageHeader from "@/components/admin/AdminPageHeader";
 import EmailReceiptButton from "@/components/billing/EmailReceiptButton";
+import VerifyPaystackButton from "@/components/billing/VerifyPaystackButton";
+import PaystackReferenceVerifier from "@/components/billing/PaystackReferenceVerifier";
 import { Printer, RefreshCw, CheckCircle2 } from "lucide-react";
 
 export default async function BillingPage({
@@ -176,6 +178,9 @@ export default async function BillingPage({
         </div>
       </div>
 
+      {/* Direct Paystack Verification Widget (No Webhook Required) */}
+      <PaystackReferenceVerifier />
+
       {/* Appointment list */}
       {appointments.length === 0 ? (
         <div className="text-center py-16 text-sand-50/40 border border-dashed border-sand-50/10 rounded-2xl">
@@ -266,7 +271,12 @@ export default async function BillingPage({
                             {t.paid ? (
                               <span className="text-emerald-400 text-[10px] font-semibold">PAID</span>
                             ) : (
-                              <span className="text-amber-400 text-[10px] font-semibold">UNPAID</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-amber-400 text-[10px] font-semibold">UNPAID</span>
+                                {t.paystackRef && (
+                                  <VerifyPaystackButton reference={t.paystackRef} compact={true} />
+                                )}
+                              </div>
                             )}
                             {t.medicines.length > 0 && (
                               <Link
